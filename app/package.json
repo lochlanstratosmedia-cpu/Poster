@@ -1,0 +1,16 @@
+{
+  "name": "call-drill",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Draft real estate call trainer: voice call against a Claude-played prospect with a realistic TTS voice, scored out of 100.",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": { "node": ">=20" },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.80.0",
+    "express": "^4.21.2",
+    "zod": "^3.24.2"
+  }
+}

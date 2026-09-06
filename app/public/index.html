@@ -1,0 +1,1008 @@
+<!doctype html>
+<html lang="en-AU">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Call Drill</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  :root {
+    --ground: #F3F6F7;
+    --surface: #FFFFFF;
+    --surface-2: #E9EEF1;
+    --ink: #16212B;
+    --muted: #5B6873;
+    --line: #D3DBE1;
+    --accent: #1C6E8C;
+    --accent-ink: #FFFFFF;
+    --accent-soft: #DCEBF1;
+    --good: #2B8A5B;
+    --good-soft: #DDF0E5;
+    --warn: #B7791F;
+    --warn-soft: #F6ECD6;
+    --bad: #B83A3A;
+    --bad-soft: #F5DEDE;
+    --agent-bubble: #1C6E8C;
+    --agent-ink: #FFFFFF;
+    --prospect-bubble: #E9EEF1;
+    --display: "Bricolage Grotesque", "Arial Narrow", Arial, sans-serif;
+    --body: "IBM Plex Sans", "Helvetica Neue", Arial, sans-serif;
+    --mono: "IBM Plex Mono", "SFMono-Regular", Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground: #0E151B;
+      --surface: #16202A;
+      --surface-2: #1F2B36;
+      --ink: #E7ECF0;
+      --muted: #97A5B1;
+      --line: #2B3843;
+      --accent: #5DB3D2;
+      --accent-ink: #0B1A22;
+      --accent-soft: #163441;
+      --good: #58B784;
+      --good-soft: #17352A;
+      --warn: #D9A44A;
+      --warn-soft: #3B2E14;
+      --bad: #E06B6B;
+      --bad-soft: #3F1F1F;
+      --agent-bubble: #2A6F8C;
+      --agent-ink: #EAF4F8;
+      --prospect-bubble: #1F2B36;
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground: #0E151B;
+    --surface: #16202A;
+    --surface-2: #1F2B36;
+    --ink: #E7ECF0;
+    --muted: #97A5B1;
+    --line: #2B3843;
+    --accent: #5DB3D2;
+    --accent-ink: #0B1A22;
+    --accent-soft: #163441;
+    --good: #58B784;
+    --good-soft: #17352A;
+    --warn: #D9A44A;
+    --warn-soft: #3B2E14;
+    --bad: #E06B6B;
+    --bad-soft: #3F1F1F;
+    --agent-bubble: #2A6F8C;
+    --agent-ink: #EAF4F8;
+    --prospect-bubble: #1F2B36;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink);
+    font-family: var(--body);
+    font-size: 16px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+  h1, h2, h3 { font-family: var(--display); font-weight: 700; line-height: 1.1; margin: 0; text-wrap: balance; }
+  h1 { font-size: 34px; font-weight: 800; letter-spacing: -0.01em; }
+  h2 { font-size: 24px; }
+  h3 { font-size: 18px; }
+  p { margin: 0; }
+  button { font-family: inherit; font-size: inherit; cursor: pointer; }
+  button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible {
+    outline: 3px solid var(--accent); outline-offset: 2px;
+  }
+  .eyebrow { font-family: var(--mono); font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+  .muted { color: var(--muted); }
+  .mono { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+
+  .app { max-width: 720px; margin: 0 auto; padding: 20px 18px 60px; }
+  .topbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-bottom: 14px; border-bottom: 1px solid var(--line); margin-bottom: 22px; }
+  .brand { display: flex; align-items: center; gap: 10px; font-family: var(--display); font-weight: 800; font-size: 20px; }
+  .brand .dot { width: 12px; height: 12px; border-radius: 50%; background: var(--accent); }
+  .brand small { font-family: var(--mono); font-weight: 400; font-size: 11px; color: var(--muted); letter-spacing: 0.08em; text-transform: uppercase; margin-left: 4px; }
+  .linkbtn { background: none; border: none; color: var(--accent); padding: 4px 0; font-weight: 500; }
+
+  .screen { display: none; }
+  .screen.active { display: block; }
+  .stack { display: flex; flex-direction: column; gap: 16px; }
+  .stack-lg { display: flex; flex-direction: column; gap: 28px; }
+
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 12px 20px; border-radius: 8px; border: 1px solid transparent; font-weight: 600; background: var(--accent); color: var(--accent-ink); }
+  .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .btn.secondary { background: var(--surface); color: var(--ink); border-color: var(--line); }
+  .btn.danger { background: var(--bad); color: #fff; }
+  .btn.block { width: 100%; }
+  .row { display: flex; gap: 10px; flex-wrap: wrap; }
+
+  .note { background: var(--surface-2); border-radius: 8px; padding: 12px 14px; font-size: 14px; }
+  .note strong { font-weight: 600; }
+
+  /* Levels */
+  .levels { display: flex; flex-direction: column; gap: 10px; }
+  .level { display: grid; grid-template-columns: 52px 1fr auto; gap: 14px; align-items: center; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; text-align: left; color: var(--ink); width: 100%; }
+  .level:hover:not(:disabled) { border-color: var(--accent); }
+  .level:disabled { opacity: 0.55; cursor: not-allowed; }
+  .level .num { font-family: var(--display); font-weight: 800; font-size: 28px; color: var(--accent); line-height: 1; }
+  .level .title { font-weight: 600; }
+  .level .sub { font-size: 14px; color: var(--muted); }
+  .pill { font-family: var(--mono); font-size: 12px; padding: 4px 10px; border-radius: 999px; background: var(--surface-2); color: var(--muted); white-space: nowrap; }
+  .pill.pass { background: var(--good-soft); color: var(--good); }
+  .pill.tried { background: var(--warn-soft); color: var(--warn); }
+  .pill.locked { background: var(--surface-2); }
+
+  /* Briefing */
+  .brief { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 22px; display: grid; gap: 18px; }
+  .brief dl { display: grid; grid-template-columns: 120px 1fr; gap: 8px 16px; margin: 0; }
+  .brief dt { font-family: var(--mono); font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); padding-top: 3px; }
+  .brief dd { margin: 0; }
+
+  /* Call */
+  .callhead { display: flex; align-items: center; justify-content: space-between; gap: 12px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 14px 18px; }
+  .callhead .who { font-family: var(--display); font-weight: 700; font-size: 20px; }
+  .callhead .status { display: flex; align-items: center; gap: 8px; font-family: var(--mono); font-size: 13px; color: var(--muted); }
+  .callhead .status .live { width: 9px; height: 9px; border-radius: 50%; background: var(--good); }
+  .callhead .status .live.speaking { background: var(--accent); animation: pulse 1s infinite; }
+  .callhead .status .live.thinking { background: var(--warn); animation: pulse 0.7s infinite; }
+  .callhead .status .live.ended { background: var(--muted); animation: none; }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
+  @media (prefers-reduced-motion: reduce) { .callhead .status .live { animation: none !important; } }
+
+  .transcript { display: flex; flex-direction: column; gap: 10px; min-height: 220px; max-height: 46vh; overflow-y: auto; padding: 4px 2px; }
+  .bubble { max-width: 85%; padding: 10px 14px; border-radius: 14px; line-height: 1.45; }
+  .bubble.prospect { align-self: flex-start; background: var(--prospect-bubble); border-bottom-left-radius: 4px; }
+  .bubble.agent { align-self: flex-end; background: var(--agent-bubble); color: var(--agent-ink); border-bottom-right-radius: 4px; }
+  .bubble.system { align-self: center; background: none; color: var(--muted); font-size: 13px; font-family: var(--mono); }
+  .bubble .who { display: block; font-family: var(--mono); font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; opacity: 0.7; margin-bottom: 2px; }
+
+  .talkpanel { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 16px; display: grid; gap: 12px; }
+  .talkbtn { width: 100%; padding: 22px; border-radius: 10px; border: 2px solid var(--accent); background: var(--accent); color: var(--accent-ink); font-family: var(--display); font-weight: 800; font-size: 22px; }
+  .talkbtn.listening { background: var(--bad); border-color: var(--bad); color: #fff; }
+  .talkbtn:disabled { opacity: 0.45; cursor: not-allowed; }
+  .interim { min-height: 22px; font-style: italic; color: var(--muted); font-size: 14px; }
+  .typerow { display: flex; gap: 8px; }
+  .typerow input { flex: 1; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--line); background: var(--ground); color: var(--ink); font-family: inherit; font-size: 15px; }
+
+  /* Report */
+  .scorehero { display: grid; grid-template-columns: auto 1fr; gap: 22px; align-items: center; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 22px; }
+  .bigscore { font-family: var(--display); font-weight: 800; font-size: 72px; line-height: 1; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
+  .bigscore small { font-size: 22px; color: var(--muted); font-weight: 500; letter-spacing: 0; }
+  .verdict { font-family: var(--mono); font-size: 13px; text-transform: uppercase; letter-spacing: 0.08em; padding: 4px 10px; border-radius: 999px; display: inline-block; margin-bottom: 8px; }
+  .verdict.pass { background: var(--good-soft); color: var(--good); }
+  .verdict.fail { background: var(--warn-soft); color: var(--warn); }
+  .verdict.won { background: var(--accent-soft); color: var(--accent); }
+
+  .areas { display: grid; gap: 10px; }
+  .area { display: grid; grid-template-columns: 150px 1fr 56px; gap: 12px; align-items: center; }
+  .area .bar { height: 10px; background: var(--surface-2); border-radius: 999px; overflow: hidden; }
+  .area .bar i { display: block; height: 100%; background: var(--accent); border-radius: 999px; }
+  .area .bar i.good { background: var(--good); }
+  .area .bar i.warn { background: var(--warn); }
+  .area .bar i.bad { background: var(--bad); }
+  .area .pts { font-family: var(--mono); font-variant-numeric: tabular-nums; text-align: right; font-size: 14px; }
+  .area .name { font-weight: 500; }
+  .areanotes { display: grid; gap: 8px; font-size: 14px; }
+  .areanotes div b { font-weight: 600; }
+
+  .takeaways { display: grid; gap: 12px; }
+  .take { border-left: 4px solid var(--warn); padding: 6px 0 6px 14px; }
+  .take.well { border-color: var(--good); }
+  .take .tag { font-family: var(--mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
+  .take q { display: block; margin-top: 4px; font-style: italic; color: var(--muted); font-size: 14px; }
+  .take q::before, .take q::after { content: '"'; }
+
+  .swap { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .swap > div { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; font-size: 14px; }
+  .swap .lbl { font-family: var(--mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin-bottom: 6px; }
+  .swap .said { color: var(--muted); font-style: italic; }
+  .swap .better { border-color: var(--good); }
+
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; }
+  .stat { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 12px; }
+  .stat .v { font-family: var(--display); font-weight: 700; font-size: 24px; font-variant-numeric: tabular-nums; line-height: 1.1; }
+  .stat .k { font-size: 12px; color: var(--muted); margin-top: 2px; }
+
+  .tlist { display: grid; gap: 6px; font-size: 14px; }
+  .tlist .t { display: grid; grid-template-columns: 74px 1fr; gap: 10px; }
+  .tlist .t .w { font-family: var(--mono); font-size: 12px; color: var(--muted); padding-top: 3px; }
+  .tlist .t.agent .w { color: var(--accent); }
+
+  /* Feedback form */
+  .form { display: grid; gap: 16px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 22px; }
+  .field { display: grid; gap: 6px; }
+  .field label { font-weight: 500; }
+  .field input[type=text], .field textarea, .field select { padding: 10px 12px; border-radius: 8px; border: 1px solid var(--line); background: var(--ground); color: var(--ink); font-family: inherit; font-size: 15px; }
+  .field textarea { min-height: 90px; resize: vertical; }
+  .scale { display: flex; gap: 6px; flex-wrap: wrap; }
+  .scale button { width: 40px; height: 40px; border-radius: 8px; border: 1px solid var(--line); background: var(--ground); color: var(--ink); font-family: var(--mono); }
+  .scale button.on { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+  .yesno { display: flex; gap: 8px; }
+  .yesno button { flex: 1; padding: 10px; border-radius: 8px; border: 1px solid var(--line); background: var(--ground); color: var(--ink); }
+  .yesno button.on { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+
+  .err { background: var(--bad-soft); color: var(--bad); border-radius: 8px; padding: 10px 14px; font-size: 14px; }
+  .ok { background: var(--good-soft); color: var(--good); border-radius: 8px; padding: 10px 14px; font-size: 14px; }
+  .thinking { font-family: var(--mono); font-size: 13px; color: var(--muted); }
+  details summary { cursor: pointer; font-weight: 500; }
+
+  @media (max-width: 520px) {
+    h1 { font-size: 28px; }
+    .brief dl { grid-template-columns: 1fr; gap: 2px 0; }
+    .brief dt { margin-top: 8px; }
+    .area { grid-template-columns: 110px 1fr 48px; }
+    .swap { grid-template-columns: 1fr; }
+    .scorehero { grid-template-columns: 1fr; }
+    .level { grid-template-columns: 40px 1fr; }
+    .level .pill { grid-column: 2; justify-self: start; }
+  }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <div class="topbar">
+    <div class="brand"><span class="dot"></span>Call Drill <small>draft build</small></div>
+    <button class="linkbtn" id="nav-home">Levels</button>
+  </div>
+
+  <!-- HOME -->
+  <section class="screen active" id="s-home">
+    <div class="stack-lg">
+      <div class="stack">
+        <h1>Practise the call before you make it.</h1>
+        <p class="muted">Pick a level. You will phone an AI prospect, talk to them out loud, and get scored out of 100 with a breakdown of what to change.</p>
+      </div>
+
+      <div class="note" id="setup-note">
+        <strong>Before you start:</strong> use Chrome or Edge on a laptop or Android phone, turn your sound on, and allow the microphone when asked. Each call takes about five minutes.
+      </div>
+      <div class="form" id="gate" hidden>
+        <div class="field">
+          <label for="gate-code">Access code</label>
+          <input type="text" id="gate-code" autocomplete="off" placeholder="From Lochlan">
+        </div>
+        <div class="err" id="gate-err" hidden></div>
+        <button class="btn" id="btn-gate">Continue</button>
+      </div>
+      <div class="err" id="speech-warn" hidden>This browser does not support voice recognition. You can still type your side of the call, but the test works best with voice in Chrome.</div>
+
+      <div class="stack">
+        <div class="eyebrow">Levels</div>
+        <div class="levels" id="levels"></div>
+        <p class="muted" style="font-size:14px">Score the pass mark on a level to open the next one. Your best score counts, so retry as often as you like. <button class="linkbtn" id="btn-unlock" style="font-size:14px">Unlock all levels for testing</button></p>
+      </div>
+
+      <div class="stack">
+        <div class="eyebrow">After you have tried it</div>
+        <button class="btn secondary" id="nav-feedback">Tell Lochlan what you think</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- BRIEFING -->
+  <section class="screen" id="s-brief">
+    <div class="stack-lg">
+      <div class="stack">
+        <div class="eyebrow" id="brief-level"></div>
+        <h1 id="brief-title"></h1>
+      </div>
+      <div class="brief">
+        <dl>
+          <dt>You are calling</dt><dd id="brief-who"></dd>
+          <dt>Situation</dt><dd id="brief-situation"></dd>
+          <dt>Your goal</dt><dd id="brief-goal"></dd>
+          <dt>Pass mark</dt><dd id="brief-pass" class="mono"></dd>
+        </dl>
+        <p class="muted" style="font-size:14px">The prospect answers first. Tap the big button, say your line, and release. Tap End call when you have finished or when they hang up.</p>
+      </div>
+      <div class="row">
+        <button class="btn" id="btn-call">Call now</button>
+        <button class="btn secondary" id="btn-brief-back">Back</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- CALL -->
+  <section class="screen" id="s-call">
+    <div class="stack">
+      <div class="callhead">
+        <div>
+          <div class="eyebrow" id="call-level"></div>
+          <div class="who" id="call-who"></div>
+        </div>
+        <div class="status"><span class="live" id="call-dot"></span><span id="call-status">Ringing</span><span id="call-timer">0:00</span></div>
+      </div>
+      <div class="transcript" id="transcript"></div>
+      <div class="talkpanel">
+        <button class="talkbtn" id="btn-talk">Tap to talk</button>
+        <div class="interim" id="interim"></div>
+        <div class="typerow">
+          <input type="text" id="typed" placeholder="Or type what you would say and press Enter" autocomplete="off">
+          <button class="btn secondary" id="btn-send">Send</button>
+        </div>
+        <div class="row">
+          <button class="btn danger" id="btn-end">End call</button>
+          <button class="btn secondary" id="btn-mute">Mute prospect voice</button>
+        </div>
+        <div class="err" id="call-err" hidden></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SCORING -->
+  <section class="screen" id="s-scoring">
+    <div class="stack" style="align-items:center; text-align:center; padding: 40px 0">
+      <h2>Scoring your call</h2>
+      <p class="muted">Reading the transcript against the rubric. This usually takes under a minute.</p>
+      <p class="thinking" id="scoring-status">Thinking...</p>
+      <div class="err" id="scoring-err" hidden></div>
+      <div class="row" id="scoring-actions" hidden>
+        <button class="btn secondary" id="btn-score-retry">Try scoring again</button>
+        <button class="btn secondary" id="btn-score-home">Back to levels</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- REPORT -->
+  <section class="screen" id="s-report">
+    <div class="stack-lg">
+      <div class="scorehero">
+        <div class="bigscore"><span id="r-score">0</span><small>/100</small></div>
+        <div>
+          <span class="verdict" id="r-verdict"></span>
+          <h2 id="r-title"></h2>
+          <p class="muted" id="r-summary" style="margin-top:6px"></p>
+        </div>
+      </div>
+
+      <div class="stack">
+        <div class="eyebrow">Key takeaways</div>
+        <div class="takeaways" id="r-takeaways"></div>
+      </div>
+
+      <div class="stack">
+        <div class="eyebrow">Try this instead</div>
+        <div class="stack" id="r-swaps"></div>
+      </div>
+
+      <div class="stack">
+        <div class="eyebrow">Score by area</div>
+        <div class="areas" id="r-areas"></div>
+        <div class="areanotes" id="r-areanotes"></div>
+      </div>
+
+      <div class="stack">
+        <div class="eyebrow">Delivery</div>
+        <div class="stats" id="r-stats"></div>
+      </div>
+
+      <details>
+        <summary>Full transcript</summary>
+        <div class="tlist" id="r-transcript" style="margin-top:12px"></div>
+      </details>
+
+      <div class="row">
+        <button class="btn" id="btn-retry">Retry this level</button>
+        <button class="btn secondary" id="btn-next" hidden>Next level</button>
+        <button class="btn secondary" id="btn-report-home">All levels</button>
+        <button class="btn secondary" id="btn-report-feedback">Give feedback</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- FEEDBACK -->
+  <section class="screen" id="s-feedback">
+    <div class="stack-lg">
+      <div class="stack">
+        <h1>Is this worth building?</h1>
+        <p class="muted">Straight answers help most. Lochlan reads every one of these.</p>
+      </div>
+      <div class="form">
+        <div class="field">
+          <label for="f-name">Your name</label>
+          <input type="text" id="f-name" autocomplete="name">
+        </div>
+        <div class="field">
+          <label>Did the prospect feel like a real call? (1 = nothing like it, 10 = close enough)</label>
+          <div class="scale" id="f-realism"></div>
+        </div>
+        <div class="field">
+          <label>Was the score and feedback fair and useful? (1 = useless, 10 = spot on)</label>
+          <div class="scale" id="f-useful"></div>
+        </div>
+        <div class="field">
+          <label>Would you use this a few times a week if it existed?</label>
+          <div class="yesno" id="f-use">
+            <button data-v="yes">Yes</button>
+            <button data-v="maybe">Maybe</button>
+            <button data-v="no">No</button>
+          </div>
+        </div>
+        <div class="field">
+          <label for="f-best">What was the best part?</label>
+          <textarea id="f-best"></textarea>
+        </div>
+        <div class="field">
+          <label for="f-worst">What was wrong, annoying, or missing?</label>
+          <textarea id="f-worst"></textarea>
+        </div>
+        <div class="field">
+          <label for="f-build">Should we build it properly? Anything else?</label>
+          <textarea id="f-build"></textarea>
+        </div>
+        <div class="err" id="f-err" hidden></div>
+        <div class="ok" id="f-ok" hidden>Sent. Thanks for testing it.</div>
+        <div class="row">
+          <button class="btn" id="btn-f-send">Send feedback</button>
+          <button class="btn secondary" id="btn-f-back">Back</button>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  var RUBRIC = [
+    { key: 'opening', name: 'Opening', max: 15 },
+    { key: 'discovery', name: 'Discovery', max: 20 },
+    { key: 'listening', name: 'Listening', max: 15 },
+    { key: 'objections', name: 'Objections', max: 20 },
+    { key: 'close', name: 'Close', max: 15 },
+    { key: 'delivery', name: 'Delivery', max: 15 }
+  ];
+  var FILLERS = /\b(um+|uh+|er+|ah+|like|you know|sort of|kind of|basically|literally|actually|i mean)\b/gi;
+
+  var SCENARIOS = [];
+  var config = { needsAccessCode: false, ttsProvider: 'browser' };
+  var accessCode = '';
+  try { accessCode = localStorage.getItem('calldrill.code') || ''; } catch (e) {}
+
+  var state = {
+    scenario: null, turns: [], startedAt: 0, endedAt: 0, outcome: 'continue',
+    busy: false, listening: false, muted: false, report: null, timerId: null, measured: null
+  };
+  var recognition = null;
+  var player = new Audio();
+  var playToken = 0;
+
+  // ---------- Helpers ----------
+  function $(id) { return document.getElementById(id); }
+  function show(id) {
+    var screens = document.querySelectorAll('.screen');
+    for (var i = 0; i < screens.length; i++) screens[i].classList.remove('active');
+    $(id).classList.add('active');
+    window.scrollTo(0, 0);
+  }
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+  function fmtTime(ms) { var s = Math.max(0, Math.round(ms / 1000)); return Math.floor(s / 60) + ':' + ('0' + (s % 60)).slice(-2); }
+  function words(t) { var m = String(t || '').trim().match(/\S+/g); return m ? m.length : 0; }
+
+  function api(path, body) {
+    return fetch(path, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Access-Code': accessCode },
+      body: JSON.stringify(body || {})
+    }).then(function (r) {
+      if (r.ok) return r.json();
+      return r.json().catch(function () { return {}; }).then(function (j) {
+        var err = new Error(j.message || ('HTTP ' + r.status));
+        err.code = j.error || ('http_' + r.status);
+        err.status = r.status;
+        throw err;
+      });
+    });
+  }
+
+  function loadProgress() { try { return JSON.parse(localStorage.getItem('calldrill.progress') || '{}'); } catch (e) { return {}; } }
+  function saveProgress(p) { try { localStorage.setItem('calldrill.progress', JSON.stringify(p)); } catch (e) {} }
+  function bestFor(id) { var p = loadProgress(); return p[id] && p[id].best != null ? p[id].best : null; }
+  function recordScore(id, score) {
+    var p = loadProgress();
+    var cur = p[id] || { best: null, attempts: 0 };
+    cur.attempts += 1;
+    if (cur.best == null || score > cur.best) cur.best = score;
+    p[id] = cur;
+    saveProgress(p);
+  }
+  function isUnlocked(sc) {
+    if (sc.level === 1) return true;
+    try { if (localStorage.getItem('calldrill.unlockAll') === '1') return true; } catch (e) {}
+    var prev = SCENARIOS[sc.level - 2];
+    if (!prev) return true;
+    var b = bestFor(prev.id);
+    return b != null && b >= prev.passMark;
+  }
+
+  // ---------- Home ----------
+  function renderLevels() {
+    var el = $('levels');
+    el.innerHTML = '';
+    SCENARIOS.forEach(function (sc) {
+      var unlocked = isUnlocked(sc);
+      var best = bestFor(sc.id);
+      var pill;
+      if (!unlocked) pill = '<span class="pill locked">Locked</span>';
+      else if (best == null) pill = '<span class="pill">Not tried</span>';
+      else if (best >= sc.passMark) pill = '<span class="pill pass">Passed ' + best + '</span>';
+      else pill = '<span class="pill tried">Best ' + best + '</span>';
+      var b = document.createElement('button');
+      b.className = 'level';
+      b.disabled = !unlocked;
+      b.innerHTML = '<span class="num">' + sc.level + '</span><span><span class="title">' + esc(sc.title) + '</span><br><span class="sub">' + esc(sc.who) + '</span></span>' + pill;
+      b.addEventListener('click', function () { openBrief(sc); });
+      el.appendChild(b);
+    });
+  }
+
+  function openBrief(sc) {
+    state.scenario = sc;
+    $('brief-level').textContent = 'Level ' + sc.level;
+    $('brief-title').textContent = sc.title;
+    $('brief-who').textContent = sc.who;
+    $('brief-situation').textContent = sc.situation;
+    $('brief-goal').textContent = sc.goal;
+    $('brief-pass').textContent = sc.passMark + ' / 100';
+    show('s-brief');
+  }
+
+  // ---------- Speech in ----------
+  var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) $('speech-warn').hidden = false;
+
+  function startListening() {
+    if (!SR || state.busy || state.listening || state.outcome !== 'continue') return;
+    stopVoice();
+    recognition = new SR();
+    recognition.lang = 'en-AU';
+    recognition.interimResults = true;
+    recognition.continuous = false;
+    recognition.maxAlternatives = 1;
+    var finalText = '';
+    recognition.onresult = function (ev) {
+      var interim = '';
+      for (var i = ev.resultIndex; i < ev.results.length; i++) {
+        if (ev.results[i].isFinal) finalText += ev.results[i][0].transcript + ' ';
+        else interim += ev.results[i][0].transcript;
+      }
+      $('interim').textContent = (finalText + interim).trim();
+    };
+    recognition.onerror = function (ev) {
+      stopListening();
+      if (ev.error === 'not-allowed' || ev.error === 'service-not-allowed') {
+        showCallErr('The microphone is blocked. Allow it in the browser address bar, or type your line instead.');
+      } else if (ev.error !== 'aborted' && ev.error !== 'no-speech') {
+        showCallErr('Voice recognition stopped (' + ev.error + '). Tap to talk again, or type your line.');
+      }
+    };
+    recognition.onend = function () {
+      var t = finalText.trim() || $('interim').textContent.trim();
+      stopListening();
+      if (t) agentSays(t);
+    };
+    state.listening = true;
+    $('btn-talk').textContent = 'Listening... tap when done';
+    $('btn-talk').classList.add('listening');
+    $('interim').textContent = '';
+    setStatus('live', 'Your turn');
+    try { recognition.start(); } catch (e) { stopListening(); }
+  }
+  function stopListening() {
+    state.listening = false;
+    $('btn-talk').textContent = 'Tap to talk';
+    $('btn-talk').classList.remove('listening');
+    if (recognition) { try { recognition.stop(); } catch (e) {} }
+  }
+
+  // ---------- Speech out ----------
+  var browserVoice = null;
+  function pickBrowserVoice() {
+    if (!window.speechSynthesis) return;
+    var vs = speechSynthesis.getVoices();
+    if (!vs || !vs.length) return;
+    var pref = ['en-AU', 'en-GB', 'en-NZ', 'en-US'];
+    for (var i = 0; i < pref.length && !browserVoice; i++) {
+      for (var j = 0; j < vs.length; j++) {
+        if (vs[j].lang && vs[j].lang.replace('_', '-').indexOf(pref[i]) === 0) { browserVoice = vs[j]; break; }
+      }
+    }
+    if (!browserVoice) browserVoice = vs[0];
+  }
+  if (window.speechSynthesis) { pickBrowserVoice(); speechSynthesis.onvoiceschanged = pickBrowserVoice; }
+
+  function stopVoice() {
+    playToken++;
+    try { player.pause(); player.currentTime = 0; } catch (e) {}
+    try { if (window.speechSynthesis) speechSynthesis.cancel(); } catch (e) {}
+  }
+
+  function speakBrowser(text, done) {
+    if (!window.speechSynthesis) { done(); return; }
+    try {
+      var u = new SpeechSynthesisUtterance(text);
+      if (browserVoice) u.voice = browserVoice;
+      u.onend = done; u.onerror = done;
+      speechSynthesis.speak(u);
+    } catch (e) { done(); }
+  }
+
+  // Realistic voice from the server (ElevenLabs or Fish). Falls back to the
+  // browser voice if the server cannot produce audio.
+  function speak(text, done) {
+    var finished = false;
+    function finish() { if (!finished) { finished = true; if (done) done(); } }
+    if (state.muted) { finish(); return; }
+    setStatus('speaking', 'Prospect speaking');
+    if (config.ttsProvider === 'browser') { speakBrowser(text, finish); return; }
+    var token = ++playToken;
+    fetch('/api/tts', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Access-Code': accessCode },
+      body: JSON.stringify({ scenarioId: state.scenario.id, text: text })
+    }).then(function (r) {
+      if (!r.ok) throw new Error('tts ' + r.status);
+      return r.blob();
+    }).then(function (blob) {
+      if (token !== playToken) { finish(); return; }
+      var url = URL.createObjectURL(blob);
+      player.src = url;
+      player.onended = function () { URL.revokeObjectURL(url); finish(); };
+      player.onerror = function () { URL.revokeObjectURL(url); speakBrowser(text, finish); };
+      return player.play().catch(function () { speakBrowser(text, finish); });
+    }).catch(function () {
+      if (token !== playToken) { finish(); return; }
+      speakBrowser(text, finish);
+    });
+  }
+
+  // ---------- Call flow ----------
+  function setStatus(kind, label) {
+    var d = $('call-dot');
+    d.className = 'live' + (kind === 'live' ? '' : ' ' + kind);
+    $('call-status').textContent = label;
+  }
+  function showCallErr(msg) { var e = $('call-err'); e.textContent = msg; e.hidden = !msg; }
+
+  function addBubble(role, text) {
+    var t = $('transcript');
+    var d = document.createElement('div');
+    d.className = 'bubble ' + role;
+    if (role === 'system') d.textContent = text;
+    else d.innerHTML = '<span class="who">' + (role === 'agent' ? 'You' : esc(state.scenario.who.split(',')[0])) + '</span>' + esc(text);
+    t.appendChild(d);
+    t.scrollTop = t.scrollHeight;
+  }
+
+  function startCall() {
+    var sc = state.scenario;
+    state.turns = [];
+    state.outcome = 'continue';
+    state.busy = false;
+    state.report = null;
+    state.startedAt = Date.now();
+    state.endedAt = 0;
+    $('transcript').innerHTML = '';
+    $('interim').textContent = '';
+    $('typed').value = '';
+    showCallErr('');
+    $('call-level').textContent = 'Level ' + sc.level + ': ' + sc.title;
+    $('call-who').textContent = sc.who.split(',')[0];
+    $('btn-talk').disabled = !SR;
+    $('btn-end').disabled = false;
+    show('s-call');
+    if (state.timerId) clearInterval(state.timerId);
+    state.timerId = setInterval(function () {
+      $('call-timer').textContent = fmtTime((state.endedAt || Date.now()) - state.startedAt);
+    }, 500);
+    setStatus('live', 'Connected');
+    // A user gesture (the Call button) has just happened, so audio is allowed to play.
+    prospectSays(sc.opener);
+  }
+
+  function prospectSays(text, after) {
+    state.turns.push({ role: 'prospect', text: text, at: Date.now() - state.startedAt });
+    addBubble('prospect', text);
+    speak(text, function () {
+      if (state.outcome === 'continue') setStatus('live', 'Your turn');
+      if (after) after();
+    });
+  }
+
+  function agentSays(text) {
+    if (state.busy || state.outcome !== 'continue') return;
+    text = text.trim();
+    if (!text) return;
+    state.turns.push({ role: 'agent', text: text, at: Date.now() - state.startedAt });
+    addBubble('agent', text);
+    $('interim').textContent = '';
+    $('typed').value = '';
+    getProspectReply();
+  }
+
+  function setBusy(b) {
+    state.busy = b;
+    $('btn-talk').disabled = b || !SR;
+    $('btn-send').disabled = b;
+  }
+
+  function getProspectReply() {
+    setBusy(true);
+    setStatus('thinking', 'Prospect thinking');
+    showCallErr('');
+    api('/api/prospect', { scenarioId: state.scenario.id, turns: state.turns }).then(function (out) {
+      setBusy(false);
+      var reply = out && typeof out.reply === 'string' ? out.reply.trim() : '';
+      var status = out && out.status ? String(out.status) : 'continue';
+      if (!reply) reply = 'Sorry, say that again?';
+      if (status === 'won') { state.outcome = 'won'; prospectSays(reply, function () { finishCall('The prospect agreed to your next step.'); }); }
+      else if (status === 'hungup') { state.outcome = 'hungup'; prospectSays(reply, function () { finishCall('The prospect hung up.'); }); }
+      else if (status === 'ended') { state.outcome = 'ended'; prospectSays(reply, function () { finishCall('Call ended.'); }); }
+      else prospectSays(reply);
+      if (status !== 'continue') { $('btn-talk').disabled = true; $('btn-end').disabled = true; setStatus('ended', 'Call over'); }
+    }).catch(function (e) {
+      setBusy(false);
+      setStatus('live', 'Your turn');
+      if (e.code === 'access_code') showCallErr('Access code not accepted. Go back to Levels and enter it again.');
+      else if (e.code === 'rate_limited') showCallErr('Too many requests right now. Wait a moment, then say your line again.');
+      else if (e.code === 'bad_api_key') showCallErr('The server\'s Claude API key is not working. Tell Lochlan.');
+      else showCallErr('The prospect could not answer (' + e.code + '). Say your line again.');
+      state.turns.pop();
+      var t = $('transcript'); if (t.lastChild) t.removeChild(t.lastChild);
+    });
+  }
+
+  function finishCall(note) {
+    if (!state.endedAt) state.endedAt = Date.now();
+    if (state.timerId) { clearInterval(state.timerId); state.timerId = null; }
+    stopListening();
+    $('btn-talk').disabled = true;
+    $('btn-end').disabled = true;
+    addBubble('system', note);
+    setStatus('ended', 'Call over');
+    setTimeout(function () { stopVoice(); scoreCall(); }, 900);
+  }
+
+  function endCallByAgent() {
+    if (state.outcome !== 'continue') return;
+    state.outcome = 'ended';
+    finishCall('You ended the call.');
+  }
+
+  // ---------- Scoring ----------
+  function measure() {
+    var agentTurns = state.turns.filter(function (t) { return t.role === 'agent'; });
+    var prospectTurns = state.turns.filter(function (t) { return t.role === 'prospect'; });
+    var aw = agentTurns.reduce(function (n, t) { return n + words(t.text); }, 0);
+    var pw = prospectTurns.reduce(function (n, t) { return n + words(t.text); }, 0);
+    var fillers = 0, questions = 0, longest = 0, firstQ = null;
+    agentTurns.forEach(function (t, i) {
+      var f = t.text.match(FILLERS); if (f) fillers += f.length;
+      if (/\?/.test(t.text) || /^(what|how|when|why|where|who|which|tell me|can you|could you|do you|did you|are you|is there|have you|would you)\b/i.test(t.text)) { questions++; if (firstQ === null) firstQ = i + 1; }
+      longest = Math.max(longest, words(t.text));
+    });
+    var dur = (state.endedAt || Date.now()) - state.startedAt;
+    return {
+      durationMs: dur, durationLabel: fmtTime(dur),
+      agentWords: aw, prospectWords: pw,
+      talkShare: aw + pw ? Math.round(100 * aw / (aw + pw)) : 0,
+      fillers: fillers, questions: questions, firstQuestionTurn: firstQ,
+      longestTurnWords: longest, agentTurns: agentTurns.length, outcome: state.outcome
+    };
+  }
+
+  function scoreCall() {
+    show('s-scoring');
+    $('scoring-err').hidden = true;
+    $('scoring-actions').hidden = true;
+    $('scoring-status').textContent = 'Thinking...';
+    var m = measure();
+    state.measured = m;
+    if (m.agentTurns === 0) { scoringFailed('You did not say anything on that call, so there is nothing to score.'); return; }
+    api('/api/score', { scenarioId: state.scenario.id, turns: state.turns, measured: m }).then(function (out) {
+      var report = normaliseReport(out, m);
+      state.report = report;
+      recordScore(state.scenario.id, report.total);
+      saveAttempt(report, m);
+      renderReport(report, m);
+    }).catch(function (e) {
+      if (e.code === 'rate_limited') scoringFailed('Too many requests right now. Wait a minute and try scoring again.');
+      else scoringFailed('Scoring did not come back (' + e.code + '). You can try again.');
+    });
+  }
+  function scoringFailed(msg) {
+    $('scoring-status').textContent = '';
+    var e = $('scoring-err'); e.textContent = msg; e.hidden = false;
+    $('scoring-actions').hidden = false;
+  }
+
+  function normaliseReport(out, m) {
+    out = out || {};
+    var areas = out.areas || {};
+    var total = 0;
+    var norm = RUBRIC.map(function (r) {
+      var a = areas[r.key] || {};
+      var s = Number(a.score); if (!isFinite(s)) s = 0;
+      s = Math.max(0, Math.min(r.max, Math.round(s)));
+      total += s;
+      return { key: r.key, name: r.name, max: r.max, score: s, note: String(a.note || '') };
+    });
+    var takeaways = Array.isArray(out.takeaways) ? out.takeaways.slice(0, 3) : [];
+    var swaps = Array.isArray(out.swaps) ? out.swaps.slice(0, 2) : [];
+    return {
+      total: total, areas: norm, summary: String(out.summary || ''),
+      takeaways: takeaways.map(function (t) { return { type: t.type === 'well' ? 'well' : 'change', text: String(t.text || ''), quote: String(t.quote || '') }; }),
+      swaps: swaps.map(function (s) { return { moment: String(s.moment || ''), said: String(s.said || ''), better: String(s.better || '') }; }),
+      pass: total >= state.scenario.passMark, outcome: m.outcome
+    };
+  }
+
+  function renderReport(r, m) {
+    var sc = state.scenario;
+    $('r-score').textContent = r.total;
+    var v = $('r-verdict');
+    v.className = 'verdict ' + (r.pass ? 'pass' : 'fail');
+    v.textContent = r.pass ? 'Passed level ' + sc.level : 'Below pass mark of ' + sc.passMark;
+    $('r-title').textContent = m.outcome === 'won' ? 'They said yes to the next step.' : m.outcome === 'hungup' ? 'They hung up on you.' : 'No next step agreed.';
+    $('r-summary').textContent = r.summary;
+
+    $('r-takeaways').innerHTML = r.takeaways.map(function (t) {
+      return '<div class="take ' + t.type + '"><div class="tag">' + (t.type === 'well' ? 'Keep doing' : 'Change') + '</div><div>' + esc(t.text) + '</div>' + (t.quote ? '<q>' + esc(t.quote) + '</q>' : '') + '</div>';
+    }).join('') || '<p class="muted">No takeaways came back.</p>';
+
+    $('r-swaps').innerHTML = r.swaps.map(function (s) {
+      return '<div><div class="eyebrow" style="margin-bottom:6px">' + esc(s.moment) + '</div><div class="swap"><div><div class="lbl">You said</div><div class="said">' + esc(s.said) + '</div></div><div class="better"><div class="lbl">Try</div><div>' + esc(s.better) + '</div></div></div></div>';
+    }).join('') || '<p class="muted">No suggestions came back.</p>';
+
+    $('r-areas').innerHTML = r.areas.map(function (a) {
+      var pct = Math.round(100 * a.score / a.max);
+      var cls = pct >= 70 ? 'good' : pct >= 45 ? 'warn' : 'bad';
+      return '<div class="area"><div class="name">' + a.name + '</div><div class="bar"><i class="' + cls + '" style="width:' + pct + '%"></i></div><div class="pts">' + a.score + '/' + a.max + '</div></div>';
+    }).join('');
+    $('r-areanotes').innerHTML = r.areas.filter(function (a) { return a.note; }).map(function (a) {
+      return '<div><b>' + a.name + '.</b> ' + esc(a.note) + '</div>';
+    }).join('');
+
+    $('r-stats').innerHTML = [
+      ['<span class="v">' + fmtTime(m.durationMs) + '</span>', 'Call length'],
+      ['<span class="v">' + m.talkShare + '%</span>', 'Your share of talking'],
+      ['<span class="v">' + m.questions + '</span>', 'Questions you asked'],
+      ['<span class="v">' + m.fillers + '</span>', 'Filler words'],
+      ['<span class="v">' + m.longestTurnWords + '</span>', 'Longest turn (words)'],
+      ['<span class="v">' + (m.firstQuestionTurn ? 'Turn ' + m.firstQuestionTurn : 'Never') + '</span>', 'First question']
+    ].map(function (p) { return '<div class="stat">' + p[0] + '<div class="k">' + p[1] + '</div></div>'; }).join('');
+
+    $('r-transcript').innerHTML = state.turns.map(function (t) {
+      return '<div class="t ' + t.role + '"><span class="w">' + (t.role === 'agent' ? 'You' : 'Prospect') + ' ' + fmtTime(t.at) + '</span><span>' + esc(t.text) + '</span></div>';
+    }).join('');
+
+    var next = SCENARIOS[sc.level];
+    $('btn-next').hidden = !(r.pass && next);
+    show('s-report');
+  }
+
+  function saveAttempt(r, m) {
+    var name = '';
+    try { name = localStorage.getItem('calldrill.name') || ''; } catch (e) {}
+    api('/api/attempt', {
+      scenario: state.scenario.id, level: state.scenario.level,
+      total: r.total, pass: r.pass, outcome: m.outcome,
+      areas: r.areas.map(function (a) { return { key: a.key, score: a.score }; }),
+      measured: m, transcript: state.turns, summary: r.summary,
+      tester: name, at: new Date().toISOString()
+    }).catch(function () {});
+  }
+
+  // ---------- Feedback ----------
+  var fb = { realism: null, useful: null, use: null };
+  function buildScale(id, key) {
+    var el = $(id);
+    for (var i = 1; i <= 10; i++) {
+      (function (n) {
+        var b = document.createElement('button');
+        b.type = 'button'; b.textContent = n;
+        b.addEventListener('click', function () {
+          fb[key] = n;
+          var bs = el.querySelectorAll('button');
+          for (var j = 0; j < bs.length; j++) bs[j].classList.toggle('on', Number(bs[j].textContent) === n);
+        });
+        el.appendChild(b);
+      })(i);
+    }
+  }
+  buildScale('f-realism', 'realism');
+  buildScale('f-useful', 'useful');
+  (function () {
+    var bs = $('f-use').querySelectorAll('button');
+    for (var i = 0; i < bs.length; i++) {
+      bs[i].addEventListener('click', function () {
+        fb.use = this.getAttribute('data-v');
+        for (var j = 0; j < bs.length; j++) bs[j].classList.toggle('on', bs[j] === this);
+      });
+    }
+  })();
+
+  function sendFeedback() {
+    var name = $('f-name').value.trim();
+    var err = $('f-err');
+    err.hidden = true; $('f-ok').hidden = true;
+    if (!name) { err.textContent = 'Add your name so Lochlan knows who tested it.'; err.hidden = false; return; }
+    if (fb.realism == null || fb.useful == null || !fb.use) { err.textContent = 'Answer the three rating questions before sending.'; err.hidden = false; return; }
+    try { localStorage.setItem('calldrill.name', name); } catch (e) {}
+    $('btn-f-send').disabled = true;
+    api('/api/feedback', {
+      name: name, realism: fb.realism, useful: fb.useful, wouldUse: fb.use,
+      best: $('f-best').value.trim(), worst: $('f-worst').value.trim(), build: $('f-build').value.trim(),
+      progress: loadProgress(),
+      lastScore: state.report ? state.report.total : null,
+      lastScenario: state.scenario ? state.scenario.id : null,
+      browser: navigator.userAgent, speechSupported: !!SR, ttsProvider: config.ttsProvider,
+      at: new Date().toISOString()
+    }).then(function () {
+      $('f-ok').hidden = false;
+      $('btn-f-send').disabled = false;
+    }).catch(function (e) {
+      $('btn-f-send').disabled = false;
+      err.textContent = 'Could not save (' + e.code + '). Try again, or send your answers to Lochlan directly.';
+      err.hidden = false;
+    });
+  }
+
+  // ---------- Access gate ----------
+  function showGate(msg) {
+    $('gate').hidden = false;
+    $('levels').hidden = true;
+    var e = $('gate-err'); e.textContent = msg || ''; e.hidden = !msg;
+  }
+  function hideGate() { $('gate').hidden = true; $('levels').hidden = false; }
+  function tryGate() {
+    accessCode = $('gate-code').value.trim();
+    // A cheap call that exercises the gate without spending anything.
+    api('/api/attempt', { probe: true, at: new Date().toISOString() }).then(function () {
+      try { localStorage.setItem('calldrill.code', accessCode); } catch (e) {}
+      hideGate();
+    }).catch(function () { showGate('That code was not accepted.'); });
+  }
+
+  // ---------- Wire up ----------
+  $('nav-home').addEventListener('click', function () { if (state.outcome === 'continue' && $('s-call').classList.contains('active')) endCallByAgent(); else { renderLevels(); show('s-home'); } });
+  $('nav-feedback').addEventListener('click', function () { show('s-feedback'); });
+  $('btn-unlock').addEventListener('click', function () { try { localStorage.setItem('calldrill.unlockAll', '1'); } catch (e) {} renderLevels(); });
+  $('btn-gate').addEventListener('click', tryGate);
+  $('gate-code').addEventListener('keydown', function (e) { if (e.key === 'Enter') tryGate(); });
+  $('btn-call').addEventListener('click', startCall);
+  $('btn-brief-back').addEventListener('click', function () { renderLevels(); show('s-home'); });
+  $('btn-talk').addEventListener('click', function () { if (state.listening) stopListening(); else startListening(); });
+  $('btn-send').addEventListener('click', function () { agentSays($('typed').value); });
+  $('typed').addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); agentSays(this.value); } });
+  $('btn-end').addEventListener('click', endCallByAgent);
+  $('btn-mute').addEventListener('click', function () {
+    state.muted = !state.muted;
+    this.textContent = state.muted ? 'Unmute prospect voice' : 'Mute prospect voice';
+    if (state.muted) stopVoice();
+  });
+  $('btn-score-retry').addEventListener('click', scoreCall);
+  $('btn-score-home').addEventListener('click', function () { renderLevels(); show('s-home'); });
+  $('btn-retry').addEventListener('click', function () { openBrief(state.scenario); });
+  $('btn-next').addEventListener('click', function () { openBrief(SCENARIOS[state.scenario.level]); });
+  $('btn-report-home').addEventListener('click', function () { renderLevels(); show('s-home'); });
+  $('btn-report-feedback').addEventListener('click', function () { show('s-feedback'); });
+  $('btn-f-send').addEventListener('click', sendFeedback);
+  $('btn-f-back').addEventListener('click', function () { if (state.report) show('s-report'); else { renderLevels(); show('s-home'); } });
+
+  try { var n = localStorage.getItem('calldrill.name'); if (n) $('f-name').value = n; } catch (e) {}
+
+  fetch('/api/config').then(function (r) { return r.json(); }).then(function (c) {
+    config = c;
+    SCENARIOS = c.scenarios || [];
+    renderLevels();
+    if (c.needsAccessCode) {
+      if (accessCode) { $('gate-code').value = accessCode; tryGate(); } else showGate('');
+    }
+  }).catch(function () {
+    $('setup-note').innerHTML = '<strong>The server is not responding.</strong> Reload the page, or tell Lochlan.';
+  });
+})();
+</script>
+</body>
+</html>

@@ -1,5 +1,8 @@
 # Call Drill prototype
 
+For the version with a realistic voice from ElevenLabs or Fish Audio, see
+`app/`. This file is the zero-setup claude.ai artifact version.
+
 Draft working model of the real estate call trainer described in
 `content/real-estate-training-platform.md`. One HTML file, no build step.
 
