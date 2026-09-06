@@ -20,8 +20,12 @@ https://claude.ai/code/artifact/e3ec709e-c348-4f5c-82a1-f42fc2caf69e
   rubric out of 100 and writes takeaways, "try this instead" lines, and
   per-area notes. Talk share, filler words, question count, and longest turn
   are measured in the page.
+- Under the score, a training section shows what a top performer would have
+  said: the best opening and closing lines, a "you said / say this" rewrite
+  of every agent line, the whole call done well, three techniques, and
+  drills. It draws on a condensed copy of `app/playbook.md`.
 - A feedback form saves to the artifact's database, along with every scored
-  attempt and its transcript.
+  attempt, its transcript, and its training notes.
 
 ## Limits of the draft
 

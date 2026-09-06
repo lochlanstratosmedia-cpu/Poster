@@ -65,12 +65,30 @@ https://your-host/admin/attempts?key=ADMIN_KEY
 
 Both return JSON. `ADMIN_KEY` is whatever you set in `.env`.
 
+## The playbook and the training notes
+
+`playbook.md` is the knowledge base. It combines what leading real estate
+call trainers in Australia and the US teach with published sales call
+research, with a source on every technique. The research notes behind it are
+in `docs/research/` at the repo root.
+
+The server feeds the playbook to two prompts: the scorer, which judges the
+call against it, and the coach, which writes the training section that
+appears under the score: the best opening and closing lines for that exact
+call, a "you said / say this" rewrite of every agent line, the whole call
+done well, three techniques to work on, and drills. Agents can read the
+playbook from a link at the bottom of the training section.
+
+Edit `playbook.md` to change what the app teaches. No code change needed.
+
 ## Files
 
 | Path | What it is |
 |---|---|
 | `server.js` | Express server: prospect, scoring, voice proxy, feedback |
 | `scenarios.js` | The three scenarios and the rubric. Add scenarios here |
+| `playbook.md` | The knowledge base the scorer and coach read |
+| `knowledge.js` | Loads the playbook at startup |
 | `public/index.html` | The whole front end |
 | `data/` | Feedback and attempts, ignored by git |
 

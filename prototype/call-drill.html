@@ -214,6 +214,40 @@
   .yesno button { flex: 1; padding: 10px; border-radius: 8px; border: 1px solid var(--line); background: var(--ground); color: var(--ink); }
   .yesno button.on { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
 
+  /* Training */
+  .coach { display: grid; gap: 22px; }
+  .coach-wait { display: flex; align-items: center; gap: 10px; background: var(--surface-2); border-radius: 8px; padding: 12px 14px; font-size: 14px; }
+  .coach-wait .spin { width: 12px; height: 12px; border-radius: 50%; border: 2px solid var(--line); border-top-color: var(--accent); animation: turn 0.9s linear infinite; }
+  @keyframes turn { to { transform: rotate(360deg); } }
+  @media (prefers-reduced-motion: reduce) { .coach-wait .spin { animation: none; } }
+  .lines { display: grid; gap: 10px; }
+  .line { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; display: grid; gap: 4px; }
+  .line .lbl { font-family: var(--mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
+  .line .say { font-size: 17px; font-weight: 500; }
+  .moment { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 14px; display: grid; gap: 10px; }
+  .moment .prospect-said { font-size: 14px; color: var(--muted); font-style: italic; }
+  .moment .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .moment .cell { padding: 10px 12px; border-radius: 8px; background: var(--surface-2); font-size: 15px; }
+  .moment .cell.better { background: var(--good-soft); }
+  .moment .cell .lbl { display: block; font-family: var(--mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin-bottom: 4px; }
+  .moment .why { font-size: 14px; }
+  .moment .chips { display: flex; gap: 6px; flex-wrap: wrap; }
+  .chip { font-family: var(--mono); font-size: 11px; padding: 3px 9px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); }
+  .chip.src { background: var(--surface-2); color: var(--muted); }
+  .ideal { display: grid; gap: 6px; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 14px; }
+  .ideal .t { display: grid; grid-template-columns: 74px 1fr; gap: 10px; font-size: 15px; }
+  .ideal .t .w { font-family: var(--mono); font-size: 12px; color: var(--muted); padding-top: 3px; }
+  .ideal .t.agent .w { color: var(--accent); }
+  .ideal .t.agent span:last-child { font-weight: 500; }
+  .techs { display: grid; gap: 10px; }
+  .tech { border-left: 4px solid var(--accent); padding: 4px 0 4px 14px; }
+  .tech b { font-weight: 600; }
+  .tech .src { font-family: var(--mono); font-size: 12px; color: var(--muted); }
+  .drills { display: grid; gap: 10px; }
+  .drill { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; font-size: 15px; }
+  .drill b { display: block; font-weight: 600; margin-bottom: 2px; }
+  @media (max-width: 520px) { .moment .pair { grid-template-columns: 1fr; } }
+
   .err { background: var(--bad-soft); color: var(--bad); border-radius: 8px; padding: 10px 14px; font-size: 14px; }
   .ok { background: var(--good-soft); color: var(--good); border-radius: 8px; padding: 10px 14px; font-size: 14px; }
   .thinking { font-family: var(--mono); font-size: 13px; color: var(--muted); }
@@ -360,6 +394,38 @@
         <div class="stats" id="r-stats"></div>
       </div>
 
+      <div class="stack coach" id="r-coach">
+        <div>
+          <div class="eyebrow">Training</div>
+          <h2 style="margin-top:6px">What a top performer would have said</h2>
+        </div>
+        <div class="coach-wait" id="coach-wait"><span class="spin"></span><span>Writing your training notes. This takes about a minute.</span></div>
+        <div class="err" id="coach-err" hidden></div>
+        <div class="stack-lg" id="coach-body" hidden>
+          <div class="lines">
+            <div class="line"><span class="lbl">Open with</span><span class="say" id="c-open"></span></div>
+            <div class="line"><span class="lbl">Ask for the next step with</span><span class="say" id="c-close"></span></div>
+          </div>
+          <div class="stack">
+            <div class="eyebrow">Moment by moment</div>
+            <div class="stack" id="c-turns"></div>
+          </div>
+          <div class="stack">
+            <div class="eyebrow">The whole call, done well</div>
+            <div class="ideal" id="c-ideal"></div>
+          </div>
+          <div class="stack">
+            <div class="eyebrow">Three techniques to work on</div>
+            <div class="techs" id="c-techs"></div>
+          </div>
+          <div class="stack">
+            <div class="eyebrow">Drills before your next go</div>
+            <div class="drills" id="c-drills"></div>
+          </div>
+          <p class="muted" style="font-size:13px">Suggestions draw on the playbook, a knowledge base built from leading real estate call trainers and published sales call research. <button class="linkbtn" id="btn-playbook" style="font-size:13px">Read the playbook</button></p>
+        </div>
+      </div>
+
       <details>
         <summary>Full transcript</summary>
         <div class="tlist" id="r-transcript" style="margin-top:12px"></div>
@@ -371,6 +437,18 @@
         <button class="btn secondary" id="btn-report-home">All levels</button>
         <button class="btn secondary" id="btn-report-feedback">Give feedback</button>
       </div>
+    </div>
+  </section>
+
+  <!-- PLAYBOOK -->
+  <section class="screen" id="s-playbook">
+    <div class="stack-lg">
+      <div class="stack">
+        <h1>The playbook</h1>
+        <p class="muted">What the scoring and training notes are judged against. Built from leading real estate call trainers and published sales call research, with sources.</p>
+      </div>
+      <pre id="playbook-text" style="white-space:pre-wrap; font-family:var(--body); font-size:15px; line-height:1.55; margin:0; background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:22px;"></pre>
+      <div class="row"><button class="btn secondary" id="btn-playbook-back">Back</button></div>
     </div>
   </section>
 
@@ -483,6 +561,46 @@
     { key: 'close', name: 'Close', max: 15, desc: 'Asked for a clear next step, handled hesitation, confirmed the details.' },
     { key: 'delivery', name: 'Delivery', max: 15, desc: 'Concise turns, few filler words, balanced talk-to-listen ratio, confident wording.' }
   ];
+
+
+  // Condensed from app/playbook.md, which combines leading real estate call
+  // trainers (AU and US) with published sales call research. Sources in brackets.
+  var PLAYBOOK = [
+    'THE TEN RULES',
+    '1. Have a reason for the call and say it early: a nearby sale, a new listing, their enquiry, their open home visit. (Tom Panos, Ray White, Jeb Blount, Gong)',
+    '2. Talk less than half the time. Gong\'s top performers sit near 43:57 talk to listen; average reps talk 65 to 70 percent. (Gong, Chorus)',
+    '3. Ask why and where before when and how much. Motivation, destination, timeline first. (Josh Phegan, Tom Ferry, Mike Ferry, Kevin Ward)',
+    '4. Spread real open questions through the call, about problems and goals, not fired as a checklist. (Gong, Chorus)',
+    '5. Pause after an objection, then answer with a question. (Gong, Tom Ferry, LabCoat Agents)',
+    '6. Acknowledge before you answer, and never make the prospect wrong. (Tom Ferry, Kevin Ward, Mike Ferry, Ninja Selling)',
+    '7. Sort a real objection from a delay tactic before you handle it: "Is that the only thing holding you back?" (Josh Phegan, LabCoat Agents)',
+    '8. Prospect for a next step and a relationship, not the listing. Trust is built by frequency. (Tom Panos, Josh Phegan, Ricky Carruth)',
+    '9. Ask for a specific, dated next step with a choice of two times, then stop talking. (Gong, Jeb Blount, Mike Ferry)',
+    '10. Do not sweat filler words; Gong found no link to win rate. Pace, calm, and interactivity matter more. (Gong, Chris Voss)',
+    '',
+    'OPENING: name, agency, reason for the call, a "because" tied to their situation, then your question, then silence. (Jeb Blount) "The reason for my call is..." is one of the strongest openers in Gong\'s data. (Gong) Name their contact in the first sentence: "You came through 12 Smith Street on Saturday." (Tom Ferry, Josh Phegan) Check it is a good time or offer a fixed short slot. (Brian Buffini, John McGrath) A cold call aims for an opt-in, not a listing. (Josh Phegan, Tom Panos) Never sound like you are reading. (Ricky Carruth, Tom Ferry)',
+    '',
+    'DISCOVERY: ask why they are moving before when or how much. (Josh Phegan, Tom Ferry) Buyer core questions: where living now, own it, what is driving the move, timing, who else decides, what the lender said not to go above. (Ninja Selling, Aaron Shiner, Tim and Julie Harris) Vendor core questions: where would you go, when, why now, what would stop you, other agents, how you chose the last one. (Mike Ferry, Kevin Ward, Tom Ferry) Situation, Problem, Implication, Need-payoff questions build the case before you ask for anything. (SPIN Selling, Neil Rackham) Go one layer deeper: "Tell me more about that." "What have you tried?" "How do you feel about that?" (Sandler pain funnel) Find the gap between where they are and where they want to be. (Gap Selling, Keenan) Calibrated "how" and "what" questions keep them talking. (Chris Voss) Let the prospect ask questions too. (Chorus)',
+    '',
+    'LISTENING: mirror the last few words and label what you hear: "It sounds like you felt let down." Aim for "that\'s right." (Chris Voss) Follow the thread they opened rather than your next question. (Gong) Keep your own turns short and never interrupt. (Gong) Move from their point to yours with "and", not "but". (Mike Ferry)',
+    '',
+    'OBJECTIONS, the method: pause; acknowledge ("fair enough", "I\'d feel the same"); isolate ("is that the only thing?"); ask a clarifying question; respond with something small and specific; check it landed; loop to a next step. (Gong, Tom Ferry, Josh Phegan, LabCoat Agents) Name their likely objection before they raise it: "You\'re probably sick of agents ringing this week." (Chris Voss, accusation audit) Have a memorised first line ready for each common objection. (Jeb Blount, the ledge)',
+    '- "Just looking" or "still thinking": agree, ask what they thought of the home and whether the price felt right for the area, then whether they are watching values or moving in 6 to 12 months. (Tom Ferry)',
+    '- "Price seems high": ask what they are comparing it to and where they would put it. Price is a conversation, not a defence. (Gong, Tom Panos)',
+    '- "Don\'t hassle me with calls": offer one specific low-effort thing instead: comparable sales, a text when a similar home lists, one call in a month. Let them pick. (Tom Panos, MRI Software)',
+    '- "We\'ll wait until next year": agree it makes sense, then offer quiet pre-marketing now to a few active buyers so there is nothing to lose. (Tom Ferry, Aaron Shiner)',
+    '- "You agents are all the same": do not argue, never badmouth the last agent. Acknowledge, ask what happened with the last campaign and how they felt, then what they would need to see to feel differently. (Kevin Ward, Keller Williams, Chris Voss)',
+    '- "The last agent kept telling us to drop the price": ask what the enquiry, inspection numbers, and buyer feedback looked like week by week. A price conversation only works on that reporting. (Josh Phegan, Aaron Shiner, John McGrath)',
+    '- "What would you do differently": answer with process and evidence, not a price promise: competing homes, buyer feedback, weekly reporting. "It\'s the process, not the promise of a price, that gets top dollar." (Tom Panos)',
+    '- "The other agent is cheaper or sold more": compete on value, there is only ever one cheapest agent. (Josh Phegan, Tom Panos, Claudio Encina)',
+    '- "I\'m not selling": agree, say it is not about selling, offer information about the area. (Mat Steinwede, Aaron Shiner)',
+    '',
+    'CLOSE: always leave with a specific, dated next step. (Gong) Offer a choice of two: "Saturday at two or Sunday at eleven?" (Mike Ferry) After you ask, stop talking. (Jeb Blount) Buyer after an open: call the next day, offer a second look, book a private appointment tomorrow. (Josh Phegan, Tom Ferry) Vendor: frame the appraisal as a small free service so they can make better decisions, "would that be ok?" (Josh Phegan) If no appointment, take a smaller yes: send comparables, a callback day, an email address. (Tom Panos, Ricky Carruth) Confirm details back and say what happens next. (Lee Woodward) Hard closes backfire on big decisions; build the case, then ask plainly. (SPIN Selling)',
+    '',
+    'PRICE AND DIFFICULT VENDORS: rest every price conversation on reporting: enquiry, inspections, offers, feedback, days on market, comparables, and a clear recommendation. (Josh Phegan, Aaron Shiner, John McGrath) Lead with data, phone first. (Real Geeks, Mike Ferry) State the facts plainly, then be quiet until the vendor speaks. (Tom Ferry)',
+    '',
+    'DELIVERY: lower, slower, calm. (Chris Voss) Short turns, frequent switches. (Gong) Match their pace and wording. (Chris Voss) Practise out loud and role play regularly. (Tom Ferry, Kevin Ward)'
+  ].join('\n');
 
   var FILLERS = /\b(um+|uh+|er+|ah+|like|you know|sort of|kind of|basically|literally|actually|i mean)\b/gi;
 
@@ -819,7 +937,10 @@
     var sc = state.scenario;
     var rub = RUBRIC.map(function (r) { return '- ' + r.key + ' (max ' + r.max + '): ' + r.desc; }).join('\n');
     return [
-      'You are scoring a practice sales call for a real estate agent training tool. Be direct and specific. Quote the transcript.',
+      'You are scoring a practice sales call for a real estate agent training tool. Judge the agent against the playbook below, which combines leading real estate call trainers and published sales call research. Be direct and specific. Quote the transcript.',
+      '',
+      'PLAYBOOK:',
+      PLAYBOOK,
       '',
       'SCENARIO: Level ' + sc.level + ', ' + sc.title + '. ' + sc.situation,
       'AGENT GOAL: ' + sc.goal,
@@ -945,6 +1066,93 @@
     var next = SCENARIOS[sc.level];
     $('btn-next').hidden = !(r.pass && next);
     show('s-report');
+    loadCoaching(r, m);
+  }
+
+
+  // ---------- Coaching: what a top performer would have said ----------
+  function coachPrompt(r, m) {
+    var sc = state.scenario;
+    var weakest = r.areas.slice().sort(function (a, b) { return (a.score / a.max) - (b.score / b.max); }).slice(0, 2).map(function (a) { return a.name; }).join(' and ');
+    return [
+      'You are a real estate sales coach. A trainee agent just finished a practice phone call. Show them what a top performer would have said at each moment, drawing only on the playbook below. Sound like a straight-talking Australian coach: plain words, no hype. Every suggested line must be something a real agent could say out loud in one breath, in Australian English.',
+      '',
+      'PLAYBOOK:',
+      PLAYBOOK,
+      '',
+      'SCENARIO: Level ' + sc.level + ', ' + sc.title + '. ' + sc.situation,
+      'AGENT GOAL: ' + sc.goal,
+      'PROSPECT PERSONA: ' + sc.persona,
+      'PROSPECT OBJECTIONS IN PLAY: ' + sc.objections,
+      'OUTCOME: ' + (m.outcome === 'won' ? 'The prospect agreed to the next step.' : m.outcome === 'hungup' ? 'The prospect hung up.' : 'No next step was agreed.'),
+      'WEAKEST AREAS FROM THE SCORE: ' + weakest,
+      '',
+      'TRANSCRIPT:',
+      transcriptText(),
+      '',
+      'Reply with JSON only in this exact shape:',
+      '{',
+      '  "openingLine": "the strongest first line the agent could have opened this exact call with",',
+      '  "closingLine": "the strongest line to ask for the next step in this exact call",',
+      '  "turns": [{"prospectSaid": "the prospect line just before, or (start of call)", "youSaid": "exact Agent line copied word for word", "better": "what a top performer would have said instead, under 40 words", "why": "one or two sentences on what the better line does", "technique": "playbook technique name", "source": "trainer or research named in the playbook, or general practice"}],',
+      '  "idealCall": [{"speaker": "prospect" | "agent", "line": "..."}],',
+      '  "techniques": [{"name": "...", "what": "one sentence", "source": "..."}],',
+      '  "drills": [{"title": "...", "how": "one to three sentences"}]',
+      '}',
+      'turns must have one entry for EVERY Agent line in the transcript, in order. If an agent line was already strong, say so in why and make better a small polish. idealCall is the whole call as a top performer would have run it against this prospect, 8 to 14 lines alternating prospect and agent, starting with the prospect opener, with prospect lines true to the persona. techniques is the three playbook techniques this agent most needs next. drills is two or three short practice drills for before the next attempt. Never invent a source.'
+    ].join('\n');
+  }
+
+  function loadCoaching(r, m) {
+    $('coach-wait').hidden = false;
+    $('coach-err').hidden = true;
+    $('coach-body').hidden = true;
+    if (!sampleFn) { coachFailed('Claude is not available in this view, so training notes cannot be written.', r, m); return; }
+    sampleFn.json(coachPrompt(r, m), { modelTier: 'default', cache: false }).then(function (c) {
+      renderCoaching(c || {});
+    }).catch(function (e) {
+      var code = e && e.code ? e.code : 'error';
+      coachFailed('Training notes did not come back (' + code + ').', r, m);
+    });
+  }
+  function coachFailed(msg, r, m) {
+    $('coach-wait').hidden = true;
+    var el = $('coach-err');
+    el.innerHTML = esc(msg) + ' <button class="linkbtn" id="btn-coach-retry">Try again</button>';
+    el.hidden = false;
+    $('btn-coach-retry').addEventListener('click', function () { loadCoaching(r, m); });
+  }
+
+  function renderCoaching(c) {
+    $('c-open').textContent = c.openingLine || '';
+    $('c-close').textContent = c.closingLine || '';
+    var turns = Array.isArray(c.turns) ? c.turns : [];
+    $('c-turns').innerHTML = turns.map(function (t, i) {
+      return '<div class="moment">' +
+        '<div class="prospect-said">' + (i === 0 && /start of call/i.test(t.prospectSaid || '') ? 'Start of call' : 'They said: ' + esc(t.prospectSaid)) + '</div>' +
+        '<div class="pair"><div class="cell"><span class="lbl">You said</span>' + esc(t.youSaid) + '</div><div class="cell better"><span class="lbl">Say this</span>' + esc(t.better) + '</div></div>' +
+        '<div class="why">' + esc(t.why) + '</div>' +
+        '<div class="chips">' + (t.technique ? '<span class="chip">' + esc(t.technique) + '</span>' : '') + (t.source ? '<span class="chip src">' + esc(t.source) + '</span>' : '') + '</div>' +
+        '</div>';
+    }).join('') || '<p class="muted">No moment by moment notes came back.</p>';
+    var ideal = Array.isArray(c.idealCall) ? c.idealCall : [];
+    $('c-ideal').innerHTML = ideal.map(function (l) {
+      return '<div class="t ' + (l.speaker === 'agent' ? 'agent' : 'prospect') + '"><span class="w">' + (l.speaker === 'agent' ? 'Agent' : 'Prospect') + '</span><span>' + esc(l.line) + '</span></div>';
+    }).join('') || '<p class="muted">No model call came back.</p>';
+    var techs = Array.isArray(c.techniques) ? c.techniques : [];
+    $('c-techs').innerHTML = techs.map(function (t) {
+      return '<div class="tech"><b>' + esc(t.name) + '.</b> ' + esc(t.what) + (t.source ? ' <span class="src">' + esc(t.source) + '</span>' : '') + '</div>';
+    }).join('');
+    var drills = Array.isArray(c.drills) ? c.drills : [];
+    $('c-drills').innerHTML = drills.map(function (d) {
+      return '<div class="drill"><b>' + esc(d.title) + '</b>' + esc(d.how) + '</div>';
+    }).join('');
+    $('coach-wait').hidden = true;
+    $('coach-body').hidden = false;
+    state.coaching = c;
+    if (dbRef && state.attemptRef) {
+      try { state.attemptRef.update({ coaching: c }).catch(function () {}); } catch (e) {}
+    }
   }
 
   function saveAttempt(r, m) {
@@ -962,7 +1170,7 @@
         summary: r.summary,
         tester: (localStorage.getItem('calldrill.name') || ''),
         at: new Date().toISOString()
-      }).catch(function () {});
+      }).then(function (ref) { state.attemptRef = ref; }).catch(function () {});
     } catch (e) {}
   }
 
@@ -1056,6 +1264,8 @@
   $('btn-report-home').addEventListener('click', function () { renderLevels(); show('s-home'); });
   $('btn-report-feedback').addEventListener('click', function () { show('s-feedback'); });
   $('btn-f-send').addEventListener('click', sendFeedback);
+  $('btn-playbook').addEventListener('click', function () { $('playbook-text').textContent = PLAYBOOK; show('s-playbook'); });
+  $('btn-playbook-back').addEventListener('click', function () { show(state.report ? 's-report' : 's-home'); });
   $('btn-f-back').addEventListener('click', function () { if (state.report) show('s-report'); else { renderLevels(); show('s-home'); } });
 
   try { var n = localStorage.getItem('calldrill.name'); if (n) $('f-name').value = n; } catch (e) {}
