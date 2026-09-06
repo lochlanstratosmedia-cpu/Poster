@@ -219,6 +219,40 @@
   .yesno button { flex: 1; padding: 10px; border-radius: 8px; border: 1px solid var(--line); background: var(--ground); color: var(--ink); }
   .yesno button.on { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
 
+  /* Training */
+  .coach { display: grid; gap: 22px; }
+  .coach-wait { display: flex; align-items: center; gap: 10px; background: var(--surface-2); border-radius: 8px; padding: 12px 14px; font-size: 14px; }
+  .coach-wait .spin { width: 12px; height: 12px; border-radius: 50%; border: 2px solid var(--line); border-top-color: var(--accent); animation: turn 0.9s linear infinite; }
+  @keyframes turn { to { transform: rotate(360deg); } }
+  @media (prefers-reduced-motion: reduce) { .coach-wait .spin { animation: none; } }
+  .lines { display: grid; gap: 10px; }
+  .line { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; display: grid; gap: 4px; }
+  .line .lbl { font-family: var(--mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
+  .line .say { font-size: 17px; font-weight: 500; }
+  .moment { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 14px; display: grid; gap: 10px; }
+  .moment .prospect-said { font-size: 14px; color: var(--muted); font-style: italic; }
+  .moment .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .moment .cell { padding: 10px 12px; border-radius: 8px; background: var(--surface-2); font-size: 15px; }
+  .moment .cell.better { background: var(--good-soft); }
+  .moment .cell .lbl { display: block; font-family: var(--mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin-bottom: 4px; }
+  .moment .why { font-size: 14px; }
+  .moment .chips { display: flex; gap: 6px; flex-wrap: wrap; }
+  .chip { font-family: var(--mono); font-size: 11px; padding: 3px 9px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); }
+  .chip.src { background: var(--surface-2); color: var(--muted); }
+  .ideal { display: grid; gap: 6px; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 14px; }
+  .ideal .t { display: grid; grid-template-columns: 74px 1fr; gap: 10px; font-size: 15px; }
+  .ideal .t .w { font-family: var(--mono); font-size: 12px; color: var(--muted); padding-top: 3px; }
+  .ideal .t.agent .w { color: var(--accent); }
+  .ideal .t.agent span:last-child { font-weight: 500; }
+  .techs { display: grid; gap: 10px; }
+  .tech { border-left: 4px solid var(--accent); padding: 4px 0 4px 14px; }
+  .tech b { font-weight: 600; }
+  .tech .src { font-family: var(--mono); font-size: 12px; color: var(--muted); }
+  .drills { display: grid; gap: 10px; }
+  .drill { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; font-size: 15px; }
+  .drill b { display: block; font-weight: 600; margin-bottom: 2px; }
+  @media (max-width: 520px) { .moment .pair { grid-template-columns: 1fr; } }
+
   .err { background: var(--bad-soft); color: var(--bad); border-radius: 8px; padding: 10px 14px; font-size: 14px; }
   .ok { background: var(--good-soft); color: var(--good); border-radius: 8px; padding: 10px 14px; font-size: 14px; }
   .thinking { font-family: var(--mono); font-size: 13px; color: var(--muted); }
@@ -375,6 +409,38 @@
         <div class="stats" id="r-stats"></div>
       </div>
 
+      <div class="stack coach" id="r-coach">
+        <div>
+          <div class="eyebrow">Training</div>
+          <h2 style="margin-top:6px">What a top performer would have said</h2>
+        </div>
+        <div class="coach-wait" id="coach-wait"><span class="spin"></span><span>Writing your training notes. This takes about a minute.</span></div>
+        <div class="err" id="coach-err" hidden></div>
+        <div class="stack-lg" id="coach-body" hidden>
+          <div class="lines">
+            <div class="line"><span class="lbl">Open with</span><span class="say" id="c-open"></span></div>
+            <div class="line"><span class="lbl">Ask for the next step with</span><span class="say" id="c-close"></span></div>
+          </div>
+          <div class="stack">
+            <div class="eyebrow">Moment by moment</div>
+            <div class="stack" id="c-turns"></div>
+          </div>
+          <div class="stack">
+            <div class="eyebrow">The whole call, done well</div>
+            <div class="ideal" id="c-ideal"></div>
+          </div>
+          <div class="stack">
+            <div class="eyebrow">Three techniques to work on</div>
+            <div class="techs" id="c-techs"></div>
+          </div>
+          <div class="stack">
+            <div class="eyebrow">Drills before your next go</div>
+            <div class="drills" id="c-drills"></div>
+          </div>
+          <p class="muted" style="font-size:13px">Suggestions draw on the playbook, a knowledge base built from leading real estate call trainers and published sales call research. <button class="linkbtn" id="btn-playbook" style="font-size:13px">Read the playbook</button></p>
+        </div>
+      </div>
+
       <details>
         <summary>Full transcript</summary>
         <div class="tlist" id="r-transcript" style="margin-top:12px"></div>
@@ -386,6 +452,18 @@
         <button class="btn secondary" id="btn-report-home">All levels</button>
         <button class="btn secondary" id="btn-report-feedback">Give feedback</button>
       </div>
+    </div>
+  </section>
+
+  <!-- PLAYBOOK -->
+  <section class="screen" id="s-playbook">
+    <div class="stack-lg">
+      <div class="stack">
+        <h1>The playbook</h1>
+        <p class="muted">What the scoring and training notes are judged against. Built from leading real estate call trainers and published sales call research, with sources.</p>
+      </div>
+      <pre id="playbook-text" style="white-space:pre-wrap; font-family:var(--body); font-size:15px; line-height:1.55; margin:0; background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:22px;"></pre>
+      <div class="row"><button class="btn secondary" id="btn-playbook-back">Back</button></div>
     </div>
   </section>
 
@@ -879,12 +957,60 @@
     var next = SCENARIOS[sc.level];
     $('btn-next').hidden = !(r.pass && next);
     show('s-report');
+    loadCoaching(r, m);
+  }
+
+  function loadCoaching(r, m) {
+    $('coach-wait').hidden = false;
+    $('coach-err').hidden = true;
+    $('coach-body').hidden = true;
+    api('/api/coach', { scenarioId: state.scenario.id, turns: state.turns, measured: m, report: { areas: r.areas, takeaways: r.takeaways } }).then(function (c) {
+      renderCoaching(c || {});
+    }).catch(function (e) {
+      $('coach-wait').hidden = true;
+      var el = $('coach-err');
+      el.innerHTML = 'Training notes did not come back (' + esc(e.code) + '). <button class="linkbtn" id="btn-coach-retry">Try again</button>';
+      el.hidden = false;
+      $('btn-coach-retry').addEventListener('click', function () { loadCoaching(r, m); });
+    });
+  }
+
+  function renderCoaching(c) {
+    $('c-open').textContent = c.openingLine || '';
+    $('c-close').textContent = c.closingLine || '';
+    var turns = Array.isArray(c.turns) ? c.turns : [];
+    $('c-turns').innerHTML = turns.map(function (t, i) {
+      return '<div class="moment">' +
+        '<div class="prospect-said">' + (i === 0 && /start of call/i.test(t.prospectSaid || '') ? 'Start of call' : 'They said: ' + esc(t.prospectSaid)) + '</div>' +
+        '<div class="pair"><div class="cell"><span class="lbl">You said</span>' + esc(t.youSaid) + '</div><div class="cell better"><span class="lbl">Say this</span>' + esc(t.better) + '</div></div>' +
+        '<div class="why">' + esc(t.why) + '</div>' +
+        '<div class="chips">' + (t.technique ? '<span class="chip">' + esc(t.technique) + '</span>' : '') + (t.source ? '<span class="chip src">' + esc(t.source) + '</span>' : '') + '</div>' +
+        '</div>';
+    }).join('') || '<p class="muted">No moment by moment notes came back.</p>';
+    var ideal = Array.isArray(c.idealCall) ? c.idealCall : [];
+    $('c-ideal').innerHTML = ideal.map(function (l) {
+      return '<div class="t ' + (l.speaker === 'agent' ? 'agent' : 'prospect') + '"><span class="w">' + (l.speaker === 'agent' ? 'Agent' : 'Prospect') + '</span><span>' + esc(l.line) + '</span></div>';
+    }).join('') || '<p class="muted">No model call came back.</p>';
+    var techs = Array.isArray(c.techniques) ? c.techniques : [];
+    $('c-techs').innerHTML = techs.map(function (t) {
+      return '<div class="tech"><b>' + esc(t.name) + '.</b> ' + esc(t.what) + (t.source ? ' <span class="src">' + esc(t.source) + '</span>' : '') + '</div>';
+    }).join('');
+    var drills = Array.isArray(c.drills) ? c.drills : [];
+    $('c-drills').innerHTML = drills.map(function (d) {
+      return '<div class="drill"><b>' + esc(d.title) + '</b>' + esc(d.how) + '</div>';
+    }).join('');
+    $('coach-wait').hidden = true;
+    $('coach-body').hidden = false;
+    state.coaching = c;
+    if (state.attemptId) api('/api/attempt', { coachingFor: state.attemptId, coaching: c, at: new Date().toISOString() }).catch(function () {});
   }
 
   function saveAttempt(r, m) {
     var name = '';
     try { name = localStorage.getItem('calldrill.name') || ''; } catch (e) {}
+    state.attemptId = Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
     api('/api/attempt', {
+      attemptId: state.attemptId,
       scenario: state.scenario.id, level: state.scenario.level,
       total: r.total, pass: r.pass, outcome: m.outcome,
       areas: r.areas.map(function (a) { return { key: a.key, score: a.score }; }),
@@ -988,6 +1114,13 @@
   $('btn-report-home').addEventListener('click', function () { renderLevels(); show('s-home'); });
   $('btn-report-feedback').addEventListener('click', function () { show('s-feedback'); });
   $('btn-f-send').addEventListener('click', sendFeedback);
+  $('btn-playbook').addEventListener('click', function () {
+    show('s-playbook');
+    if (!$('playbook-text').textContent) {
+      fetch('/api/playbook').then(function (r) { return r.text(); }).then(function (t) { $('playbook-text').textContent = t; }).catch(function () { $('playbook-text').textContent = 'Could not load the playbook.'; });
+    }
+  });
+  $('btn-playbook-back').addEventListener('click', function () { show(state.report ? 's-report' : 's-home'); });
   $('btn-f-back').addEventListener('click', function () { if (state.report) show('s-report'); else { renderLevels(); show('s-home'); } });
 
   try { var n = localStorage.getItem('calldrill.name'); if (n) $('f-name').value = n; } catch (e) {}

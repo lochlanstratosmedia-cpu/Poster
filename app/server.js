@@ -6,6 +6,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { zodOutputFormat } from '@anthropic-ai/sdk/helpers/zod';
 import { z } from 'zod/v4';
 import { SCENARIOS, RUBRIC, publicScenario } from './scenarios.js';
+import { PLAYBOOK } from './knowledge.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 loadDotEnv(path.join(here, '.env'));
@@ -120,6 +121,13 @@ const Report = z.object({
   swaps: z.array(z.object({ moment: z.string(), said: z.string(), better: z.string() }))
 });
 
+const SCORER_SYSTEM = [
+  'You score practice sales calls for a real estate agent training tool. Judge the agent against the playbook below, which combines what leading real estate call trainers and published sales call research teach. Be direct, specific, and quote the transcript.',
+  '',
+  'PLAYBOOK:',
+  PLAYBOOK
+].join('\n');
+
 function scoringPrompt(sc, turns, m) {
   const rub = RUBRIC.map((r) => `- ${r.key} (max ${r.max}): ${r.desc}`).join('\n');
   const outcome = m.outcome === 'won' ? 'The prospect agreed to the next step.' : m.outcome === 'hungup' ? 'The prospect hung up.' : 'The call ended without the prospect agreeing to a next step.';
@@ -160,6 +168,7 @@ app.post('/api/score', gate, async (req, res) => {
     const response = await client.messages.parse({
       model: MODEL,
       max_tokens: 8000,
+      system: [{ type: 'text', text: SCORER_SYSTEM, cache_control: { type: 'ephemeral' } }],
       output_config: { format: zodOutputFormat(Report) },
       messages: [{ role: 'user', content: scoringPrompt(sc, turns, m) }]
     });
@@ -169,6 +178,79 @@ app.post('/api/score', gate, async (req, res) => {
     res.json(response.parsed_output);
   } catch (e) {
     console.error('score', e?.status, e?.message);
+    res.status(502).json({ error: apiErrorCode(e), message: e?.message });
+  }
+});
+
+// ---------- Coaching: what a top performer would have said ----------
+const Coaching = z.object({
+  openingLine: z.string(),
+  closingLine: z.string(),
+  turns: z.array(z.object({
+    prospectSaid: z.string(),
+    youSaid: z.string(),
+    better: z.string(),
+    why: z.string(),
+    technique: z.string(),
+    source: z.string()
+  })),
+  idealCall: z.array(z.object({ speaker: z.enum(['agent', 'prospect']), line: z.string() })),
+  techniques: z.array(z.object({ name: z.string(), what: z.string(), source: z.string() })),
+  drills: z.array(z.object({ title: z.string(), how: z.string() }))
+});
+
+const COACH_SYSTEM = [
+  'You are a real estate sales coach. After a trainee agent finishes a practice phone call, you show them what a top performer would have said at each moment, drawing only on the playbook below. Sound like a straight-talking Australian coach: plain words, no hype, no jargon the agent would not use on a call. Every suggested line must be something a real agent could say out loud in one breath, in Australian English.',
+  '',
+  'PLAYBOOK:',
+  PLAYBOOK
+].join('\n');
+
+function coachPrompt(sc, turns, m, report) {
+  const weakest = (report?.areas || []).slice().sort((a, b) => (a.score / a.max) - (b.score / b.max)).slice(0, 2).map((a) => a.name).join(' and ');
+  return [
+    `SCENARIO: Level ${sc.level}, ${sc.title}. ${sc.situation}`,
+    `AGENT GOAL: ${sc.goal}`,
+    `PROSPECT PERSONA (for context): ${sc.persona}`,
+    `PROSPECT OBJECTIONS IN PLAY: ${sc.objections}`,
+    `OUTCOME: ${m.outcome === 'won' ? 'The prospect agreed to the next step.' : m.outcome === 'hungup' ? 'The prospect hung up.' : 'No next step was agreed.'}`,
+    weakest ? `WEAKEST AREAS FROM THE SCORE: ${weakest}` : '',
+    '',
+    'TRANSCRIPT:',
+    transcriptText(turns),
+    '',
+    'Produce:',
+    '1. openingLine: the strongest first line the agent could have opened this exact call with.',
+    '2. closingLine: the strongest line to ask for the next step in this exact call.',
+    '3. turns: one entry for EVERY Agent line in the transcript, in order. prospectSaid is the prospect line just before it (or "(start of call)"). youSaid is the exact Agent line copied word for word. better is what a top performer would have said instead (if the agent line was already strong, say so in why and make better a small polish). why is one or two sentences on what the better line does. technique is the playbook technique name. source is the trainer or research the technique comes from, as named in the playbook.',
+    '4. idealCall: the whole call as a top performer would have run it against this prospect, 8 to 14 lines alternating prospect and agent, starting with the prospect\'s opener. Prospect lines should stay true to the persona and objections.',
+    '5. techniques: the three playbook techniques this agent most needs next, each with a one sentence what and the source.',
+    '6. drills: two or three short practice drills the agent can do before the next attempt, each with a title and a how of one to three sentences.',
+    'Keep every better line under 40 words. Never invent a source: use only sources named in the playbook, or write "general practice" if none applies.'
+  ].filter(Boolean).join('\n');
+}
+
+app.post('/api/coach', gate, async (req, res) => {
+  const sc = findScenario(req.body?.scenarioId);
+  const turns = cleanTurns(req.body?.turns);
+  const m = req.body?.measured || {};
+  const report = req.body?.report || null;
+  if (!sc) return res.status(400).json({ error: 'bad_scenario' });
+  if (!turns.some((t) => t.role === 'agent')) return res.status(400).json({ error: 'no_agent_turn' });
+  try {
+    const response = await client.messages.parse({
+      model: MODEL,
+      max_tokens: 12000,
+      system: [{ type: 'text', text: COACH_SYSTEM, cache_control: { type: 'ephemeral' } }],
+      output_config: { format: zodOutputFormat(Coaching) },
+      messages: [{ role: 'user', content: coachPrompt(sc, turns, m, report) }]
+    });
+    if (response.stop_reason === 'refusal' || !response.parsed_output) {
+      return res.status(502).json({ error: 'no_coaching' });
+    }
+    res.json(response.parsed_output);
+  } catch (e) {
+    console.error('coach', e?.status, e?.message);
     res.status(502).json({ error: apiErrorCode(e), message: e?.message });
   }
 });
@@ -266,6 +348,7 @@ function admin(req, res, next) {
   if (ADMIN_KEY && req.query.key === ADMIN_KEY) return next();
   res.status(401).json({ error: 'admin_key', message: 'Add ?key=ADMIN_KEY from your .env.' });
 }
+app.get('/api/playbook', (req, res) => { res.type('text/plain').send(PLAYBOOK); });
 app.get('/admin/feedback', admin, (req, res) => res.json(readJsonl('feedback')));
 app.get('/admin/attempts', admin, (req, res) => res.json(readJsonl('attempts')));
 
