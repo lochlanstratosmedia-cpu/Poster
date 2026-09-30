@@ -242,32 +242,65 @@ SOURCE = {
 
 LIGHT = {
     "keep": (
-        "Keep the direction, colour and time of day of the existing light. Refine it: "
-        "recover highlights, open shadows gently, and keep every shadow shape where it falls."
+        "Keep the sun direction and time of day, but give it the quality of the best moment "
+        "of that day: warmer, cleaner sunlight, crisp shadow edges that still hold detail, "
+        "highlights that roll off softly instead of clipping."
     ),
     "golden": (
-        "Late-afternoon sun, low and warm, raking across surfaces so texture reads. Long, "
-        "soft-edged shadows that follow the sun direction already in the photo. Warm glow "
-        "on sunlit surfaces, cool open shade in the shadows."
+        "Relight the scene as late-afternoon golden hour: low, warm sun raking across the "
+        "surfaces so every texture reads, long soft-edged shadows following the sun direction "
+        "already in the photo, a warm glow on sunlit surfaces and cool blue-grey open shade."
     ),
     "soft": (
-        "Bright, soft overcast daylight. Even and diffused, gentle falloff from windows and "
-        "openings, no hard shadows, clean neutral whites."
+        "Relight the scene with bright, soft overcast daylight: even and diffused, gentle "
+        "falloff from windows and openings, no hard shadows, clean neutral whites."
     ),
     "morning": (
-        "Clear early-morning light: low side sun, cool-neutral and crisp, an airy feel. "
-        "Shadows follow the sun direction already in the photo."
+        "Relight the scene as clear early morning: low side sun, cool-neutral and crisp, an "
+        "airy feel. Shadows follow the sun direction already in the photo."
     ),
     "dusk": (
-        "Blue-hour twilight: deep even blue sky, and warm light glowing from the light "
-        "fittings and windows already in the photo. Do not add light fittings that are not there."
+        "Relight the scene at blue hour: deep even blue sky, and warm light glowing from the "
+        "light fittings and windows already in the photo. Do not add light fittings that are not there."
+    ),
+}
+
+GRADE = {
+    "film": (
+        "A warm, filmic editorial grade in the manner of Kodak Portra 400: creamy highlights, "
+        "slightly lifted blacks, gentle warmth in the midtones, greens pulled toward olive, "
+        "oranges and reds softened toward terracotta. Lower saturation and a softer contrast "
+        "curve than the phone original."
+    ),
+    "clean": (
+        "A clean, bright architectural grade: neutral whites, crisp but not harsh contrast, "
+        "true colours slightly desaturated, airy highlights."
+    ),
+    "moody": (
+        "A deep, moody grade: rich shadows with detail, controlled highlights, earthy "
+        "desaturated colour, cinematic contrast."
+    ),
+}
+
+FRAME = {
+    "subtle": "Straighten verticals and level horizontals. Crop in slightly only if it helps.",
+    "editorial": (
+        "Reframe for a stronger composition. Crop in (up to about a quarter of the frame) toward "
+        "the most graphic part of the scene, such as leading lines, repeating shapes or the fall "
+        "of light, and place it on the thirds. Straighten verticals as a shift lens would and "
+        "level horizontals. Trim distracting edges."
+    ),
+    "bold": (
+        "Reframe decisively. Crop in hard (up to about 40 percent) to the single strongest "
+        "graphic idea in the scene and build the frame around it. Straighten verticals as a "
+        "shift lens would and level horizontals."
     ),
 }
 
 SHOT = {
     "exterior": (
-        "Exterior. The facade, roof, gutters, fence, paths, steps, letterbox and garden stay "
-        "exactly as they are. Lawn and foliage a healthy natural green, never neon."
+        "Exterior. Facade, roof, gutters, fence, paths, steps, letterbox and garden are the real "
+        "property. Lawn and foliage a healthy natural green, never neon."
     ),
     "interior": (
         "Interior. Balance the windows so the view outside is visible but softer than the room. "
@@ -293,65 +326,60 @@ SHOT = {
 SHOT["living"] = SHOT["bedroom"] = SHOT["interior"]
 
 
-def colour_line(pal):
-    parts = [f"{p['name']} ({p['hex']})" for p in pal if p["share"] >= 0.04][:5]
-    return "Keep the palette of the original: " + ", ".join(parts) + "."
-
-
 def build_prompt(a, info):
+    change = [
+        f"Light: {LIGHT[a.light]}",
+        f"Grade: {GRADE[a.grade]}",
+    ]
+    frame = FRAME[a.strength]
+    space = a.text_space
+    if space == "auto":
+        space = next(iter(info["quiet_zones"])).split("-")[0]
+    if space in ("top", "bottom"):
+        frame += (
+            f" Leave the {space} sixth of the final frame calm and uncluttered (whatever is "
+            "already there: sky, wall, floor, lawn) so a small caption can sit on it later."
+        )
+    change.append(f"Frame: {frame}")
+    camera = SOURCE[a.source]
+    if info["fixes"]:
+        camera += " Measured problems to fix: " + "; ".join(info["fixes"]) + "."
+    change.append(f"Camera: {camera}")
+
     keep = [
-        "The same place, camera position and viewpoint. Every wall, opening, window, door, "
-        "step, railing, roofline, fixture, tree and plant stays where it is, at the same size and shape.",
-        "True materials and colours. Paint, timber, stone, metal and fabric look like the real "
-        "thing in good light. Do not recolour any surface.",
-        "Real character: grain, knots, patina and honest wear stay. Better light, not a newer building.",
+        "Every wall, window, door, step, railing, roofline, fixture, tree and plant that stays "
+        "in frame keeps its position, size, shape and count.",
+        "Surfaces keep their real material and base colour under the new light and grade: red "
+        "brick stays red brick, a cream wall stays cream, a green awning stays green.",
+        "Honest wear stays (chips, patina, grain). Better photography, not a renovated building.",
     ]
     if a.tidy:
         keep.append(
-            "Do not add anything. You may remove only small temporary clutter (hoses, bins, loose "
-            "leaves, cables, personal items on benches). Never remove anything fixed or built in."
+            "Nothing is added. Only small temporary clutter may go (hoses, bins, loose leaves, "
+            "cables, personal items on benches). Nothing fixed or built in is removed."
         )
     else:
-        keep.append("Do not add or remove any object, furniture, artwork, plant, light fitting, person or sign.")
+        keep.append("Nothing is added or removed: no objects, furniture, plants, fittings, people or signs.")
     keep.append(
-        "You may clean up the sky to a clear natural blue with light cloud. Nothing below the roofline changes."
-        if a.sky else "Keep the sky as it is apart from tone."
+        "The sky may be cleaned up to a clear natural blue with light cloud."
+        if a.sky else "The sky changes only in tone."
     )
-
-    comp = (
-        "Straighten verticals as a shift lens would and level the horizontals. You may tighten "
-        "the crop slightly if it strengthens the frame, but never extend the scene past the original edges."
-    )
-    space = a.text_space
-    if space == "auto":
-        calm = next(iter(info["quiet_zones"]))
-        space = calm.split("-")[0]
-    if space in ("top", "bottom"):
-        comp += (
-            f" Keep the {space} sixth of the frame calm and uncluttered (whatever is already there: "
-            "sky, wall, floor, lawn) so a small caption can sit on it later."
-        )
-
-    tone = [SOURCE[a.source]]
-    if info["fixes"]:
-        tone.append("From measuring this photo: " + "; ".join(info["fixes"]) + ".")
-    tone.append(colour_line(info["palette"]))
 
     lines = [
-        "Edit this exact photograph into a finished editorial image fit for the cover of an "
-        "architecture and interiors magazine: calm, considered, natural light, restrained colour.",
+        "Re-photograph this scene the way a leading architectural photographer would for the "
+        "cover of an architecture and interiors magazine. The result must look clearly and "
+        "visibly better than the input: new light, a real colour grade and a stronger frame. "
+        "A result that looks like the input with small tweaks is a failure.",
         "",
-        "KEEP EXACTLY:",
-        *[f"- {k}" for k in keep],
-        "",
-        "IMPROVE:",
-        f"- Light: {LIGHT[a.light]}",
-        f"- Composition: {comp}",
-        f"- Tone and colour: {' '.join(tone)}",
-        "- Finish: soft highlight roll-off, deep clean shadows with detail, fine natural grain, "
-        "no HDR halos, no over-sharpening, no plastic or CGI look.",
+        "CHANGE:",
+        *[f"{i}. {c}" for i, c in enumerate(change, 1)],
+        "- Finish: soft highlight roll-off, fine natural grain, no HDR halos, no over-sharpening, "
+        "no plastic or CGI look.",
         "",
         f"SUBJECT: {SHOT[a.shot]}",
+        "",
+        "KEEP TRUE (the property must stay honest):",
+        *[f"- {k}" for k in keep],
     ]
     if a.notes:
         lines += ["", f"NOTES: {a.notes}"]
@@ -367,6 +395,7 @@ def cmd_prompt(a):
         "source_image": str(Path(a.image)),
         "settings": {
             "source": a.source, "shot": a.shot, "light": a.light,
+            "grade": a.grade, "strength": a.strength,
             "text_space": a.text_space, "tidy": a.tidy, "sky": a.sky, "notes": a.notes,
         },
         "higgsfield": {
@@ -670,6 +699,9 @@ def main():
     s.add_argument("--source", choices=SOURCE, default="phone")
     s.add_argument("--shot", choices=sorted(SHOT), default="interior")
     s.add_argument("--light", choices=LIGHT, default="keep")
+    s.add_argument("--grade", choices=GRADE, default="film")
+    s.add_argument("--strength", choices=FRAME, default="editorial",
+                   help="how far the frame may change: subtle, editorial, bold")
     s.add_argument("--text-space", choices=["auto", "top", "bottom", "none"], default="auto")
     s.add_argument("--tidy", action="store_true", help="allow removing small temporary clutter")
     s.add_argument("--sky", action="store_true", help="allow cleaning up the sky")

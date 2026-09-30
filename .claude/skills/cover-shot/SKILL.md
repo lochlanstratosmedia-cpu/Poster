@@ -44,6 +44,8 @@ One question covering the whole batch beats one per photo. Defaults in brackets.
 | Source | `phone` or `camera` [phone] |
 | Shot | `exterior`, `interior`, `living`, `bedroom`, `kitchen`, `bathroom`, `garden`, `detail` |
 | Light | `keep`, `golden`, `soft`, `morning`, `dusk` [keep] |
+| Grade | `film` warm Portra-style, `clean` bright neutral, `moody` [film] |
+| Strength | `subtle`, `editorial`, `bold`: how far the frame may be recropped [editorial] |
 | Post | `just-listed`, `coming-soon`, `just-sold`, `for-lease`, `open-home`, or custom text |
 | Second line | suburb or street, only if Lochlan gives it. Never guess an address. |
 | Mark | agency name for the opposite corner, optional |
@@ -87,11 +89,19 @@ Add `--sky` only for a dull sky on an exterior.
    If the network blocks `upload.higgsfield.ai`, use `media_upload_widget`
    so Lochlan picks the file in the browser, or `media_import_url` with a
    public HTTPS link to the photo.
-2. Run `generate_image` with the `higgsfield` block from `job.json`: model
-   `nano_banana_pro`, the source `media_id` with role `image_references`,
-   the prompt, `aspect_ratio` (matches the source, so nothing is invented at
-   the edges), `resolution` 2k, and `count` 2. Pass `get_cost: true` first
-   on a new account.
+2. Generate two different takes with `generate_image_batch`, not two copies
+   of one prompt: two variants of the same prompt come back nearly
+   identical. A good pair is `--light golden --grade film` and
+   `--light keep --grade clean` (write the second with `--out job-b.json`).
+   Model `nano_banana_pro`, source `media_id` with role `image_references`,
+   `aspect_ratio` 4:5 (the post format, since the frame is recropped
+   anyway), `resolution` 2k. Higgsfield reports the model as
+   `nano_banana_2` in job status; that is its internal name for Pro.
+
+   The prompt leads with what must change and tells the model a near-copy
+   is a failure. An earlier version led with "keep exactly" rules and asked
+   to keep the light and palette, and the model returned the input almost
+   untouched. Don't add palette-locking or keep-the-light wording back.
 3. `jobs_wait` until done, then download the results into
    `covers/<name>/render-1.jpg`, `render-2.jpg`.
 

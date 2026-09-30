@@ -1,0 +1,100 @@
+{
+  "source_image": "covers/brick-stairs-awning-exterior/source.jpg",
+  "settings": {
+    "source": "phone",
+    "shot": "exterior",
+    "light": "keep",
+    "grade": "clean",
+    "strength": "editorial",
+    "text_space": "auto",
+    "tidy": false,
+    "sky": false,
+    "notes": "The strongest idea here is the diagonal: the white handrail and concrete steps climbing across warm face brick, with their shadows repeating the line. Build the frame around it. The green and cream striped awning with its scalloped edge, the lace curtains, the security door, sensor light, chipped sill and garden bed are all real and stay if they remain in frame."
+  },
+  "higgsfield": {
+    "model": "nano_banana_pro",
+    "aspect_ratio": "3:4",
+    "resolution": "2k",
+    "count": 2,
+    "prompt": "Re-photograph this scene the way a leading architectural photographer would for the cover of an architecture and interiors magazine. The result must look clearly and visibly better than the input: new light, a real colour grade and a stronger frame. A result that looks like the input with small tweaks is a failure.\n\nCHANGE:\n1. Light: Keep the sun direction and time of day, but give it the quality of the best moment of that day: warmer, cleaner sunlight, crisp shadow edges that still hold detail, highlights that roll off softly instead of clipping.\n2. Grade: A clean, bright architectural grade: neutral whites, crisp but not harsh contrast, true colours slightly desaturated, airy highlights.\n3. Frame: Reframe for a stronger composition. Crop in (up to about a quarter of the frame) toward the most graphic part of the scene, such as leading lines, repeating shapes or the fall of light, and place it on the thirds. Straighten verticals as a shift lens would and level horizontals. Trim distracting edges. Leave the top sixth of the final frame calm and uncluttered (whatever is already there: sky, wall, floor, lawn) so a small caption can sit on it later.\n4. Camera: This is a phone photo. Undo the phone processing: HDR flatness and halos, over-sharpening, smeared noise, oversaturated greens and skies, crushed blacks, and wide-angle stretching near the edges. It should look like it was shot on a full-frame camera with a tilt-shift lens, on a tripod, by an architectural photographer.\n- Finish: soft highlight roll-off, fine natural grain, no HDR halos, no over-sharpening, no plastic or CGI look.\n\nSUBJECT: Exterior. Facade, roof, gutters, fence, paths, steps, letterbox and garden are the real property. Lawn and foliage a healthy natural green, never neon.\n\nKEEP TRUE (the property must stay honest):\n- Every wall, window, door, step, railing, roofline, fixture, tree and plant that stays in frame keeps its position, size, shape and count.\n- Surfaces keep their real material and base colour under the new light and grade: red brick stays red brick, a cream wall stays cream, a green awning stays green.\n- Honest wear stays (chips, patina, grain). Better photography, not a renovated building.\n- Nothing is added or removed: no objects, furniture, plants, fittings, people or signs.\n- The sky changes only in tone.\n\nNOTES: The strongest idea here is the diagonal: the white handrail and concrete steps climbing across warm face brick, with their shadows repeating the line. Build the frame around it. The green and cream striped awning with its scalloped edge, the lace curtains, the security door, sensor light, chipped sill and garden bed are all real and stay if they remain in frame.\n\nDo not add any text, watermark, logo or border. House numbers and signs already in the photo stay as they are.",
+    "medias": [
+      {
+        "role": "image_references",
+        "value": "<media_id of the uploaded source>"
+      }
+    ]
+  },
+  "analysis": {
+    "size": [
+      1500,
+      2000
+    ],
+    "aspect": 0.75,
+    "generate_aspect": "3:4",
+    "luma": 0.437,
+    "contrast": 0.238,
+    "saturation": 0.364,
+    "warmth": "neutral",
+    "clipped_highlights": 0.0039,
+    "clipped_shadows": 0.0023,
+    "palette": [
+      {
+        "hex": "#92795d",
+        "name": "mid muted tan",
+        "share": 0.255
+      },
+      {
+        "hex": "#2d2b27",
+        "name": "charcoal",
+        "share": 0.223
+      },
+      {
+        "hex": "#474e49",
+        "name": "charcoal",
+        "share": 0.173
+      },
+      {
+        "hex": "#dcd3bd",
+        "name": "pale beige",
+        "share": 0.151
+      },
+      {
+        "hex": "#7a5944",
+        "name": "mid terracotta",
+        "share": 0.115
+      },
+      {
+        "hex": "#aaa78c",
+        "name": "light muted beige",
+        "share": 0.083
+      }
+    ],
+    "quiet_zones": {
+      "top-left": {
+        "busyness": 0.199,
+        "luma": 0.348
+      },
+      "top-right": {
+        "busyness": 0.217,
+        "luma": 0.306
+      },
+      "top-center": {
+        "busyness": 0.219,
+        "luma": 0.332
+      },
+      "bottom-right": {
+        "busyness": 0.247,
+        "luma": 0.619
+      },
+      "bottom-left": {
+        "busyness": 0.254,
+        "luma": 0.66
+      },
+      "bottom-center": {
+        "busyness": 0.268,
+        "luma": 0.622
+      }
+    },
+    "fixes": []
+  }
+}

@@ -3,22 +3,24 @@
   "settings": {
     "source": "phone",
     "shot": "exterior",
-    "light": "keep",
+    "light": "golden",
+    "grade": "film",
+    "strength": "editorial",
     "text_space": "auto",
     "tidy": false,
     "sky": false,
-    "notes": "A graphic, sunlit composition: the white handrail and concrete steps run diagonally across warm tan face brick, and their hard shadows repeat the diagonal. Keep the green and cream striped awning with its scalloped edge, the lace curtains, the security door, the sensor light, the chipped window sill, the small garden bed and the concrete path exactly as they are."
+    "notes": "The strongest idea here is the diagonal: the white handrail and concrete steps climbing across warm face brick, with their shadows repeating the line. Build the frame around it. The green and cream striped awning with its scalloped edge, the lace curtains, the security door, sensor light, chipped sill and garden bed are all real and stay if they remain in frame."
   },
   "higgsfield": {
     "model": "nano_banana_pro",
     "aspect_ratio": "3:4",
     "resolution": "2k",
     "count": 2,
-    "prompt": "Edit this exact photograph into a finished editorial image fit for the cover of an architecture and interiors magazine: calm, considered, natural light, restrained colour.\n\nKEEP EXACTLY:\n- The same place, camera position and viewpoint. Every wall, opening, window, door, step, railing, roofline, fixture, tree and plant stays where it is, at the same size and shape.\n- True materials and colours. Paint, timber, stone, metal and fabric look like the real thing in good light. Do not recolour any surface.\n- Real character: grain, knots, patina and honest wear stay. Better light, not a newer building.\n- Do not add or remove any object, furniture, artwork, plant, light fitting, person or sign.\n- Keep the sky as it is apart from tone.\n\nIMPROVE:\n- Light: Keep the direction, colour and time of day of the existing light. Refine it: recover highlights, open shadows gently, and keep every shadow shape where it falls.\n- Composition: Straighten verticals as a shift lens would and level the horizontals. You may tighten the crop slightly if it strengthens the frame, but never extend the scene past the original edges. Keep the top sixth of the frame calm and uncluttered (whatever is already there: sky, wall, floor, lawn) so a small caption can sit on it later.\n- Tone and colour: This is a phone photo. Undo the phone processing: HDR flatness and halos, over-sharpening, smeared noise, oversaturated greens and skies, crushed blacks, and wide-angle stretching near the edges. It should look like it was shot on a full-frame camera with a tilt-shift lens, on a tripod, by an architectural photographer. Keep the palette of the original: mid muted tan (#92795d), charcoal (#2d2b27), charcoal (#474e49), pale beige (#dcd3bd), mid terracotta (#7a5944).\n- Finish: soft highlight roll-off, deep clean shadows with detail, fine natural grain, no HDR halos, no over-sharpening, no plastic or CGI look.\n\nSUBJECT: Exterior. The facade, roof, gutters, fence, paths, steps, letterbox and garden stay exactly as they are. Lawn and foliage a healthy natural green, never neon.\n\nNOTES: A graphic, sunlit composition: the white handrail and concrete steps run diagonally across warm tan face brick, and their hard shadows repeat the diagonal. Keep the green and cream striped awning with its scalloped edge, the lace curtains, the security door, the sensor light, the chipped window sill, the small garden bed and the concrete path exactly as they are.\n\nDo not add any text, watermark, logo or border. House numbers and signs already in the photo stay as they are.",
+    "prompt": "Re-photograph this scene the way a leading architectural photographer would for the cover of an architecture and interiors magazine. The result must look clearly and visibly better than the input: new light, a real colour grade and a stronger frame. A result that looks like the input with small tweaks is a failure.\n\nCHANGE:\n1. Light: Relight the scene as late-afternoon golden hour: low, warm sun raking across the surfaces so every texture reads, long soft-edged shadows following the sun direction already in the photo, a warm glow on sunlit surfaces and cool blue-grey open shade.\n2. Grade: A warm, filmic editorial grade in the manner of Kodak Portra 400: creamy highlights, slightly lifted blacks, gentle warmth in the midtones, greens pulled toward olive, oranges and reds softened toward terracotta. Lower saturation and a softer contrast curve than the phone original.\n3. Frame: Reframe for a stronger composition. Crop in (up to about a quarter of the frame) toward the most graphic part of the scene, such as leading lines, repeating shapes or the fall of light, and place it on the thirds. Straighten verticals as a shift lens would and level horizontals. Trim distracting edges. Leave the top sixth of the final frame calm and uncluttered (whatever is already there: sky, wall, floor, lawn) so a small caption can sit on it later.\n4. Camera: This is a phone photo. Undo the phone processing: HDR flatness and halos, over-sharpening, smeared noise, oversaturated greens and skies, crushed blacks, and wide-angle stretching near the edges. It should look like it was shot on a full-frame camera with a tilt-shift lens, on a tripod, by an architectural photographer.\n- Finish: soft highlight roll-off, fine natural grain, no HDR halos, no over-sharpening, no plastic or CGI look.\n\nSUBJECT: Exterior. Facade, roof, gutters, fence, paths, steps, letterbox and garden are the real property. Lawn and foliage a healthy natural green, never neon.\n\nKEEP TRUE (the property must stay honest):\n- Every wall, window, door, step, railing, roofline, fixture, tree and plant that stays in frame keeps its position, size, shape and count.\n- Surfaces keep their real material and base colour under the new light and grade: red brick stays red brick, a cream wall stays cream, a green awning stays green.\n- Honest wear stays (chips, patina, grain). Better photography, not a renovated building.\n- Nothing is added or removed: no objects, furniture, plants, fittings, people or signs.\n- The sky changes only in tone.\n\nNOTES: The strongest idea here is the diagonal: the white handrail and concrete steps climbing across warm face brick, with their shadows repeating the line. Build the frame around it. The green and cream striped awning with its scalloped edge, the lace curtains, the security door, sensor light, chipped sill and garden bed are all real and stay if they remain in frame.\n\nDo not add any text, watermark, logo or border. House numbers and signs already in the photo stay as they are.",
     "medias": [
       {
         "role": "image_references",
-        "value": "3bccbf3e-a210-4d27-9b96-ce8dcdb008d8"
+        "value": "<media_id of the uploaded source>"
       }
     ]
   },
@@ -94,15 +96,5 @@
       }
     },
     "fixes": []
-  },
-  "renders": [
-    {
-      "job_id": "8f74df13-89cf-47a5-9014-3615351b0873",
-      "file": "render-1.png"
-    },
-    {
-      "job_id": "b072aeff-c1f6-4212-adf8-b1b6cb00a6c1",
-      "file": "render-2.png"
-    }
-  ]
+  }
 }
