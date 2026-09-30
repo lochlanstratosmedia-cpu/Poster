@@ -14,6 +14,7 @@ AI-writing patterns instead of its own instincts.
 | `docs/storyscope-narrative-checks.md` | Structural checklist for narrative scripts |
 | `scripts/update-humanizer.sh` | Pulls a fresh copy of the skill from upstream |
 | `content/` | Drafts |
+| `tools/stager/` | Virtual staging layout tool for Nano Banana Pro. See its README |
 
 ## How it works
 

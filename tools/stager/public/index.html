@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Stager</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect x='1' y='6' width='14' height='6' rx='2' fill='%231f5eff'/%3E%3C/svg%3E" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">Stager <span class="muted">virtual staging layouts</span></div>
+    <div class="top-actions">
+      <label class="btn">Upload photo<input id="photoInput" type="file" accept="image/*" hidden /></label>
+      <button id="saveProject" class="btn">Save project</button>
+      <label class="btn">Open project<input id="projectInput" type="file" accept=".json,application/json" hidden /></label>
+      <button id="undo" class="btn" title="Ctrl+Z">Undo</button>
+    </div>
+  </header>
+
+  <main class="layout">
+    <aside class="panel library">
+      <input id="librarySearch" type="search" placeholder="Search furniture" />
+      <div id="libraryList"></div>
+      <div class="library-tools">
+        <button id="exportLibrary" class="btn small">Export my library</button>
+        <label class="btn small">Import library<input id="libraryInput" type="file" accept=".json" hidden /></label>
+      </div>
+    </aside>
+
+    <section class="stage-wrap">
+      <div id="stage" class="stage">
+        <canvas id="canvas"></canvas>
+        <div id="empty" class="empty">
+          <p><strong>Upload a room photo to start.</strong></p>
+          <p class="muted">Then drag furniture from the library onto the photo. Drag to move, pull the corners to resize, and use the round handle to rotate. Hold Shift while resizing to keep proportions.</p>
+        </div>
+      </div>
+      <div class="stage-bar">
+        <label><input id="showNames" type="checkbox" checked /> Show names</label>
+        <label><input id="showPlaceholders" type="checkbox" checked /> Show placeholders</label>
+        <span class="muted" id="status"></span>
+      </div>
+      <section class="results">
+        <h3>Renders</h3>
+        <div id="results" class="results-grid"><p class="muted">Renders show up here.</p></div>
+      </section>
+    </section>
+
+    <aside class="panel side">
+      <section id="itemPanel" class="card hidden">
+        <h3>Selected item <span id="itemNumber" class="badge"></span></h3>
+        <label>Item<input id="itemName" type="text" /></label>
+        <label>What to render<textarea id="itemPrompt" rows="2" placeholder="e.g. three-seat sofa"></textarea></label>
+        <label>Material, colour, style notes<textarea id="itemNotes" rows="2" placeholder="e.g. oatmeal boucle, rounded arms, oak legs"></textarea></label>
+        <div class="row">
+          <label>Facing
+            <select id="itemFacing">
+              <option value="">Natural for the room</option>
+              <option value="toward the camera">Toward camera</option>
+              <option value="away from the camera">Away from camera</option>
+              <option value="to the left">To the left</option>
+              <option value="to the right">To the right</option>
+              <option value="angled toward the camera, turned left">Angled left</option>
+              <option value="angled toward the camera, turned right">Angled right</option>
+            </select>
+          </label>
+          <label>Sits
+            <select id="itemMount">
+              <option value="floor">On the floor</option>
+              <option value="wall">On the wall</option>
+              <option value="ceiling">From the ceiling</option>
+              <option value="surface">On a surface</option>
+            </select>
+          </label>
+        </div>
+        <div class="row">
+          <label>Shape
+            <select id="itemShape"></select>
+          </label>
+          <label>Colour
+            <select id="itemColor"></select>
+          </label>
+        </div>
+        <div class="ref">
+          <div class="ref-head">Product photo (optional)</div>
+          <img id="itemRefPreview" alt="" class="hidden" />
+          <div class="row">
+            <label class="btn small">Attach<input id="itemRefInput" type="file" accept="image/*" hidden /></label>
+            <button id="itemRefClear" class="btn small">Remove</button>
+          </div>
+          <p class="hint">Attach a photo of the exact piece and the model is asked to match it.</p>
+        </div>
+        <div class="btn-grid">
+          <button id="itemDuplicate" class="btn small">Duplicate</button>
+          <button id="itemDelete" class="btn small danger">Delete</button>
+          <button id="itemForward" class="btn small">Bring forward</button>
+          <button id="itemBack" class="btn small">Send back</button>
+          <button id="itemFlip" class="btn small">Flip</button>
+          <button id="itemResetRot" class="btn small">Straighten</button>
+        </div>
+        <button id="itemSaveToLibrary" class="btn small wide">Save to my library</button>
+      </section>
+
+      <section class="card">
+        <h3>Scene</h3>
+        <label>Room
+          <select id="sceneRoom"></select>
+        </label>
+        <label>Style
+          <select id="sceneStyle"></select>
+        </label>
+        <label>Palette and finishes<textarea id="scenePalette" rows="2" placeholder="e.g. warm whites, natural oak, soft sage accents"></textarea></label>
+        <label><input id="sceneClear" type="checkbox" /> Remove existing furniture and clutter first</label>
+        <label><input id="sceneAccessories" type="checkbox" checked /> Allow small accessories on listed items (cushions, throws, books)</label>
+        <label>Extra instructions<textarea id="sceneExtra" rows="2" placeholder="Anything else the model should know"></textarea></label>
+      </section>
+
+      <section class="card">
+        <h3>Render</h3>
+        <div class="row">
+          <label>Resolution
+            <select id="renderSize">
+              <option>1K</option>
+              <option selected>2K</option>
+              <option>4K</option>
+            </select>
+          </label>
+          <label>Variations
+            <select id="renderCount">
+              <option>1</option>
+              <option selected>2</option>
+              <option>3</option>
+              <option>4</option>
+            </select>
+          </label>
+        </div>
+        <button id="render" class="btn primary wide">Render with Nano Banana Pro</button>
+        <p id="keyNote" class="hint"></p>
+        <h4>Use in Higgsfield</h4>
+        <p class="hint">Downloads the original photo, the layout guide and the prompt. In Higgsfield, pick Nano Banana Pro, add the photo first and the guide second, then paste the prompt.</p>
+        <div class="btn-grid">
+          <button id="exportPack" class="btn small">Download pack</button>
+          <button id="copyPrompt" class="btn small">Copy prompt</button>
+          <button id="previewGuide" class="btn small">Preview guide</button>
+          <button id="previewPrompt" class="btn small">Show prompt</button>
+        </div>
+      </section>
+    </aside>
+  </main>
+
+  <dialog id="modal">
+    <div class="modal-head">
+      <strong id="modalTitle"></strong>
+      <button id="modalClose" class="btn small">Close</button>
+    </div>
+    <div id="modalBody"></div>
+  </dialog>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>

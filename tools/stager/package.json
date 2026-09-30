@@ -1,0 +1,10 @@
+{
+  "name": "stager",
+  "private": true,
+  "description": "Layout tool for virtual staging with Nano Banana Pro",
+  "type": "module",
+  "engines": { "node": ">=18" },
+  "scripts": {
+    "start": "node server.mjs"
+  }
+}
