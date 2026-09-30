@@ -13,9 +13,10 @@ description: |
 
 # Cover shot
 
-One photo in, one post-ready image out. The render must still be an honest
-picture of the property. It gets better light and a cleaner frame, not new
-features.
+One photo in, one post-ready image out. The render is the same subject shot
+properly: the camera may move to a better position, the light and grade
+change, and the composition gets rebuilt. The property itself stays honest:
+no new features, nothing erased, same materials and colours.
 
 Tooling: `scripts/cover_shot.py` (Pillow) does everything local. The
 Higgsfield MCP tools do the generation. Outputs go in `covers/<photo-name>/`.
@@ -45,7 +46,7 @@ One question covering the whole batch beats one per photo. Defaults in brackets.
 | Shot | `exterior`, `interior`, `living`, `bedroom`, `kitchen`, `bathroom`, `garden`, `detail` |
 | Light | `keep`, `golden`, `soft`, `morning`, `dusk` [keep] |
 | Grade | `film` warm Portra-style, `clean` bright neutral, `moody` [film] |
-| Strength | `subtle`, `editorial`, `bold`: how far the frame may be recropped [editorial] |
+| Strength | `recompose` moves the camera for a better composition; `subtle`, `editorial`, `bold` only crop [recompose] |
 | Post | `just-listed`, `coming-soon`, `just-sold`, `for-lease`, `open-home`, or custom text |
 | Second line | suburb or street, only if Lochlan gives it. Never guess an address. |
 | Mark | agency name for the opposite corner, optional |
@@ -114,12 +115,15 @@ python3 scripts/cover_shot.py compare covers/<name>/source.jpg covers/<name>/ren
 Open the compare sheet and go over it object by object. Reject a render and
 regenerate (tighten `--notes`) if any of these happen:
 
-- a window, door, step, railing, fixture, tree or plant was added, removed,
-  moved or reshaped
+- a window, door, step, railing, fixture, tree or plant was added, erased,
+  moved relative to its neighbours, or reshaped (with `recompose` the camera
+  may move and things may fall outside the frame; that is fine)
+- the count changed: posts on a rail, steps, window panes, awning stripes
 - a surface changed colour (paint, timber, benchtop, tiles)
 - honest wear vanished so the place looks newer than it is
 - the house number, letterbox or any sign changed or became garbled text
-- the scene extends past what the original frame showed
+- a new viewpoint shows parts of the building that were never in the photo
+  and the model has invented them (continued brick or lawn is fine)
 - shadows fall in a direction that does not match the light
 
 Buyers will walk through this property. A render that misrepresents it can

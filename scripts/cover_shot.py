@@ -295,6 +295,16 @@ FRAME = {
         "graphic idea in the scene and build the frame around it. Straighten verticals as a "
         "shift lens would and level horizontals."
     ),
+    "recompose": (
+        "Re-shoot the same subject from the best camera position a magazine photographer would "
+        "choose. You may move the camera, change its height and angle, and change the lens, to "
+        "find the one strongest composition: a square-on elevation with clean symmetry, a "
+        "confident diagonal, or a tight study of the best detail. Put the subject on the thirds "
+        "or dead centre with intent, give it clean negative space, keep verticals truly vertical "
+        "as a shift lens would, and cut anything at the edges that pulls the eye away. Where the "
+        "new view shows a little more than the original, only continue surfaces that are "
+        "clearly there (more of the same brick, lawn or path); never invent new features."
+    ),
 }
 
 SHOT = {
@@ -346,9 +356,19 @@ def build_prompt(a, info):
         camera += " Measured problems to fix: " + "; ".join(info["fixes"]) + "."
     change.append(f"Camera: {camera}")
 
+    if a.strength == "recompose":
+        first = (
+            "It is the same place, seen better. Every wall, window, door, step, railing, roofline, "
+            "fixture, tree and plant that appears keeps its design, proportions, count and its "
+            "position relative to everything else, even from the new viewpoint."
+        )
+    else:
+        first = (
+            "Every wall, window, door, step, railing, roofline, fixture, tree and plant that stays "
+            "in frame keeps its position, size, shape and count."
+        )
     keep = [
-        "Every wall, window, door, step, railing, roofline, fixture, tree and plant that stays "
-        "in frame keeps its position, size, shape and count.",
+        first,
         "Surfaces keep their real material and base colour under the new light and grade: red "
         "brick stays red brick, a cream wall stays cream, a green awning stays green.",
         "Honest wear stays (chips, patina, grain). Better photography, not a renovated building.",
@@ -359,7 +379,12 @@ def build_prompt(a, info):
             "cables, personal items on benches). Nothing fixed or built in is removed."
         )
     else:
-        keep.append("Nothing is added or removed: no objects, furniture, plants, fittings, people or signs.")
+        keep.append(
+            "Nothing is added to the property or erased from it: no objects, furniture, plants, "
+            "fittings, people or signs. Things may fall outside a tighter frame."
+            if a.strength == "recompose" else
+            "Nothing is added or removed: no objects, furniture, plants, fittings, people or signs."
+        )
     keep.append(
         "The sky may be cleaned up to a clear natural blue with light cloud."
         if a.sky else "The sky changes only in tone."
@@ -856,8 +881,9 @@ def main():
     s.add_argument("--shot", choices=sorted(SHOT), default="interior")
     s.add_argument("--light", choices=LIGHT, default="keep")
     s.add_argument("--grade", choices=GRADE, default="film")
-    s.add_argument("--strength", choices=FRAME, default="editorial",
-                   help="how far the frame may change: subtle, editorial, bold")
+    s.add_argument("--strength", choices=FRAME, default="recompose",
+                   help="how far the shot may change: subtle, editorial, bold crop only; "
+                        "recompose moves the camera for a better composition")
     s.add_argument("--text-space", choices=["auto", "top", "bottom", "none"], default="auto")
     s.add_argument("--tidy", action="store_true", help="allow removing small temporary clutter")
     s.add_argument("--sky", action="store_true", help="allow cleaning up the sky")
