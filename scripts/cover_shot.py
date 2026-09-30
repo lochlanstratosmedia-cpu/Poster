@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """Cover shot: turn a good property photo into an image-led social post.
 
-Four steps, run in order:
+Drop photos in inbox/ first, then run the steps in order:
 
+  intake   move every photo in inbox/ into its own covers/<name>/ folder
   analyse  read a photo's exposure, colour and palette, and find calm areas for text
   prompt   build the Nano Banana Pro edit prompt and write job.json for Higgsfield
   finish   crop the render to a social format and set a small caption on it
@@ -11,7 +12,8 @@ Four steps, run in order:
 The generation itself runs through the Higgsfield connector in Claude Code, so
 this script never calls an API. See .claude/skills/cover-shot/SKILL.md.
 
-Needs Python 3 and Pillow (pip install pillow).
+Needs Python 3 and Pillow (pip install pillow). iPhone HEIC files also need
+pillow-heif (pip install pillow-heif).
 """
 
 import argparse
@@ -59,6 +61,7 @@ INK_LIGHT = (246, 242, 234)
 # ---------------------------------------------------------------- analyse
 
 def load(path):
+    enable_heic()
     img = Image.open(path)
     img = ImageOps.exif_transpose(img)
     return img.convert("RGB")
@@ -548,6 +551,94 @@ def cmd_compare(a):
     print(out)
 
 
+# ---------------------------------------------------------------- intake
+
+INBOX = ROOT / "inbox"
+IMAGE_SUFFIXES = {".jpg", ".jpeg", ".png", ".heic", ".heif", ".webp", ".tif", ".tiff"}
+PHONE_MAKES = ("apple", "samsung", "google", "huawei", "xiaomi", "oneplus", "oppo", "vivo", "motorola", "nothing")
+CAMERA_MAKES = ("canon", "nikon", "sony", "fujifilm", "panasonic", "olympus", "om digital", "leica",
+                "hasselblad", "pentax", "ricoh", "sigma", "dji")
+
+
+def enable_heic():
+    try:
+        import pillow_heif
+        pillow_heif.register_heif_opener()
+        return True
+    except ImportError:
+        return False
+
+
+def slugify(name):
+    out = "".join(c if c.isalnum() else "-" for c in name.lower())
+    while "--" in out:
+        out = out.replace("--", "-")
+    return out.strip("-") or "photo"
+
+
+def detect_source(img):
+    """Phone or camera, from the EXIF maker. Unknown counts as phone."""
+    exif = img.getexif()
+    make = str(exif.get(0x010F, "")).strip().lower()
+    model = str(exif.get(0x0110, "")).strip()
+    if any(m in make for m in CAMERA_MAKES):
+        return "camera", f"{make} {model}".strip()
+    if any(m in make for m in PHONE_MAKES):
+        return "phone", f"{make} {model}".strip()
+    return "phone", (f"{make} {model}".strip() or "no camera data")
+
+
+def filename_hints(stem):
+    """Pick settings out of a filename like 'kitchen golden just-sold.jpg'."""
+    s = stem.lower().replace("_", "-").replace(" ", "-")
+    hints = {}
+    for label in LABELS:
+        if label in s:
+            hints["label"] = label
+    tokens = set(s.split("-"))
+    for shot in SHOT:
+        if shot in tokens:
+            hints["shot"] = shot
+    for light in LIGHT:
+        if light in tokens and light != "keep":
+            hints["light"] = light
+    for src in SOURCE:
+        if src in tokens:
+            hints["source"] = src
+    return hints
+
+
+def cmd_intake(a):
+    inbox = Path(a.inbox)
+    heic = enable_heic()
+    files = sorted(p for p in inbox.iterdir() if p.suffix.lower() in IMAGE_SUFFIXES) if inbox.exists() else []
+    if not files:
+        print(f"Nothing to take in: {inbox} has no photos.")
+        return
+    for f in files:
+        if f.suffix.lower() in (".heic", ".heif") and not heic:
+            print(f"skip {f.name}: HEIC needs pillow-heif (pip install pillow-heif)")
+            continue
+        raw = Image.open(f)
+        source, device = detect_source(raw)
+        img = ImageOps.exif_transpose(raw).convert("RGB")
+        base = slugify(f.stem)
+        slug, n = base, 2
+        while (ROOT / "covers" / slug).exists():
+            slug, n = f"{base}-{n}", n + 1
+        folder = ROOT / "covers" / slug
+        folder.mkdir(parents=True)
+        img.save(folder / "source.jpg", "JPEG", quality=95, subsampling=0)
+        f.rename(folder / f"original{f.suffix.lower()}")
+        hints = filename_hints(f.stem)
+        hints.setdefault("source", source)
+        (folder / "intake.json").write_text(json.dumps({
+            "original_name": f.name, "device": device, "size": list(img.size), "settings": hints,
+        }, indent=2) + "\n")
+        extra = ", ".join(f"{k}={v}" for k, v in hints.items())
+        print(f"covers/{slug}/  {img.size[0]}x{img.size[1]}  {device}  [{extra}]")
+
+
 # ---------------------------------------------------------------- cli
 
 def focus_arg(s):
@@ -558,6 +649,10 @@ def focus_arg(s):
 def main():
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = p.add_subparsers(dest="cmd", required=True)
+
+    s = sub.add_parser("intake", help="move every photo in inbox/ into its own covers/<name>/ job")
+    s.add_argument("--inbox", default=str(INBOX))
+    s.set_defaults(func=cmd_intake)
 
     s = sub.add_parser("analyse", help="exposure, colour, palette and calm caption zones")
     s.add_argument("image")

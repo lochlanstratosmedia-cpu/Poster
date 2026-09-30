@@ -52,8 +52,9 @@ dashes.
 
 ## Cover shots
 
-Give Claude a photo and say what the post is, for example "cover shot of this
-kitchen, phone photo, just listed", or run `/cover-shot`. Claude measures the
+Drop photos in `inbox/` (or attach them in chat) and say "run the inbox", or
+run `/cover-shot`. Filenames can carry options, such as
+`kitchen golden just-listed.jpg`; see `inbox/README.md`. Claude measures the
 photo, builds a Nano Banana Pro prompt that keeps the property's real
 details, renders it on Higgsfield, checks the render against the original,
 then crops it to 4:5 or 9:16 and sets a small caption.
@@ -61,7 +62,8 @@ then crops it to 4:5 or 9:16 and sets a small caption.
 The local steps run on their own too:
 
 ```bash
-pip install pillow
+pip install pillow pillow-heif
+python3 scripts/cover_shot.py intake        # inbox/ -> covers/<name>/
 python3 scripts/cover_shot.py analyse photo.jpg
 python3 scripts/cover_shot.py prompt photo.jpg --source phone --shot kitchen --light keep
 python3 scripts/cover_shot.py finish render.jpg --label just-sold --line "Suburb"

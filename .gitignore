@@ -7,3 +7,7 @@ covers/**/*.jpg
 covers/**/*.jpeg
 covers/**/*.png
 covers/**/*.heic
+
+# Drop folder for cover shots. Only the README is tracked.
+inbox/*
+!inbox/README.md

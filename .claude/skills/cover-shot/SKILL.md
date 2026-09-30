@@ -22,7 +22,21 @@ Higgsfield MCP tools do the generation. Outputs go in `covers/<photo-name>/`.
 
 ## 1. Get the inputs
 
-Ask only for what is missing. Defaults in brackets.
+Photos arrive two ways. Handle both the same:
+
+- **Inbox.** Lochlan drops photos in `inbox/` and says "run the inbox". Run
+  `python3 scripts/cover_shot.py intake`. Each photo moves to
+  `covers/<name>/` as `source.jpg` (HEIC converted, rotation fixed), and
+  `intake.json` records phone or camera from the EXIF maker plus any options
+  found in the filename (`kitchen golden just-sold.jpg`).
+- **Chat attachments.** Copy each attached photo into `inbox/` with a short
+  descriptive name, then run `intake`. Chat uploads lose their camera data,
+  so they default to phone.
+
+Then work through every new `covers/<name>/` folder. Look at each photo to
+choose the shot and light where `intake.json` has none. Ask only for what you
+can't see: the post type if not given, and any second line or agency mark.
+One question covering the whole batch beats one per photo. Defaults in brackets.
 
 | Input | Options |
 |---|---|
