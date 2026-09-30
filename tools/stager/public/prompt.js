@@ -1,3 +1,5 @@
+import { quadFor, isWarped } from "./warp.js";
+
 // Turns the layout into the text prompt sent with the photo and the guide.
 // Image order is fixed: image 1 is the photo, image 2 is the guide, and any
 // product photos follow in item order.
@@ -18,17 +20,24 @@ function depth(bottom) {
 
 const pct = (v) => `${Math.round(Math.min(1, Math.max(0, v)) * 100)}%`;
 
-export function itemBounds(item) {
-  return {
-    left: item.cx - item.w / 2,
-    right: item.cx + item.w / 2,
-    top: item.cy - item.h / 2,
-    bottom: item.cy + item.h / 2,
-  };
+// Final corners in fractions of the image (top-left, top-right,
+// bottom-right, bottom-left), with skew and perspective applied.
+export function itemQuad(item, W, H) {
+  const box = { x: item.cx * W, y: item.cy * H, w: item.w * W, h: item.h * H, r: ((item.rotation || 0) * Math.PI) / 180 };
+  return quadFor(item, box).map((p) => ({ x: p.x / W, y: p.y / H }));
 }
 
-export function describeItem(item, index, refImageNumber) {
-  const b = itemBounds(item);
+export function itemBounds(item, W = 1, H = 1) {
+  const q = itemQuad(item, W, H);
+  const xs = q.map((p) => p.x);
+  const ys = q.map((p) => p.y);
+  return { left: Math.min(...xs), right: Math.max(...xs), top: Math.min(...ys), bottom: Math.max(...ys), quad: q };
+}
+
+const at = (p) => `${pct(p.x)} across, ${pct(p.y)} down`;
+
+export function describeItem(item, index, refImageNumber, W = 1, H = 1) {
+  const b = itemBounds(item, W, H);
   const what = (item.prompt || item.name || "piece of furniture").trim();
   const lines = [`${index + 1}. ${cap(item.colorName)} placeholder, number ${index + 1}: ${what}.`];
   if (item.notes?.trim()) lines.push(`   Details: ${item.notes.trim().replace(/\.?$/, ".")}`);
@@ -42,7 +51,16 @@ export function describeItem(item, index, refImageNumber) {
   lines.push(`   ${where}. It fills the box from ${pct(b.left)} to ${pct(b.right)} across and ${pct(b.top)} to ${pct(b.bottom)} down the image.`);
 
   if (item.facing) lines.push(`   Facing ${item.facing}.`);
-  if (Math.abs(item.rotation || 0) > 2) lines.push(`   The placeholder is rotated ${Math.round(item.rotation)} degrees to follow the room's lines.`);
+  const angled = isWarped(item) || Math.abs(item.rotation || 0) > 2;
+  if (angled) {
+    const [tl, tr, br, bl] = b.quad;
+    lines.push("   The placeholder is drawn in perspective to show the angle the item sits at in this photo. Match that angle and orientation, not a straight-on view.");
+    if (item.mount === "floor" || !item.mount) {
+      lines.push(`   Its bottom edge runs from ${at(bl)} to ${at(br)}, and its top edge from ${at(tl)} to ${at(tr)}.`);
+    } else {
+      lines.push(`   Its corners are at ${at(tl)} (top left), ${at(tr)} (top right), ${at(br)} (bottom right) and ${at(bl)} (bottom left).`);
+    }
+  }
   return lines.join("\n");
 }
 
@@ -50,7 +68,7 @@ function cap(s) {
   return s ? s[0].toUpperCase() + s.slice(1) : "";
 }
 
-export function buildPrompt(scene, items) {
+export function buildPrompt(scene, items, W = 1, H = 1) {
   let nextImage = 3;
   const refNumbers = items.map((it) => (it.ref ? nextImage++ : null));
   const refCount = nextImage - 3;
@@ -84,7 +102,7 @@ export function buildPrompt(scene, items) {
   out.push("");
   if (items.length) {
     out.push(`Items (${items.length}):`);
-    items.forEach((it, i) => out.push(describeItem(it, i, refNumbers[i])));
+    items.forEach((it, i) => out.push(describeItem(it, i, refNumbers[i], W, H)));
   } else {
     out.push("No placeholders have been placed. Stage the room tastefully in the chosen style.");
   }

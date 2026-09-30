@@ -82,6 +82,22 @@
             <select id="itemColor"></select>
           </label>
         </div>
+        <div class="persp">
+          <div class="ref-head">Angle and perspective</div>
+          <label class="slider">Skew across <span id="itemSkewXVal">0</span>
+            <input id="itemSkewX" type="range" min="-60" max="60" step="1" value="0" /></label>
+          <label class="slider">Skew up and down <span id="itemSkewYVal">0</span>
+            <input id="itemSkewY" type="range" min="-60" max="60" step="1" value="0" /></label>
+          <label class="slider">Turn away (left or right side further) <span id="itemPerspXVal">0</span>
+            <input id="itemPerspX" type="range" min="-100" max="100" step="1" value="0" /></label>
+          <label class="slider">Tilt back (top edge further) <span id="itemPerspYVal">0</span>
+            <input id="itemPerspY" type="range" min="-100" max="100" step="1" value="0" /></label>
+          <div class="row">
+            <button id="itemCorners" class="btn small">Drag corners</button>
+            <button id="itemResetPersp" class="btn small">Reset angle</button>
+          </div>
+          <p class="hint">Drag corners lets you pin each corner to the photo, like matching a rug to the floor. Double-click a slider to zero it.</p>
+        </div>
         <div class="ref">
           <div class="ref-head">Product photo (optional)</div>
           <img id="itemRefPreview" alt="" class="hidden" />

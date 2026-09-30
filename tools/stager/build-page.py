@@ -18,7 +18,7 @@ css = (pub / "styles.css").read_text()
 s = s.replace('<link rel="stylesheet" href="styles.css" />', f"<style>\n{css}</style>")
 
 js = ""
-for name in ["library.js", "shapes.js", "prompt.js", "app.js"]:
+for name in ["library.js", "shapes.js", "warp.js", "prompt.js", "app.js"]:
     t = (pub / name).read_text()
     t = re.sub(r"^import .*?;\n", "", t, flags=re.M)
     t = re.sub(r"^export ", "", t, flags=re.M)

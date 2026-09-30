@@ -63,6 +63,26 @@ keys nudge it (Shift for bigger steps), Ctrl+Z undoes, Esc deselects.
 - Put rugs at the back of the layer order (Send back) so other pieces sit on
   top of them. New rugs start there.
 - Use Rotate to follow the line of a wall seen at an angle.
+
+### Angled and off-centre shots
+
+Most photos are not taken straight on, so every placeholder can be put in
+perspective. Select an item and use the sliders under "Angle and perspective":
+
+- Skew across and Skew up and down slant the shape.
+- Turn away makes one side shorter, as if it is further from the camera. Use
+  it for a sofa along a side wall.
+- Tilt back makes the top edge narrower. Use it for rugs, beds and tables seen
+  from above.
+
+For full control, click Drag corners (or double-click the item) and drag each
+corner onto the photo. This works well for rugs: put the four corners where
+the rug's corners should sit on the floor. Click Done or press Esc to finish.
+Reset angle clears all of it, and double-clicking a slider zeroes that one.
+
+The guide image shows the warped shape, and the prompt gives the model the
+positions of each corner so it matches the angle instead of rendering the
+piece straight on.
 - For big rooms, stage in two passes. Render the main pieces, click "Use as
   base" on the best result, then add decor and render again.
 

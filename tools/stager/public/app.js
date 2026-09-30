@@ -1,6 +1,7 @@
 import { LIBRARY, CATEGORIES, SHAPES, STYLES, ROOM_TYPES, PALETTE } from "./library.js";
 import { drawShape } from "./shapes.js";
 import { buildPrompt } from "./prompt.js";
+import { emptyWarp, isWarped, localCorners, quadFor, pointInQuad, centroid, warpToCanvas } from "./warp.js";
 
 const $ = (id) => document.getElementById(id);
 const canvas = $("canvas");
@@ -33,6 +34,10 @@ let history = [];
 let view = { s: 1, ox: 0, oy: 0 };
 let drag = null;
 let uidCounter = 1;
+// "transform" shows move, resize and rotate handles. "corners" lets each
+// corner be dragged on its own for perspective.
+let editMode = "transform";
+const warpCache = new Map();
 
 // ---------- storage (per-browser conveniences only) ----------
 
@@ -328,6 +333,11 @@ function addItem(libId, cx, cy) {
     h,
     rotation: 0,
     flip: false,
+    skewX: 0,
+    skewY: 0,
+    perspX: 0,
+    perspY: 0,
+    warp: emptyWarp(),
     ref: lib.ref || null,
   };
   // Rugs go underneath everything else.
@@ -379,6 +389,10 @@ function rotatePt(x, y, r) {
 function handlesFor(item) {
   const b = screenBox(item);
   const pts = {};
+  if (editMode === "corners") {
+    quadFor(item, b).forEach((p, i) => (pts[`c${i}`] = { x: p.x, y: p.y, i }));
+    return pts;
+  }
   for (const [name, sx, sy] of [
     ["nw", -1, -1],
     ["ne", 1, -1],
@@ -393,14 +407,43 @@ function handlesFor(item) {
   return pts;
 }
 
-function drawItem(g, item, box, { alpha, lineWidth, badgeR, showName, index }) {
-  g.save();
-  g.translate(box.x, box.y);
-  g.rotate(box.r);
-  if (item.flip) g.scale(-1, 1);
-  g.translate(-box.w / 2, -box.h / 2);
-  drawShape(g, item.shape, box.w, box.h, item.color, { alpha, lineWidth });
-  g.restore();
+// Flat rendering of an item's silhouette, used as the texture for warping.
+function shapeTexture(item, w, h, alpha, lineWidth) {
+  const k = Math.min(1, 1200 / Math.max(w, h, 1));
+  const c = document.createElement("canvas");
+  c.width = Math.max(2, Math.round(w * k));
+  c.height = Math.max(2, Math.round(h * k));
+  const g = c.getContext("2d");
+  if (item.flip) {
+    g.translate(c.width, 0);
+    g.scale(-1, 1);
+  }
+  drawShape(g, item.shape, c.width, c.height, item.color, { alpha, lineWidth: Math.max(1, lineWidth * k) });
+  return c;
+}
+
+function drawItem(g, item, box, { alpha, lineWidth, badgeR, showName, index, cache = false }) {
+  let center = { x: box.x, y: box.y };
+  if (isWarped(item)) {
+    const quad = quadFor(item, box);
+    center = centroid(quad);
+    const key = JSON.stringify([item.shape, item.color, item.flip, alpha, lineWidth, quad.map((p) => [p.x.toFixed(1), p.y.toFixed(1)])]);
+    let warped = cache && warpCache.get(item.uid)?.key === key ? warpCache.get(item.uid).warped : null;
+    if (!warped) {
+      warped = warpToCanvas(shapeTexture(item, box.w, box.h, alpha, lineWidth), quad);
+      if (cache) warpCache.set(item.uid, { key, warped });
+    }
+    if (warped) g.drawImage(warped.canvas, warped.x, warped.y);
+  } else {
+    g.save();
+    g.translate(box.x, box.y);
+    g.rotate(box.r);
+    if (item.flip) g.scale(-1, 1);
+    g.translate(-box.w / 2, -box.h / 2);
+    drawShape(g, item.shape, box.w, box.h, item.color, { alpha, lineWidth });
+    g.restore();
+  }
+  box = { ...box, x: center.x, y: center.y };
 
   // Number badge, kept upright.
   g.save();
@@ -444,6 +487,7 @@ function draw() {
         badgeR: 11,
         showName: $("showNames").checked,
         index,
+        cache: true,
       });
     });
   }
@@ -452,28 +496,48 @@ function draw() {
   if (sel && $("showPlaceholders").checked) {
     const b = screenBox(sel);
     ctx.save();
-    ctx.translate(b.x, b.y);
-    ctx.rotate(b.r);
     ctx.setLineDash([5, 4]);
     ctx.strokeStyle = "#ffffff";
     ctx.lineWidth = 1.5;
-    ctx.strokeRect(-b.w / 2, -b.h / 2, b.w, b.h);
-    ctx.setLineDash([]);
-    ctx.beginPath();
-    ctx.moveTo(0, -b.h / 2);
-    ctx.lineTo(0, -b.h / 2 - ROT_OFFSET);
-    ctx.stroke();
+    if (editMode === "corners") {
+      const q = quadFor(sel, b);
+      ctx.beginPath();
+      q.forEach((p, i) => (i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y)));
+      ctx.closePath();
+      ctx.stroke();
+    } else {
+      ctx.translate(b.x, b.y);
+      ctx.rotate(b.r);
+      ctx.strokeRect(-b.w / 2, -b.h / 2, b.w, b.h);
+      ctx.setLineDash([]);
+      ctx.beginPath();
+      ctx.moveTo(0, -b.h / 2);
+      ctx.lineTo(0, -b.h / 2 - ROT_OFFSET);
+      ctx.stroke();
+    }
     ctx.restore();
     const hs = handlesFor(sel);
     for (const [name, p] of Object.entries(hs)) {
       ctx.beginPath();
       if (name === "rot") ctx.arc(p.x, p.y, HANDLE, 0, Math.PI * 2);
+      else if (name.startsWith("c")) ctx.arc(p.x, p.y, HANDLE + 1, 0, Math.PI * 2);
       else ctx.rect(p.x - HANDLE / 2 - 1, p.y - HANDLE / 2 - 1, HANDLE + 2, HANDLE + 2);
-      ctx.fillStyle = "#ffffff";
+      ctx.fillStyle = name.startsWith("c") ? sel.color : "#ffffff";
       ctx.fill();
-      ctx.strokeStyle = sel.color;
+      ctx.strokeStyle = name.startsWith("c") ? "#ffffff" : sel.color;
       ctx.lineWidth = 2;
       ctx.stroke();
+    }
+    if (editMode === "corners") {
+      ctx.save();
+      ctx.font = "600 12px system-ui, sans-serif";
+      const msg = "Corner mode: drag any corner. Double-click or press Done to finish.";
+      const tw = ctx.measureText(msg).width + 16;
+      ctx.fillStyle = "rgba(0,0,0,0.72)";
+      ctx.fillRect(10, 10, tw, 24);
+      ctx.fillStyle = "#ffffff";
+      ctx.fillText(msg, 18, 26);
+      ctx.restore();
     }
   }
 }
@@ -497,6 +561,7 @@ function hitTest(p) {
     const b = screenBox(item);
     const l = rotatePt(p.x - b.x, p.y - b.y, -b.r);
     if (Math.abs(l.x) <= b.w / 2 + 3 && Math.abs(l.y) <= b.h / 2 + 3) return { item, handle: null };
+    if (isWarped(item) && pointInQuad(p, quadFor(item, b))) return { item, handle: null };
   }
   return null;
 }
@@ -507,6 +572,7 @@ canvas.addEventListener("pointerdown", (ev) => {
   const hit = hitTest(p);
   if (!hit) {
     state.selected = null;
+    editMode = "transform";
     refreshItemPanel();
     draw();
     return;
@@ -514,11 +580,14 @@ canvas.addEventListener("pointerdown", (ev) => {
   canvas.setPointerCapture(ev.pointerId);
   snapshot();
   const item = hit.item;
+  if (item.uid !== state.selected) editMode = "transform";
   state.selected = item.uid;
   refreshItemPanel();
   const b = screenBox(item);
   if (hit.handle === "rot") {
     drag = { mode: "rotate", item };
+  } else if (hit.handle?.startsWith("c")) {
+    drag = { mode: "corner", item, i: Number(hit.handle.slice(1)) };
   } else if (hit.handle) {
     const hs = handlesFor(item);
     const opposite = { nw: "se", ne: "sw", se: "nw", sw: "ne" }[hit.handle];
@@ -541,7 +610,7 @@ canvas.addEventListener("pointermove", (ev) => {
   const p = pointerPos(ev);
   if (!drag) {
     const hit = state.photo && $("showPlaceholders").checked ? hitTest(p) : null;
-    canvas.style.cursor = !hit ? "default" : hit.handle === "rot" ? "grab" : hit.handle ? "nwse-resize" : "move";
+    canvas.style.cursor = !hit ? "default" : hit.handle === "rot" ? "grab" : hit.handle?.startsWith("c") ? "crosshair" : hit.handle ? "nwse-resize" : "move";
     return;
   }
   const { W, H } = state.photo;
@@ -556,6 +625,12 @@ canvas.addEventListener("pointermove", (ev) => {
     if (ev.shiftKey) deg = Math.round(deg / 15) * 15;
     else if (Math.abs(deg) < 3) deg = 0;
     item.rotation = deg;
+  } else if (drag.mode === "corner") {
+    const b = screenBox(item);
+    const l = rotatePt(p.x - b.x, p.y - b.y, -b.r);
+    const base = localCorners(item, b.w, b.h, { withWarp: false })[drag.i];
+    if (!item.warp) item.warp = emptyWarp();
+    item.warp[drag.i] = { x: (l.x - base.x) / b.w, y: (l.y - base.y) / b.h };
   } else if (drag.mode === "resize") {
     const r = ((item.rotation || 0) * Math.PI) / 180;
     const v = rotatePt(p.x - drag.anchor.x, p.y - drag.anchor.y, -r);
@@ -655,6 +730,12 @@ function refreshItemPanel() {
   $("itemMount").value = item.mount;
   $("itemShape").value = item.shape;
   $("itemColor").value = String(item.colorIdx);
+  for (const [id, key, scale] of PERSPECTIVE_FIELDS) {
+    $(id).value = String(Math.round((item[key] || 0) * scale));
+    $(`${id}Val`).textContent = $(id).value;
+  }
+  $("itemCorners").textContent = editMode === "corners" ? "Done" : "Drag corners";
+  $("itemCorners").classList.toggle("primary", editMode === "corners");
   const prev = $("itemRefPreview");
   prev.classList.toggle("hidden", !item.ref);
   if (item.ref) prev.src = item.ref;
@@ -677,6 +758,54 @@ bindItemField("itemNotes", "notes");
 bindItemField("itemFacing", "facing", "change");
 bindItemField("itemMount", "mount", "change");
 bindItemField("itemShape", "shape", "change");
+
+// Perspective sliders. Skew is stored in degrees, perspective as -1 to 1.
+const PERSPECTIVE_FIELDS = [
+  ["itemSkewX", "skewX", 1],
+  ["itemSkewY", "skewY", 1],
+  ["itemPerspX", "perspX", 100],
+  ["itemPerspY", "perspY", 100],
+];
+for (const [id, key, scale] of PERSPECTIVE_FIELDS) {
+  const el = $(id);
+  el.addEventListener("pointerdown", () => snapshot());
+  el.addEventListener("keydown", () => snapshot());
+  el.addEventListener("input", () => {
+    const item = selectedItem();
+    if (!item) return;
+    item[key] = Number(el.value) / scale;
+    $(`${id}Val`).textContent = el.value;
+    draw();
+  });
+  el.addEventListener("dblclick", () => {
+    const item = selectedItem();
+    if (!item) return;
+    snapshot();
+    item[key] = 0;
+    refreshItemPanel();
+    draw();
+  });
+}
+
+function toggleCorners() {
+  if (!selectedItem()) return;
+  editMode = editMode === "corners" ? "transform" : "corners";
+  refreshItemPanel();
+  draw();
+}
+$("itemCorners").onclick = toggleCorners;
+canvas.addEventListener("dblclick", (ev) => {
+  const hit = state.photo && hitTest(pointerPos(ev));
+  if (hit && hit.item.uid === state.selected) toggleCorners();
+});
+$("itemResetPersp").onclick = () => {
+  const item = selectedItem();
+  if (!item) return;
+  snapshot();
+  Object.assign(item, { skewX: 0, skewY: 0, perspX: 0, perspY: 0, warp: emptyWarp() });
+  refreshItemPanel();
+  draw();
+};
 
 $("itemColor").addEventListener("change", () => {
   const item = selectedItem();
@@ -714,6 +843,7 @@ function duplicateSelected() {
   const colorIdx = nextColorIdx();
   const copy = {
     ...item,
+    warp: (item.warp || emptyWarp()).map((c) => ({ ...c })),
     uid: `i${Date.now().toString(36)}${uidCounter++}`,
     cx: item.cx + 0.03,
     cy: item.cy + 0.03,
@@ -879,7 +1009,7 @@ function renderGuide(maxSide) {
 }
 
 function currentPrompt() {
-  return buildPrompt(state.scene, state.items);
+  return buildPrompt(state.scene, state.items, state.photo?.W || 1, state.photo?.H || 1);
 }
 
 function openModal(title, node) {
@@ -1123,6 +1253,8 @@ window.addEventListener("keydown", (ev) => {
   } else if (mod && ev.key.toLowerCase() === "d") {
     ev.preventDefault();
     duplicateSelected();
+  } else if (ev.key === "Escape" && editMode === "corners") {
+    toggleCorners();
   } else if (ev.key === "Escape") {
     state.selected = null;
     refreshItemPanel();
