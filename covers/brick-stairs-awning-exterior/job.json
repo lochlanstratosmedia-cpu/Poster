@@ -18,7 +18,7 @@
     "medias": [
       {
         "role": "image_references",
-        "value": "<media_id of the uploaded source>"
+        "value": "3bccbf3e-a210-4d27-9b96-ce8dcdb008d8"
       }
     ]
   },
@@ -94,5 +94,15 @@
       }
     },
     "fixes": []
-  }
+  },
+  "renders": [
+    {
+      "job_id": "8f74df13-89cf-47a5-9014-3615351b0873",
+      "file": "render-1.png"
+    },
+    {
+      "job_id": "b072aeff-c1f6-4212-adf8-b1b6cb00a6c1",
+      "file": "render-2.png"
+    }
+  ]
 }

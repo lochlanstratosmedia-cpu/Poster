@@ -79,6 +79,11 @@ Add `--sky` only for a dull sky on an exterior.
 1. Upload the source. Call `media_upload` with the filename, PUT the bytes to
    the returned `upload_url` with curl (send both `Content-Type` and
    `If-None-Match: *`, since they are signed headers), then `media_confirm`.
+   A cloud session needs three hosts allowed: `upload.higgsfield.ai`
+   (uploads), `d8j0ntlcm91z4.cloudfront.net` (renders) and
+   `d2ol7oe51mr4n9.cloudfront.net` (uploaded sources). If renders can't be
+   downloaded, ask Lochlan to save them from Higgsfield and attach them in
+   chat, then carry on from step 4.
    If the network blocks `upload.higgsfield.ai`, use `media_upload_widget`
    so Lochlan picks the file in the browser, or `media_import_url` with a
    public HTTPS link to the photo.
