@@ -10,15 +10,30 @@
   --stage: #2a2a2d;
 }
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="light"]) {
     --bg: #161618;
     --panel: #1f1f22;
     --ink: #ececef;
     --muted: #9a9aa2;
     --line: #34343a;
     --accent: #5b8cff;
+    --accent-ink: #ffffff;
+    --danger: #ff6b6b;
     --stage: #0f0f11;
+    color-scheme: dark;
   }
+}
+:root[data-theme="dark"] {
+  --bg: #161618;
+  --panel: #1f1f22;
+  --ink: #ececef;
+  --muted: #9a9aa2;
+  --line: #34343a;
+  --accent: #5b8cff;
+  --accent-ink: #ffffff;
+  --danger: #ff6b6b;
+  --stage: #0f0f11;
+  color-scheme: dark;
 }
 * { box-sizing: border-box; }
 html, body { margin: 0; height: 100%; }
@@ -131,3 +146,9 @@ dialog::backdrop { background: rgba(0, 0, 0, 0.6); }
   .side { border-left: 0; }
   .stage { height: 55vh; }
 }
+
+.ask { width: min(420px, 92vw); padding: 16px; }
+.ask p { margin: 0 0 12px; }
+.ask input { margin-bottom: 12px; }
+.ask-actions { display: flex; justify-content: flex-end; gap: 8px; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }

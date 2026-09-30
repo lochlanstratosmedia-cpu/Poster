@@ -7,7 +7,17 @@ copy with the coloured, numbered placeholders drawn on it (the layout guide),
 and a prompt that describes each numbered placeholder. The model renders real
 furniture where the placeholders are instead of choosing its own layout.
 
-## Run it
+## Open it
+
+A hosted copy is at https://claude.ai/artifact/6tqzEp83pBwhHMQ8FyLDkW. It is
+private until you share it from the page's Share menu. The hosted copy does
+everything except Render, because it cannot reach the Gemini API. Use Download
+pack and run the files in Higgsfield, or run Stager locally to render.
+
+To rebuild the hosted copy after changing `public/`, run
+`python3 build-page.py` and publish `dist/index.html`.
+
+## Run it locally
 
 You need Node 18 or newer. There is nothing to install.
 

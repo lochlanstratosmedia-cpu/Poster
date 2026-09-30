@@ -108,14 +108,72 @@ function nearestRatio(W, H) {
   return best;
 }
 
-function download(href, filename) {
+function dataUrlToBlob(dataUrl) {
+  const [head, body] = dataUrl.split(",");
+  const mime = /data:([^;]+)/.exec(head)?.[1] || "application/octet-stream";
+  const bin = atob(body);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return new Blob([bytes], { type: mime });
+}
+
+// Saves a file. Inside a published claude.ai page, plain download links are
+// blocked, so the platform's downloads capability is used when it is there.
+let downloadsApi;
+async function download(data, filename) {
+  const blob = typeof data === "string" ? dataUrlToBlob(data) : data;
+  if (downloadsApi === undefined) {
+    downloadsApi = window.claude?.use ? await window.claude.use("downloads").catch(() => null) : null;
+  }
+  if (downloadsApi) {
+    try {
+      await downloadsApi.save({ filename, data: blob });
+      return true;
+    } catch (e) {
+      if (e?.code !== "declined") setStatus(`Could not save ${filename}: ${e?.message || e}`);
+      return false;
+    }
+  }
+  const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
-  a.href = href;
+  a.href = url;
   a.download = filename;
   document.body.appendChild(a);
   a.click();
   a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 10000);
+  return true;
 }
+
+// In-page replacements for alert, confirm and prompt, which published pages
+// cannot show.
+function ask(message, { okLabel = "OK", cancelLabel = "Cancel", input = null } = {}) {
+  return new Promise((resolve) => {
+    const dlg = $("askDialog");
+    $("askMessage").textContent = message;
+    const field = $("askInput");
+    field.hidden = input == null;
+    field.value = input ?? "";
+    $("askOk").textContent = okLabel;
+    $("askCancel").hidden = cancelLabel == null;
+    $("askCancel").textContent = cancelLabel || "";
+    const done = (ok) => {
+      dlg.close();
+      $("askOk").onclick = $("askCancel").onclick = dlg.oncancel = null;
+      resolve(input == null ? ok : ok ? field.value.trim() || null : null);
+    };
+    $("askOk").onclick = () => done(true);
+    $("askCancel").onclick = () => done(false);
+    dlg.oncancel = (ev) => {
+      ev.preventDefault();
+      done(false);
+    };
+    dlg.showModal();
+    (input == null ? $("askOk") : field).focus();
+  });
+}
+
+const notice = (message) => ask(message, { cancelLabel: null });
 
 async function copyText(text) {
   try {
@@ -214,9 +272,9 @@ function renderLibrary() {
         del.className = "del";
         del.textContent = "x";
         del.title = "Remove from my library";
-        del.onclick = (ev) => {
+        del.onclick = async (ev) => {
           ev.stopPropagation();
-          if (!confirm(`Remove "${e.name}" from your library?`)) return;
+          if (!(await ask(`Remove "${e.name}" from your library?`, { okLabel: "Remove" }))) return;
           state.myLibrary = state.myLibrary.filter((m) => m.id !== e.id);
           save("stager.library", state.myLibrary);
           renderLibrary();
@@ -548,14 +606,14 @@ async function setPhoto(src, { keepItems = false } = {}) {
   try {
     const img = await loadImage(src);
     if (state.photo && state.items.length && !keepItems) {
-      if (!confirm("Replace the photo? Your placeholders stay where they are, relative to the frame.")) return;
+      if (!(await ask("Replace the photo? Your placeholders stay where they are, relative to the frame.", { okLabel: "Replace" }))) return;
     }
     state.photo = { src, img, W: img.naturalWidth, H: img.naturalHeight };
     computeView();
     draw();
     setStatus(`${img.naturalWidth} x ${img.naturalHeight}, output ratio ${nearestRatio(img.naturalWidth, img.naturalHeight)}`);
   } catch (e) {
-    alert(e.message);
+    notice(e.message);
   }
 }
 
@@ -711,10 +769,10 @@ $("itemResetRot").onclick = () => {
   draw();
 };
 
-$("itemSaveToLibrary").onclick = () => {
+$("itemSaveToLibrary").onclick = async () => {
   const item = selectedItem();
   if (!item || !state.photo) return;
-  const name = prompt("Name for this library item", item.name);
+  const name = await ask("Name for this library item", { okLabel: "Save", input: item.name });
   if (!name) return;
   const { W, H } = state.photo;
   const entry = {
@@ -732,17 +790,17 @@ $("itemSaveToLibrary").onclick = () => {
   };
   state.myLibrary.unshift(entry);
   if (!save("stager.library", state.myLibrary)) {
-    alert("Saved for this session, but the browser storage is full, so it will not survive a reload. Use Export my library to keep it.");
+    notice("Saved for this session, but the browser storage is full, so it will not survive a reload. Use Export my library to keep it.");
   }
   renderLibrary();
 };
 
 $("exportLibrary").onclick = () => {
-  if (!state.myLibrary.length) return alert("Your library is empty. Select an item and use Save to my library first.");
+  if (!state.myLibrary.length) return notice("Your library is empty. Select an item and use Save to my library first.");
   const blob = new Blob([JSON.stringify({ stagerLibrary: 1, items: state.myLibrary }, null, 2)], {
     type: "application/json",
   });
-  download(URL.createObjectURL(blob), "stager-library.json");
+  download(blob, "stager-library.json");
 };
 
 $("libraryInput").addEventListener("change", async (ev) => {
@@ -761,7 +819,7 @@ $("libraryInput").addEventListener("change", async (ev) => {
     renderLibrary();
     setStatus(`Imported ${incoming.length} library item(s).`);
   } catch {
-    alert("That file is not a Stager library.");
+    notice("That file is not a Stager library.");
   }
 });
 
@@ -850,7 +908,7 @@ $("copyPrompt").onclick = async () => {
   setStatus((await copyText(currentPrompt())) ? "Prompt copied." : "Could not copy. Use Show prompt instead.");
 };
 
-$("exportPack").onclick = () => {
+$("exportPack").onclick = async () => {
   if (!state.photo) return setStatus("Upload a photo first.");
   const stamp = new Date().toISOString().slice(0, 16).replace(/[:T]/g, "-");
   const photo = document.createElement("canvas");
@@ -860,13 +918,18 @@ $("exportPack").onclick = () => {
   const files = [
     [photo.toDataURL("image/jpeg", 0.95), `stager-${stamp}-1-photo.jpg`],
     [renderGuide(4096).toDataURL("image/png"), `stager-${stamp}-2-guide.png`],
-    [URL.createObjectURL(new Blob([currentPrompt()], { type: "text/plain" })), `stager-${stamp}-prompt.txt`],
+    [new Blob([currentPrompt()], { type: "text/plain" }), `stager-${stamp}-prompt.txt`],
   ];
   state.items.forEach((it, i) => {
     if (it.ref) files.push([it.ref, `stager-${stamp}-ref-item-${i + 1}.jpg`]);
   });
-  files.forEach(([href, name], i) => setTimeout(() => download(href, name), i * 350));
-  setStatus("Downloading the photo, guide and prompt.");
+  setStatus("Saving the photo, guide and prompt.");
+  let saved = 0;
+  for (const [data, name] of files) {
+    if (await download(data, name)) saved++;
+    await new Promise((r) => setTimeout(r, 350));
+  }
+  setStatus(`Saved ${saved} of ${files.length} files.`);
 };
 
 async function renderOnce(payload, entry) {
@@ -889,7 +952,7 @@ async function renderOnce(payload, entry) {
 
 $("render").onclick = async () => {
   if (!state.photo) return setStatus("Upload a photo first.");
-  if (!state.config.hasKey) return alert("Rendering needs GEMINI_API_KEY on the server. You can still use Download pack with Higgsfield.");
+  if (!state.config.hasKey) return notice("Rendering needs the local Stager server running with GEMINI_API_KEY set. You can still use Download pack with Higgsfield.");
   const count = Number($("renderCount").value);
   setStatus("Preparing images...");
   const photo = await downscale(state.photo.src, 2560, "image/jpeg", 0.92);
@@ -957,7 +1020,7 @@ function renderResults() {
       base.textContent = "Use as base";
       base.title = "Load this render as the photo and clear the placeholders, to add more items in a second pass";
       base.onclick = async () => {
-        if (!confirm("Use this render as the new photo? Current placeholders will be cleared (Undo brings them back).")) return;
+        if (!(await ask("Use this render as the new photo? Current placeholders will be cleared (Undo brings them back).", { okLabel: "Use as base" }))) return;
         snapshot();
         state.items = [];
         state.selected = null;
@@ -1015,7 +1078,7 @@ $("saveProject").onclick = () => {
     results: state.results.filter((r) => r.status === "done").map(({ id, src, before }) => ({ id, src, before })),
   };
   const blob = new Blob([JSON.stringify(data)], { type: "application/json" });
-  download(URL.createObjectURL(blob), `stager-project-${new Date().toISOString().slice(0, 10)}.json`);
+  download(blob, `stager-project-${new Date().toISOString().slice(0, 10)}.json`);
 };
 
 $("projectInput").addEventListener("change", async (ev) => {
@@ -1035,7 +1098,7 @@ $("projectInput").addEventListener("change", async (ev) => {
     renderResults();
     await setPhoto(data.photo, { keepItems: true });
   } catch {
-    alert("That file is not a Stager project.");
+    notice("That file is not a Stager project.");
   }
 });
 
@@ -1111,7 +1174,7 @@ async function init() {
   $("render").disabled = !state.config.hasKey;
   $("keyNote").textContent = state.config.hasKey
     ? `Renders go to ${state.config.model} through the local server.`
-    : "Render is off because the server has no GEMINI_API_KEY. Download pack works without it.";
+    : "Render needs the local Stager server with a Gemini key. Download pack works everywhere.";
 }
 
 init();
