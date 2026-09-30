@@ -13,14 +13,14 @@
   },
   "higgsfield": {
     "model": "nano_banana_pro",
-    "aspect_ratio": "3:4",
+    "aspect_ratio": "4:5",
     "resolution": "2k",
-    "count": 2,
+    "count": 1,
     "prompt": "Re-photograph this scene the way a leading architectural photographer would for the cover of an architecture and interiors magazine. The result must look clearly and visibly better than the input: new light, a real colour grade and a stronger frame. A result that looks like the input with small tweaks is a failure.\n\nCHANGE:\n1. Light: Relight the scene as late-afternoon golden hour: low, warm sun raking across the surfaces so every texture reads, long soft-edged shadows following the sun direction already in the photo, a warm glow on sunlit surfaces and cool blue-grey open shade.\n2. Grade: A warm, filmic editorial grade in the manner of Kodak Portra 400: creamy highlights, slightly lifted blacks, gentle warmth in the midtones, greens pulled toward olive, oranges and reds softened toward terracotta. Lower saturation and a softer contrast curve than the phone original.\n3. Frame: Reframe for a stronger composition. Crop in (up to about a quarter of the frame) toward the most graphic part of the scene, such as leading lines, repeating shapes or the fall of light, and place it on the thirds. Straighten verticals as a shift lens would and level horizontals. Trim distracting edges. Leave the top sixth of the final frame calm and uncluttered (whatever is already there: sky, wall, floor, lawn) so a small caption can sit on it later.\n4. Camera: This is a phone photo. Undo the phone processing: HDR flatness and halos, over-sharpening, smeared noise, oversaturated greens and skies, crushed blacks, and wide-angle stretching near the edges. It should look like it was shot on a full-frame camera with a tilt-shift lens, on a tripod, by an architectural photographer.\n- Finish: soft highlight roll-off, fine natural grain, no HDR halos, no over-sharpening, no plastic or CGI look.\n\nSUBJECT: Exterior. Facade, roof, gutters, fence, paths, steps, letterbox and garden are the real property. Lawn and foliage a healthy natural green, never neon.\n\nKEEP TRUE (the property must stay honest):\n- Every wall, window, door, step, railing, roofline, fixture, tree and plant that stays in frame keeps its position, size, shape and count.\n- Surfaces keep their real material and base colour under the new light and grade: red brick stays red brick, a cream wall stays cream, a green awning stays green.\n- Honest wear stays (chips, patina, grain). Better photography, not a renovated building.\n- Nothing is added or removed: no objects, furniture, plants, fittings, people or signs.\n- The sky changes only in tone.\n\nNOTES: The strongest idea here is the diagonal: the white handrail and concrete steps climbing across warm face brick, with their shadows repeating the line. Build the frame around it. The green and cream striped awning with its scalloped edge, the lace curtains, the security door, sensor light, chipped sill and garden bed are all real and stay if they remain in frame.\n\nDo not add any text, watermark, logo or border. House numbers and signs already in the photo stay as they are.",
     "medias": [
       {
         "role": "image_references",
-        "value": "<media_id of the uploaded source>"
+        "value": "3bccbf3e-a210-4d27-9b96-ce8dcdb008d8"
       }
     ]
   },
@@ -96,5 +96,11 @@
       }
     },
     "fixes": []
-  }
+  },
+  "renders": [
+    {
+      "job_id": "8bba3f51-b9dc-4253-8622-50066bbeeb27",
+      "take": "golden + film"
+    }
+  ]
 }
