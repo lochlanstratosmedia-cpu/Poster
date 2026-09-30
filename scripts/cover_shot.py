@@ -379,7 +379,13 @@ def cmd_prompt(a):
         },
         "analysis": info,
     }
-    out = Path(a.out) if a.out else ROOT / "covers" / Path(a.image).stem / "job.json"
+    src = Path(a.image).resolve()
+    if a.out:
+        out = Path(a.out)
+    elif src.parent.parent == ROOT / "covers":
+        out = src.parent / "job.json"
+    else:
+        out = ROOT / "covers" / slugify(src.stem) / "job.json"
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(job, indent=2) + "\n")
     print(prompt)
