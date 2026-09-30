@@ -59,6 +59,12 @@ For story and narrative scripts, `docs/storyscope-narrative-checks.md` covers
 the structural side that word-level editing misses. Read it when a draft reads
 clean sentence by sentence but still feels machine made.
 
+## Cover shots
+
+For property photos that need to look like a magazine cover, follow
+`.claude/skills/cover-shot/SKILL.md`. The integrity check in step 4 is not
+optional: a render that adds, removes or recolours anything real is rejected.
+
 ## Updating the skill
 
 `scripts/update-humanizer.sh` pulls the current `SKILL.md` from

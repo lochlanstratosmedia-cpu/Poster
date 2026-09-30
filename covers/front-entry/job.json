@@ -1,0 +1,98 @@
+{
+  "source_image": "covers/front-entry/source.jpg",
+  "settings": {
+    "source": "phone",
+    "shot": "exterior",
+    "light": "keep",
+    "text_space": "auto",
+    "tidy": false,
+    "sky": false,
+    "notes": "The low afternoon sun and the dappled shadows of the frangipani across the dusty pink weatherboards are the point of this photo; keep them where they fall. The house number 113, the white handrail, the letterbox and the brick path stay exactly as they are."
+  },
+  "higgsfield": {
+    "model": "nano_banana_pro",
+    "aspect_ratio": "3:4",
+    "resolution": "2k",
+    "count": 2,
+    "prompt": "Edit this exact photograph into a finished editorial image fit for the cover of an architecture and interiors magazine: calm, considered, natural light, restrained colour.\n\nKEEP EXACTLY:\n- The same place, camera position and viewpoint. Every wall, opening, window, door, step, railing, roofline, fixture, tree and plant stays where it is, at the same size and shape.\n- True materials and colours. Paint, timber, stone, metal and fabric look like the real thing in good light. Do not recolour any surface.\n- Real character: grain, knots, patina and honest wear stay. Better light, not a newer building.\n- Do not add or remove any object, furniture, artwork, plant, light fitting, person or sign.\n- Keep the sky as it is apart from tone.\n\nIMPROVE:\n- Light: Keep the direction, colour and time of day of the existing light. Refine it: recover highlights, open shadows gently, and keep every shadow shape where it falls.\n- Composition: Straighten verticals as a shift lens would and level the horizontals. You may tighten the crop slightly if it strengthens the frame, but never extend the scene past the original edges. Keep the bottom sixth of the frame calm and uncluttered (whatever is already there: sky, wall, floor, lawn) so a small caption can sit on it later.\n- Tone and colour: This is a phone photo. Undo the phone processing: HDR flatness and halos, over-sharpening, smeared noise, oversaturated greens and skies, crushed blacks, and wide-angle stretching near the edges. It should look like it was shot on a full-frame camera with a tilt-shift lens, on a tripod, by an architectural photographer. Keep the palette of the original: near-black (#24241f), mid muted tan (#7f7a65), light muted tan (#a79e8a), deep muted sand (#3f4133), mid muted brown (#585646).\n- Finish: soft highlight roll-off, deep clean shadows with detail, fine natural grain, no HDR halos, no over-sharpening, no plastic or CGI look.\n\nSUBJECT: Exterior. The facade, roof, gutters, fence, paths, steps, letterbox and garden stay exactly as they are. Lawn and foliage a healthy natural green, never neon.\n\nNOTES: The low afternoon sun and the dappled shadows of the frangipani across the dusty pink weatherboards are the point of this photo; keep them where they fall. The house number 113, the white handrail, the letterbox and the brick path stay exactly as they are.\n\nDo not add any text, watermark, logo or border. House numbers and signs already in the photo stay as they are.",
+    "medias": [
+      {
+        "role": "image_references",
+        "value": "<media_id of the uploaded source>"
+      }
+    ]
+  },
+  "analysis": {
+    "size": [
+      1932,
+      2576
+    ],
+    "aspect": 0.75,
+    "generate_aspect": "3:4",
+    "luma": 0.406,
+    "contrast": 0.257,
+    "saturation": 0.222,
+    "warmth": "neutral",
+    "clipped_highlights": 0.014,
+    "clipped_shadows": 0.0018,
+    "palette": [
+      {
+        "hex": "#24241f",
+        "name": "near-black",
+        "share": 0.214
+      },
+      {
+        "hex": "#7f7a65",
+        "name": "mid muted tan",
+        "share": 0.19
+      },
+      {
+        "hex": "#a79e8a",
+        "name": "light muted tan",
+        "share": 0.16
+      },
+      {
+        "hex": "#3f4133",
+        "name": "deep muted sand",
+        "share": 0.157
+      },
+      {
+        "hex": "#585646",
+        "name": "mid muted brown",
+        "share": 0.155
+      },
+      {
+        "hex": "#d4c7b4",
+        "name": "pale beige",
+        "share": 0.123
+      }
+    ],
+    "quiet_zones": {
+      "bottom-right": {
+        "busyness": 0.196,
+        "luma": 0.477
+      },
+      "top-right": {
+        "busyness": 0.209,
+        "luma": 0.239
+      },
+      "bottom-center": {
+        "busyness": 0.243,
+        "luma": 0.449
+      },
+      "bottom-left": {
+        "busyness": 0.282,
+        "luma": 0.476
+      },
+      "top-center": {
+        "busyness": 0.297,
+        "luma": 0.361
+      },
+      "top-left": {
+        "busyness": 0.362,
+        "luma": 0.457
+      }
+    },
+    "fixes": []
+  }
+}

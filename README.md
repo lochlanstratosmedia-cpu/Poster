@@ -14,6 +14,9 @@ AI-writing patterns instead of its own instincts.
 | `docs/storyscope-narrative-checks.md` | Structural checklist for narrative scripts |
 | `scripts/update-humanizer.sh` | Pulls a fresh copy of the skill from upstream |
 | `content/` | Drafts |
+| `.claude/skills/cover-shot/SKILL.md` | Turns a property photo into a magazine-grade social post via Higgsfield |
+| `scripts/cover_shot.py` | Photo analysis, prompt builder, caption overlay and compare sheet for cover shots |
+| `assets/fonts/` | Inter and Cormorant Garamond (OFL) for captions |
 
 ## How it works
 
@@ -46,6 +49,28 @@ Paste two or three paragraphs of your own writing with the request and the
 rewrite follows your rhythm, word choice, and quirks instead of the house
 defaults. A sample overrides the style rules, including the rule against
 dashes.
+
+## Cover shots
+
+Give Claude a photo and say what the post is, for example "cover shot of this
+kitchen, phone photo, just listed", or run `/cover-shot`. Claude measures the
+photo, builds a Nano Banana Pro prompt that keeps the property's real
+details, renders it on Higgsfield, checks the render against the original,
+then crops it to 4:5 or 9:16 and sets a small caption.
+
+The local steps run on their own too:
+
+```bash
+pip install pillow
+python3 scripts/cover_shot.py analyse photo.jpg
+python3 scripts/cover_shot.py prompt photo.jpg --source phone --shot kitchen --light keep
+python3 scripts/cover_shot.py finish render.jpg --label just-sold --line "Suburb"
+python3 scripts/cover_shot.py compare photo.jpg render.jpg
+```
+
+Generation needs the Higgsfield connector, and in a cloud session the
+network has to allow `upload.higgsfield.ai`. Photos and renders in
+`covers/` are gitignored.
 
 ## Checking the hook by hand
 

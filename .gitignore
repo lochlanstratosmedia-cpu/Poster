@@ -1,3 +1,9 @@
 __pycache__/
 *.pyc
 .DS_Store
+
+# Cover shot photos and renders stay local. Job files are kept.
+covers/**/*.jpg
+covers/**/*.jpeg
+covers/**/*.png
+covers/**/*.heic

@@ -1,0 +1,98 @@
+{
+  "source_image": "covers/hall-arch/source.jpg",
+  "settings": {
+    "source": "phone",
+    "shot": "interior",
+    "light": "keep",
+    "text_space": "auto",
+    "tidy": false,
+    "sky": false,
+    "notes": "Warm late sun streams through the far doorway onto honey pine floorboards, seen through two layered doorways with cream trim and greige walls. Keep that depth, the sun patches on the floor and the raw timber door exactly."
+  },
+  "higgsfield": {
+    "model": "nano_banana_pro",
+    "aspect_ratio": "3:4",
+    "resolution": "2k",
+    "count": 2,
+    "prompt": "Edit this exact photograph into a finished editorial image fit for the cover of an architecture and interiors magazine: calm, considered, natural light, restrained colour.\n\nKEEP EXACTLY:\n- The same place, camera position and viewpoint. Every wall, opening, window, door, step, railing, roofline, fixture, tree and plant stays where it is, at the same size and shape.\n- True materials and colours. Paint, timber, stone, metal and fabric look like the real thing in good light. Do not recolour any surface.\n- Real character: grain, knots, patina and honest wear stay. Better light, not a newer building.\n- Do not add or remove any object, furniture, artwork, plant, light fitting, person or sign.\n- Keep the sky as it is apart from tone.\n\nIMPROVE:\n- Light: Keep the direction, colour and time of day of the existing light. Refine it: recover highlights, open shadows gently, and keep every shadow shape where it falls.\n- Composition: Straighten verticals as a shift lens would and level the horizontals. You may tighten the crop slightly if it strengthens the frame, but never extend the scene past the original edges. Keep the top sixth of the frame calm and uncluttered (whatever is already there: sky, wall, floor, lawn) so a small caption can sit on it later.\n- Tone and colour: This is a phone photo. Undo the phone processing: HDR flatness and halos, over-sharpening, smeared noise, oversaturated greens and skies, crushed blacks, and wide-angle stretching near the edges. It should look like it was shot on a full-frame camera with a tilt-shift lens, on a tripod, by an architectural photographer. Keep the palette of the original: light muted tan (#b09c7e), mid muted brown (#695941), deep brown (#5d4931), mid muted tan (#8d7a5e), mid brown (#765e3f).\n- Finish: soft highlight roll-off, deep clean shadows with detail, fine natural grain, no HDR halos, no over-sharpening, no plastic or CGI look.\n\nSUBJECT: Interior. Balance the windows so the view outside is visible but softer than the room. Walls keep their true paint colour, ceilings read clean rather than grey.\n\nNOTES: Warm late sun streams through the far doorway onto honey pine floorboards, seen through two layered doorways with cream trim and greige walls. Keep that depth, the sun patches on the floor and the raw timber door exactly.\n\nDo not add any text, watermark, logo or border. House numbers and signs already in the photo stay as they are.",
+    "medias": [
+      {
+        "role": "image_references",
+        "value": "<media_id of the uploaded source>"
+      }
+    ]
+  },
+  "analysis": {
+    "size": [
+      1932,
+      2576
+    ],
+    "aspect": 0.75,
+    "generate_aspect": "3:4",
+    "luma": 0.467,
+    "contrast": 0.167,
+    "saturation": 0.368,
+    "warmth": "warm",
+    "clipped_highlights": 0.0138,
+    "clipped_shadows": 0.0,
+    "palette": [
+      {
+        "hex": "#b09c7e",
+        "name": "light muted tan",
+        "share": 0.194
+      },
+      {
+        "hex": "#695941",
+        "name": "mid muted brown",
+        "share": 0.186
+      },
+      {
+        "hex": "#5d4931",
+        "name": "deep brown",
+        "share": 0.18
+      },
+      {
+        "hex": "#8d7a5e",
+        "name": "mid muted tan",
+        "share": 0.176
+      },
+      {
+        "hex": "#765e3f",
+        "name": "mid brown",
+        "share": 0.172
+      },
+      {
+        "hex": "#cfc3aa",
+        "name": "light beige",
+        "share": 0.091
+      }
+    ],
+    "quiet_zones": {
+      "top-left": {
+        "busyness": 0.055,
+        "luma": 0.337
+      },
+      "top-right": {
+        "busyness": 0.08,
+        "luma": 0.373
+      },
+      "bottom-left": {
+        "busyness": 0.084,
+        "luma": 0.313
+      },
+      "top-center": {
+        "busyness": 0.085,
+        "luma": 0.412
+      },
+      "bottom-right": {
+        "busyness": 0.147,
+        "luma": 0.494
+      },
+      "bottom-center": {
+        "busyness": 0.179,
+        "luma": 0.562
+      }
+    },
+    "fixes": []
+  }
+}

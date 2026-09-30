@@ -1,0 +1,100 @@
+{
+  "source_image": "covers/rear-verandah/source.jpg",
+  "settings": {
+    "source": "phone",
+    "shot": "exterior",
+    "light": "golden",
+    "text_space": "auto",
+    "tidy": false,
+    "sky": false,
+    "notes": "Rear of a weatherboard cottage with a corrugated iron roof, an enclosed verandah with clear PVC blinds, framed by a big old tree on the left over the lawn. Keep the blinds, roof sheets, vents and the tree exactly; the change is the light."
+  },
+  "higgsfield": {
+    "model": "nano_banana_pro",
+    "aspect_ratio": "3:4",
+    "resolution": "2k",
+    "count": 2,
+    "prompt": "Edit this exact photograph into a finished editorial image fit for the cover of an architecture and interiors magazine: calm, considered, natural light, restrained colour.\n\nKEEP EXACTLY:\n- The same place, camera position and viewpoint. Every wall, opening, window, door, step, railing, roofline, fixture, tree and plant stays where it is, at the same size and shape.\n- True materials and colours. Paint, timber, stone, metal and fabric look like the real thing in good light. Do not recolour any surface.\n- Real character: grain, knots, patina and honest wear stay. Better light, not a newer building.\n- Do not add or remove any object, furniture, artwork, plant, light fitting, person or sign.\n- Keep the sky as it is apart from tone.\n\nIMPROVE:\n- Light: Late-afternoon sun, low and warm, raking across surfaces so texture reads. Long, soft-edged shadows that follow the sun direction already in the photo. Warm glow on sunlit surfaces, cool open shade in the shadows.\n- Composition: Straighten verticals as a shift lens would and level the horizontals. You may tighten the crop slightly if it strengthens the frame, but never extend the scene past the original edges. Keep the bottom sixth of the frame calm and uncluttered (whatever is already there: sky, wall, floor, lawn) so a small caption can sit on it later.\n- Tone and colour: This is a phone photo. Undo the phone processing: HDR flatness and halos, over-sharpening, smeared noise, oversaturated greens and skies, crushed blacks, and wide-angle stretching near the edges. It should look like it was shot on a full-frame camera with a tilt-shift lens, on a tripod, by an architectural photographer. From measuring this photo: lift overall exposure, it reads dark. Keep the palette of the original: deep muted blue (#11171c), mid grey (#666a63), deep muted sage (#2b362e), charcoal (#3d423a), light grey (#9a9f99).\n- Finish: soft highlight roll-off, deep clean shadows with detail, fine natural grain, no HDR halos, no over-sharpening, no plastic or CGI look.\n\nSUBJECT: Exterior. The facade, roof, gutters, fence, paths, steps, letterbox and garden stay exactly as they are. Lawn and foliage a healthy natural green, never neon.\n\nNOTES: Rear of a weatherboard cottage with a corrugated iron roof, an enclosed verandah with clear PVC blinds, framed by a big old tree on the left over the lawn. Keep the blinds, roof sheets, vents and the tree exactly; the change is the light.\n\nDo not add any text, watermark, logo or border. House numbers and signs already in the photo stay as they are.",
+    "medias": [
+      {
+        "role": "image_references",
+        "value": "<media_id of the uploaded source>"
+      }
+    ]
+  },
+  "analysis": {
+    "size": [
+      1932,
+      2576
+    ],
+    "aspect": 0.75,
+    "generate_aspect": "3:4",
+    "luma": 0.354,
+    "contrast": 0.251,
+    "saturation": 0.298,
+    "warmth": "neutral",
+    "clipped_highlights": 0.0027,
+    "clipped_shadows": 0.0163,
+    "palette": [
+      {
+        "hex": "#11171c",
+        "name": "deep muted blue",
+        "share": 0.202
+      },
+      {
+        "hex": "#666a63",
+        "name": "mid grey",
+        "share": 0.176
+      },
+      {
+        "hex": "#2b362e",
+        "name": "deep muted sage",
+        "share": 0.173
+      },
+      {
+        "hex": "#3d423a",
+        "name": "charcoal",
+        "share": 0.169
+      },
+      {
+        "hex": "#9a9f99",
+        "name": "light grey",
+        "share": 0.163
+      },
+      {
+        "hex": "#b6c7bb",
+        "name": "light muted sage",
+        "share": 0.116
+      }
+    ],
+    "quiet_zones": {
+      "bottom-left": {
+        "busyness": 0.129,
+        "luma": 0.214
+      },
+      "bottom-center": {
+        "busyness": 0.237,
+        "luma": 0.367
+      },
+      "top-left": {
+        "busyness": 0.238,
+        "luma": 0.196
+      },
+      "top-center": {
+        "busyness": 0.245,
+        "luma": 0.226
+      },
+      "bottom-right": {
+        "busyness": 0.274,
+        "luma": 0.535
+      },
+      "top-right": {
+        "busyness": 0.278,
+        "luma": 0.355
+      }
+    },
+    "fixes": [
+      "lift overall exposure, it reads dark"
+    ]
+  }
+}
