@@ -13,14 +13,14 @@
   },
   "higgsfield": {
     "model": "nano_banana_pro",
-    "aspect_ratio": "3:4",
+    "aspect_ratio": "4:5",
     "resolution": "2k",
-    "count": 2,
+    "count": 1,
     "prompt": "Re-photograph this scene the way a leading architectural photographer would for the cover of an architecture and interiors magazine. The result must look clearly and visibly better than the input: new light, a real colour grade and a stronger frame. A result that looks like the input with small tweaks is a failure.\n\nCHANGE:\n1. Light: Keep the sun direction and time of day, but give it the quality of the best moment of that day: warmer, cleaner sunlight, crisp shadow edges that still hold detail, highlights that roll off softly instead of clipping.\n2. Grade: A clean, bright architectural grade: neutral whites, crisp but not harsh contrast, true colours slightly desaturated, airy highlights.\n3. Frame: Re-shoot the same subject from the best camera position a magazine photographer would choose. You may move the camera, change its height and angle, and change the lens, to find the one strongest composition: a square-on elevation with clean symmetry, a confident diagonal, or a tight study of the best detail. Put the subject on the thirds or dead centre with intent, give it clean negative space, keep verticals truly vertical as a shift lens would, and cut anything at the edges that pulls the eye away. Where the new view shows a little more than the original, only continue surfaces that are clearly there (more of the same brick, lawn or path); never invent new features. Leave the top sixth of the final frame calm and uncluttered (whatever is already there: sky, wall, floor, lawn) so a small caption can sit on it later.\n4. Camera: This is a phone photo. Undo the phone processing: HDR flatness and halos, over-sharpening, smeared noise, oversaturated greens and skies, crushed blacks, and wide-angle stretching near the edges. It should look like it was shot on a full-frame camera with a tilt-shift lens, on a tripod, by an architectural photographer.\n- Finish: soft highlight roll-off, fine natural grain, no HDR halos, no over-sharpening, no plastic or CGI look.\n\nSUBJECT: Exterior. Facade, roof, gutters, fence, paths, steps, letterbox and garden are the real property. Lawn and foliage a healthy natural green, never neon.\n\nKEEP TRUE (the property must stay honest):\n- It is the same place, seen better. Every wall, window, door, step, railing, roofline, fixture, tree and plant that appears keeps its design, proportions, count and its position relative to everything else, even from the new viewpoint.\n- Surfaces keep their real material and base colour under the new light and grade: red brick stays red brick, a cream wall stays cream, a green awning stays green.\n- Honest wear stays (chips, patina, grain). Better photography, not a renovated building.\n- Nothing is added to the property or erased from it: no objects, furniture, plants, fittings, people or signs. Things may fall outside a tighter frame.\n- The sky changes only in tone.\n\nNOTES: Make a tight, graphic study: square-on to the brick wall, the white handrail and its posts and the concrete steps filling the frame as one strong diagonal, their hard shadows repeating it on the brick. Brick, rail, steps and shadows only, with calm brick above for a caption. The rail keeps its exact post count and cast fittings; the steps keep their worn concrete edges.\n\nDo not add any text, watermark, logo or border. House numbers and signs already in the photo stay as they are.",
     "medias": [
       {
         "role": "image_references",
-        "value": "<media_id of the uploaded source>"
+        "value": "3bccbf3e-a210-4d27-9b96-ce8dcdb008d8"
       }
     ]
   },
@@ -96,5 +96,11 @@
       }
     },
     "fixes": []
-  }
+  },
+  "renders": [
+    {
+      "job_id": "fdccde04-d994-46b1-9a87-15ce4f469ce4",
+      "take": "recompose, keep + clean, tight stair study"
+    }
+  ]
 }
