@@ -157,3 +157,7 @@ dialog::backdrop { background: rgba(0, 0, 0, 0.6); }
 .slider { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 2px 8px; margin: 4px 0; }
 .slider span { font-variant-numeric: tabular-nums; color: var(--ink); }
 .slider input[type="range"] { grid-column: 1 / -1; width: 100%; accent-color: var(--accent); }
+.row3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.row3 input { width: 100%; padding: 6px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); color: var(--ink); font: inherit; margin-top: 3px; }
+input[type="number"] { width: 100%; padding: 6px 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); color: var(--ink); font: inherit; margin-top: 3px; }
+[hidden] { display: none !important; }

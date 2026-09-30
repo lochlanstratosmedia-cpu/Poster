@@ -53,7 +53,7 @@
         <label>Item<input id="itemName" type="text" /></label>
         <label>What to render<textarea id="itemPrompt" rows="2" placeholder="e.g. three-seat sofa"></textarea></label>
         <label>Material, colour, style notes<textarea id="itemNotes" rows="2" placeholder="e.g. oatmeal boucle, rounded arms, oak legs"></textarea></label>
-        <div class="row">
+        <div class="row flat-only">
           <label>Facing
             <select id="itemFacing">
               <option value="">Natural for the room</option>
@@ -82,7 +82,20 @@
             <select id="itemColor"></select>
           </label>
         </div>
-        <div class="persp">
+        <div class="three-only persp">
+          <div class="ref-head">Size and placement</div>
+          <div class="row3">
+            <label>Width cm<input id="itemDimW" type="number" min="5" step="5" /></label>
+            <label>Depth cm<input id="itemDimD" type="number" min="1" step="5" /></label>
+            <label>Height cm<input id="itemDimH" type="number" min="1" step="5" /></label>
+          </div>
+          <label class="slider">Turn <span id="itemYawVal">0°</span>
+            <input id="itemYaw" type="range" min="-180" max="180" step="1" value="0" /></label>
+          <label>Height off the floor cm<input id="itemLift" type="number" min="0" step="5" /></label>
+          <p class="hint">Drag the piece to move it across the floor. Drag the round handle in front of it to turn it, or press Q and E. The solid edge is the front.</p>
+          <button id="itemMakeFlat" class="btn small wide">Switch to flat placeholder</button>
+        </div>
+        <div class="persp flat-only">
           <div class="ref-head">Angle and perspective</div>
           <label class="slider">Skew across <span id="itemSkewXVal">0</span>
             <input id="itemSkewX" type="range" min="-60" max="60" step="1" value="0" /></label>
@@ -96,6 +109,7 @@
             <button id="itemCorners" class="btn small">Drag corners</button>
             <button id="itemResetPersp" class="btn small">Reset angle</button>
           </div>
+          <button id="itemMake3D" class="btn small wide">Switch to 3D block</button>
           <p class="hint">Drag corners lets you pin each corner to the photo, like matching a rug to the floor. Double-click a slider to zero it.</p>
         </div>
         <div class="ref">
@@ -112,10 +126,24 @@
           <button id="itemDelete" class="btn small danger">Delete</button>
           <button id="itemForward" class="btn small">Bring forward</button>
           <button id="itemBack" class="btn small">Send back</button>
-          <button id="itemFlip" class="btn small">Flip</button>
-          <button id="itemResetRot" class="btn small">Straighten</button>
+          <button id="itemFlip" class="btn small flat-only">Flip</button>
+          <button id="itemResetRot" class="btn small flat-only">Straighten</button>
         </div>
         <button id="itemSaveToLibrary" class="btn small wide">Save to my library</button>
+      </section>
+
+      <section id="roomCard" class="card">
+        <h3>Camera match</h3>
+        <label><input id="roomEnabled" type="checkbox" /> Place floor furniture as 3D blocks</label>
+        <label class="slider">Eye level (% down the photo) <span id="roomHorizonVal">50</span>
+          <input id="roomHorizon" type="range" min="2" max="98" step="1" /></label>
+        <label class="slider">Lens width (degrees) <span id="roomFovVal">75</span>
+          <input id="roomFov" type="range" min="35" max="115" step="1" /></label>
+        <label class="slider">Camera height (cm) <span id="roomHeightVal">140</span>
+          <input id="roomHeight" type="range" min="60" max="250" step="5" /></label>
+        <label><input id="roomGrid" type="checkbox" /> Show floor grid (50 cm squares)</label>
+        <button id="roomAdjust" class="btn small wide">Match camera</button>
+        <p class="hint">Click Match camera, then drag the yellow line to eye level: where lines along the floor and ceiling meet. Change the lens width until the grid runs with the floorboards or tiles. Anything as tall as the camera touches the eye-level line, which helps set the camera height.</p>
       </section>
 
       <section class="card">
@@ -182,6 +210,7 @@
     </div>
   </dialog>
 
+  <script src="vendor/three.min.js"></script>
   <script type="module" src="app.js"></script>
 </body>
 </html>

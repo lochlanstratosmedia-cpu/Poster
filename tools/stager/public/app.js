@@ -1,6 +1,7 @@
 import { LIBRARY, CATEGORIES, SHAPES, STYLES, ROOM_TYPES, PALETTE } from "./library.js";
 import { drawShape } from "./shapes.js";
 import { buildPrompt } from "./prompt.js";
+import * as S3 from "./scene3d.js";
 import { emptyWarp, isWarped, localCorners, quadFor, pointInQuad, centroid, warpToCanvas } from "./warp.js";
 
 const $ = (id) => document.getElementById(id);
@@ -26,6 +27,7 @@ const state = {
     extra: "",
   },
   results: [], // { id, src, status: "loading" | "done" | "error", error }
+  room: { ...S3.DEFAULT_ROOM }, // camera match for 3D placement
   myLibrary: [],
   config: { hasKey: false, model: "" },
 };
@@ -38,6 +40,42 @@ let uidCounter = 1;
 // corner be dragged on its own for perspective.
 let editMode = "transform";
 const warpCache = new Map();
+
+const is3D = (item) => item.kind === "3d";
+const aspect = () => (state.photo ? state.photo.W / state.photo.H : 1.5);
+const canUse3D = (shape) => S3.has3D() && S3.supports3D(shape);
+
+// Screen position of an image fraction.
+const toScreen = (q) => ({ x: view.ox + q.u * state.photo.W * view.s, y: view.oy + q.v * state.photo.H * view.s });
+
+function make3D(item, lib, u, v) {
+  const dims = lib?.dims || [1, 0.6, 0.8];
+  const p = S3.dropPoint(state.room, aspect(), u, v);
+  Object.assign(item, {
+    kind: "3d",
+    x: p.x,
+    z: p.z,
+    yaw: 0,
+    dims: { w: dims[0], d: dims[1], h: dims[2] },
+    lift: lib?.lift || 0,
+  });
+}
+
+function makeFlat(item) {
+  const c = S3.itemCorners(state.room, aspect(), item);
+  const pts = [...c.bottom, ...c.top];
+  const us = pts.map((q) => q.u);
+  const vs = pts.map((q) => q.v);
+  Object.assign(item, {
+    kind: "flat",
+    cx: (Math.min(...us) + Math.max(...us)) / 2,
+    cy: (Math.min(...vs) + Math.max(...vs)) / 2,
+    w: Math.max(...us) - Math.min(...us),
+    h: Math.max(...vs) - Math.min(...vs),
+    rotation: 0,
+    warp: emptyWarp(),
+  });
+}
 
 // ---------- storage (per-browser conveniences only) ----------
 
@@ -294,7 +332,7 @@ function renderLibrary() {
         if (!state.photo) return setStatus("Upload a photo first.");
         // Stagger click-added items so they do not stack on one spot.
         const n = state.items.length % 5;
-        addItem(e.id, 0.3 + n * 0.1, 0.6);
+        addItem(e.id, 0.3 + n * 0.1, state.room.enabled && e.dims ? 0.72 : 0.6);
       });
       sec.appendChild(row);
     }
@@ -340,6 +378,7 @@ function addItem(libId, cx, cy) {
     warp: emptyWarp(),
     ref: lib.ref || null,
   };
+  if (state.room.enabled && lib.dims && canUse3D(lib.shape)) make3D(item, lib, cx, cy);
   // Rugs go underneath everything else.
   if (lib.shape === "rug") state.items.unshift(item);
   else state.items.push(item);
@@ -387,6 +426,10 @@ function rotatePt(x, y, r) {
 }
 
 function handlesFor(item) {
+  if (is3D(item)) {
+    const t = S3.turnHandle(state.room, aspect(), item);
+    return t.behind ? {} : { turn: toScreen(t) };
+  }
   const b = screenBox(item);
   const pts = {};
   if (editMode === "corners") {
@@ -423,6 +466,7 @@ function shapeTexture(item, w, h, alpha, lineWidth) {
 }
 
 function drawItem(g, item, box, { alpha, lineWidth, badgeR, showName, index, cache = false }) {
+  if (badgeR === 0) showName = false;
   let center = { x: box.x, y: box.y };
   if (isWarped(item)) {
     const quad = quadFor(item, box);
@@ -443,12 +487,14 @@ function drawItem(g, item, box, { alpha, lineWidth, badgeR, showName, index, cac
     drawShape(g, item.shape, box.w, box.h, item.color, { alpha, lineWidth });
     g.restore();
   }
-  box = { ...box, x: center.x, y: center.y };
+  if (badgeR) drawBadge(g, item, center.x, center.y, { badgeR, showName, index });
+}
 
-  // Number badge, kept upright.
+// Number badge, kept upright.
+function drawBadge(g, item, x, y, { badgeR, showName, index }) {
   g.save();
   g.beginPath();
-  g.arc(box.x, box.y, badgeR, 0, Math.PI * 2);
+  g.arc(x, y, badgeR, 0, Math.PI * 2);
   g.fillStyle = item.color;
   g.fill();
   g.lineWidth = Math.max(1.5, badgeR / 7);
@@ -458,17 +504,49 @@ function drawItem(g, item, box, { alpha, lineWidth, badgeR, showName, index, cac
   g.font = `700 ${Math.round(badgeR * 1.15)}px system-ui, sans-serif`;
   g.textAlign = "center";
   g.textBaseline = "middle";
-  g.fillText(String(index + 1), box.x, box.y + badgeR * 0.05);
+  g.fillText(String(index + 1), x, y + badgeR * 0.05);
   if (showName) {
     g.font = `600 12px system-ui, sans-serif`;
     const label = item.name;
     const tw = g.measureText(label).width + 10;
     g.fillStyle = "rgba(0,0,0,0.7)";
-    g.fillRect(box.x - tw / 2, box.y + badgeR + 3, tw, 18);
+    g.fillRect(x - tw / 2, y + badgeR + 3, tw, 18);
     g.fillStyle = "#ffffff";
-    g.fillText(label, box.x, box.y + badgeR + 12);
+    g.fillText(label, x, y + badgeR + 12);
   }
   g.restore();
+}
+
+// Draws every placeholder onto g, where (ox, oy) and (pw, ph) place the photo.
+// Flat pieces go first (they are mostly on walls), then the 3D layer, then
+// all the number badges so none are hidden.
+function drawAllItems(g, ox, oy, pw, ph, { alpha, lineWidth, badgeR, showName, cache, grid = false, pixelScale = 1 }) {
+  const flat = [];
+  state.items.forEach((item, index) => {
+    if (is3D(item)) return;
+    const box = {
+      x: ox + item.cx * pw,
+      y: oy + item.cy * ph,
+      w: item.w * pw,
+      h: item.h * ph,
+      r: ((item.rotation || 0) * Math.PI) / 180,
+    };
+    drawItem(g, item, box, { alpha, lineWidth, badgeR: 0, showName: false, index, cache });
+    const c = isWarped(item) ? centroid(quadFor(item, box)) : box;
+    flat.push([item, index, c.x, c.y]);
+  });
+  const items3d = state.items.filter(is3D);
+  if (S3.has3D() && (items3d.length || grid)) {
+    const gl = S3.renderItems(state.room, items3d, pw * pixelScale, ph * pixelScale, { grid });
+    g.drawImage(gl, ox, oy, pw, ph);
+  }
+  for (const [item, index, x, y] of flat) drawBadge(g, item, x, y, { badgeR, showName, index });
+  state.items.forEach((item, index) => {
+    if (!is3D(item)) return;
+    const q = S3.project(state.room, aspect(), item.x, (item.lift || 0) + item.dims.h / 2, item.z);
+    if (q.behind) return;
+    drawBadge(g, item, ox + q.u * pw, oy + q.v * ph, { badgeR, showName, index });
+  });
 }
 
 function draw() {
@@ -480,20 +558,23 @@ function draw() {
   ctx.drawImage(img, view.ox, view.oy, W * view.s, H * view.s);
 
   if ($("showPlaceholders").checked) {
-    state.items.forEach((item, index) => {
-      drawItem(ctx, item, screenBox(item), {
-        alpha: 0.5,
-        lineWidth: 2,
-        badgeR: 11,
-        showName: $("showNames").checked,
-        index,
-        cache: true,
-      });
+    drawAllItems(ctx, view.ox, view.oy, W * view.s, H * view.s, {
+      alpha: 0.5,
+      lineWidth: 2,
+      badgeR: 11,
+      showName: $("showNames").checked,
+      cache: true,
+      grid: state.room.grid || editMode === "camera",
+      pixelScale: window.devicePixelRatio || 1,
     });
   }
 
+  if (editMode === "camera") drawCameraOverlay();
+
   const sel = selectedItem();
-  if (sel && $("showPlaceholders").checked) {
+  if (sel && is3D(sel) && $("showPlaceholders").checked) {
+    drawSelection3D(sel);
+  } else if (sel && $("showPlaceholders").checked) {
     const b = screenBox(sel);
     ctx.save();
     ctx.setLineDash([5, 4]);
@@ -542,6 +623,79 @@ function draw() {
   }
 }
 
+function drawSelection3D(item) {
+  const c = S3.itemCorners(state.room, aspect(), item);
+  const bot = c.bottom.map(toScreen);
+  const top = c.top.map(toScreen);
+  ctx.save();
+  ctx.setLineDash([5, 4]);
+  ctx.strokeStyle = "#ffffff";
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  for (const ring of [bot, top]) {
+    ring.forEach((p, i) => (i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y)));
+    ctx.closePath();
+  }
+  for (let i = 0; i < 4; i++) {
+    ctx.moveTo(bot[i].x, bot[i].y);
+    ctx.lineTo(top[i].x, top[i].y);
+  }
+  ctx.stroke();
+  // Front edge in solid colour so it is clear which way the piece faces.
+  ctx.setLineDash([]);
+  ctx.strokeStyle = item.color;
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(bot[0].x, bot[0].y);
+  ctx.lineTo(bot[1].x, bot[1].y);
+  ctx.stroke();
+  const h = handlesFor(item).turn;
+  if (h) {
+    const mid = { x: (bot[0].x + bot[1].x) / 2, y: (bot[0].y + bot[1].y) / 2 };
+    ctx.strokeStyle = "#ffffff";
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(mid.x, mid.y);
+    ctx.lineTo(h.x, h.y);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(h.x, h.y, HANDLE + 1, 0, Math.PI * 2);
+    ctx.fillStyle = "#ffffff";
+    ctx.fill();
+    ctx.strokeStyle = item.color;
+    ctx.lineWidth = 2;
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+function horizonY() {
+  return view.oy + state.room.horizon * state.photo.H * view.s;
+}
+
+function drawCameraOverlay() {
+  const y = horizonY();
+  const x0 = view.ox;
+  const x1 = view.ox + state.photo.W * view.s;
+  ctx.save();
+  ctx.strokeStyle = "#ffe066";
+  ctx.lineWidth = 2;
+  ctx.setLineDash([10, 6]);
+  ctx.beginPath();
+  ctx.moveTo(x0, y);
+  ctx.lineTo(x1, y);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.font = "600 12px system-ui, sans-serif";
+  const msg = "Eye level: drag this line to where the floor and ceiling lines meet";
+  const tw = ctx.measureText(msg).width + 16;
+  ctx.fillStyle = "rgba(0,0,0,0.72)";
+  ctx.fillRect(x0 + 8, y - 30, tw, 22);
+  ctx.fillStyle = "#ffe066";
+  ctx.fillText(msg, x0 + 16, y - 15);
+  ctx.restore();
+}
+
 // ---------- pointer interaction ----------
 
 function pointerPos(ev) {
@@ -556,8 +710,16 @@ function hitTest(p) {
       if (Math.hypot(p.x - h.x, p.y - h.y) <= HANDLE + 4) return { item: sel, handle: name };
     }
   }
+  if (S3.has3D()) {
+    const items3d = state.items.filter(is3D);
+    const u = (p.x - view.ox) / (state.photo.W * view.s);
+    const v = (p.y - view.oy) / (state.photo.H * view.s);
+    const uid = S3.pick(state.room, aspect(), items3d, u, v);
+    if (uid) return { item: state.items.find((i) => i.uid === uid), handle: null };
+  }
   for (let i = state.items.length - 1; i >= 0; i--) {
     const item = state.items[i];
+    if (is3D(item)) continue;
     const b = screenBox(item);
     const l = rotatePt(p.x - b.x, p.y - b.y, -b.r);
     if (Math.abs(l.x) <= b.w / 2 + 3 && Math.abs(l.y) <= b.h / 2 + 3) return { item, handle: null };
@@ -569,10 +731,15 @@ function hitTest(p) {
 canvas.addEventListener("pointerdown", (ev) => {
   if (!state.photo || !$("showPlaceholders").checked) return;
   const p = pointerPos(ev);
+  if (editMode === "camera" && Math.abs(p.y - horizonY()) < 10) {
+    canvas.setPointerCapture(ev.pointerId);
+    drag = { mode: "horizon" };
+    return;
+  }
   const hit = hitTest(p);
   if (!hit) {
     state.selected = null;
-    editMode = "transform";
+    if (editMode !== "camera") editMode = "transform";
     refreshItemPanel();
     draw();
     return;
@@ -580,9 +747,15 @@ canvas.addEventListener("pointerdown", (ev) => {
   canvas.setPointerCapture(ev.pointerId);
   snapshot();
   const item = hit.item;
-  if (item.uid !== state.selected) editMode = "transform";
+  if (item.uid !== state.selected && editMode !== "camera") editMode = "transform";
   state.selected = item.uid;
   refreshItemPanel();
+  if (is3D(item)) {
+    const fp = floorAt(p) || { x: item.x, z: item.z };
+    drag = hit.handle === "turn" ? { mode: "turn3d", item } : { mode: "move3d", item, fp0: fp, x0: item.x, z0: item.z };
+    draw();
+    return;
+  }
   const b = screenBox(item);
   if (hit.handle === "rot") {
     drag = { mode: "rotate", item };
@@ -608,14 +781,36 @@ canvas.addEventListener("pointerdown", (ev) => {
 
 canvas.addEventListener("pointermove", (ev) => {
   const p = pointerPos(ev);
+  if (!drag && editMode === "camera" && state.photo && Math.abs(p.y - horizonY()) < 10) {
+    canvas.style.cursor = "ns-resize";
+    return;
+  }
   if (!drag) {
     const hit = state.photo && $("showPlaceholders").checked ? hitTest(p) : null;
-    canvas.style.cursor = !hit ? "default" : hit.handle === "rot" ? "grab" : hit.handle?.startsWith("c") ? "crosshair" : hit.handle ? "nwse-resize" : "move";
+    canvas.style.cursor = !hit ? "default" : hit.handle === "rot" || hit.handle === "turn" ? "grab" : hit.handle?.startsWith("c") ? "crosshair" : hit.handle ? "nwse-resize" : "move";
     return;
   }
   const { W, H } = state.photo;
   const item = drag.item;
-  if (drag.mode === "move") {
+  if (drag.mode === "horizon") {
+    state.room.horizon = Math.min(0.98, Math.max(0.02, (p.y - view.oy) / (H * view.s)));
+    syncRoomFields();
+  } else if (drag.mode === "move3d") {
+    const fp = floorAt(p);
+    if (fp && Math.hypot(fp.x, fp.z) < 60) {
+      item.x = drag.x0 + fp.x - drag.fp0.x;
+      item.z = Math.min(-0.3, drag.z0 + fp.z - drag.fp0.z);
+    }
+  } else if (drag.mode === "turn3d") {
+    const fp = floorAt(p);
+    if (fp) {
+      let deg = (Math.atan2(fp.x - item.x, fp.z - item.z) * 180) / Math.PI;
+      if (ev.shiftKey) deg = Math.round(deg / 15) * 15;
+      else for (const snap of [-180, -90, 0, 90, 180]) if (Math.abs(deg - snap) < 4) deg = snap;
+      item.yaw = deg;
+      syncItem3DFields(item);
+    }
+  } else if (drag.mode === "move") {
     item.cx = drag.cx0 + (p.x - drag.start.x) / (W * view.s);
     item.cy = drag.cy0 + (p.y - drag.start.y) / (H * view.s);
   } else if (drag.mode === "rotate") {
@@ -649,6 +844,12 @@ canvas.addEventListener("pointermove", (ev) => {
   }
   draw();
 });
+
+function floorAt(p) {
+  const u = (p.x - view.ox) / (state.photo.W * view.s);
+  const v = (p.y - view.oy) / (state.photo.H * view.s);
+  return S3.floorPoint(state.room, aspect(), u, v);
+}
 
 function endDrag() {
   drag = null;
@@ -730,6 +931,12 @@ function refreshItemPanel() {
   $("itemMount").value = item.mount;
   $("itemShape").value = item.shape;
   $("itemColor").value = String(item.colorIdx);
+  const three = is3D(item);
+  document.querySelectorAll(".flat-only").forEach((el) => (el.hidden = three));
+  document.querySelectorAll(".three-only").forEach((el) => (el.hidden = !three));
+  $("itemMake3D").hidden = three || !canUse3D(item.shape);
+  $("itemMakeFlat").hidden = !three;
+  if (three) syncItem3DFields(item);
   for (const [id, key, scale] of PERSPECTIVE_FIELDS) {
     $(id).value = String(Math.round((item[key] || 0) * scale));
     $(`${id}Val`).textContent = $(id).value;
@@ -807,6 +1014,90 @@ $("itemResetPersp").onclick = () => {
   draw();
 };
 
+// 3D size, turn and lift. Sizes show in centimetres.
+const ITEM_3D_FIELDS = [
+  ["itemDimW", (it) => it.dims.w * 100, (it, v) => (it.dims.w = Math.max(0.05, v / 100))],
+  ["itemDimD", (it) => it.dims.d * 100, (it, v) => (it.dims.d = Math.max(0.01, v / 100))],
+  ["itemDimH", (it) => it.dims.h * 100, (it, v) => (it.dims.h = Math.max(0.005, v / 100))],
+  ["itemLift", (it) => (it.lift || 0) * 100, (it, v) => (it.lift = Math.max(0, v / 100))],
+  ["itemYaw", (it) => it.yaw, (it, v) => (it.yaw = v)],
+];
+
+function syncItem3DFields(item) {
+  for (const [id, get] of ITEM_3D_FIELDS) {
+    if (document.activeElement !== $(id)) $(id).value = String(Math.round(get(item)));
+  }
+  $("itemYawVal").textContent = `${Math.round(item.yaw)}°`;
+}
+
+for (const [id, , set] of ITEM_3D_FIELDS) {
+  const el = $(id);
+  el.addEventListener("focus", () => snapshot());
+  el.addEventListener("pointerdown", () => snapshot());
+  el.addEventListener("input", () => {
+    const item = selectedItem();
+    const v = Number(el.value);
+    if (!item || !is3D(item) || !Number.isFinite(v)) return;
+    set(item, v);
+    $("itemYawVal").textContent = `${Math.round(item.yaw)}°`;
+    draw();
+  });
+}
+
+$("itemMake3D").onclick = () => {
+  const item = selectedItem();
+  if (!item || !canUse3D(item.shape)) return;
+  snapshot();
+  make3D(item, findLib(item.libId), item.cx, item.cy + item.h / 2);
+  refreshItemPanel();
+  draw();
+};
+$("itemMakeFlat").onclick = () => {
+  const item = selectedItem();
+  if (!item || !is3D(item)) return;
+  snapshot();
+  makeFlat(item);
+  refreshItemPanel();
+  draw();
+};
+
+// Camera match for 3D placement. Eye level is stored as a fraction of the
+// photo height, lens width in degrees, camera height in metres.
+const ROOM_FIELDS = [
+  ["roomHorizon", (r) => r.horizon * 100, (r, v) => (r.horizon = v / 100)],
+  ["roomFov", (r) => r.fov, (r, v) => (r.fov = v)],
+  ["roomHeight", (r) => r.camHeight * 100, (r, v) => (r.camHeight = v / 100)],
+];
+
+function syncRoomFields() {
+  for (const [id, get] of ROOM_FIELDS) {
+    $(id).value = String(Math.round(get(state.room)));
+    $(`${id}Val`).textContent = $(id).value;
+  }
+  $("roomEnabled").checked = state.room.enabled;
+  $("roomGrid").checked = state.room.grid;
+  $("roomAdjust").textContent = editMode === "camera" ? "Done" : "Match camera";
+  $("roomAdjust").classList.toggle("primary", editMode === "camera");
+}
+
+for (const [id, , set] of ROOM_FIELDS) {
+  $(id).addEventListener("input", () => {
+    set(state.room, Number($(id).value));
+    $(`${id}Val`).textContent = $(id).value;
+    draw();
+  });
+}
+$("roomEnabled").addEventListener("change", () => (state.room.enabled = $("roomEnabled").checked));
+$("roomGrid").addEventListener("change", () => {
+  state.room.grid = $("roomGrid").checked;
+  draw();
+});
+$("roomAdjust").onclick = () => {
+  editMode = editMode === "camera" ? "transform" : "camera";
+  syncRoomFields();
+  draw();
+};
+
 $("itemColor").addEventListener("change", () => {
   const item = selectedItem();
   if (!item) return;
@@ -844,6 +1135,7 @@ function duplicateSelected() {
   const copy = {
     ...item,
     warp: (item.warp || emptyWarp()).map((c) => ({ ...c })),
+    ...(is3D(item) ? { x: item.x + 0.4, dims: { ...item.dims } } : {}),
     uid: `i${Date.now().toString(36)}${uidCounter++}`,
     cx: item.cx + 0.03,
     cy: item.cy + 0.03,
@@ -862,6 +1154,7 @@ function deleteSelected() {
   if (!item) return;
   snapshot();
   state.items = state.items.filter((i) => i !== item);
+  S3.forget(item.uid);
   state.selected = null;
   refreshItemPanel();
   draw();
@@ -989,27 +1282,18 @@ function renderGuide(maxSide) {
   const g = c.getContext("2d");
   g.drawImage(img, 0, 0, c.width, c.height);
   const long = Math.max(c.width, c.height);
-  state.items.forEach((item, index) => {
-    const box = {
-      x: item.cx * c.width,
-      y: item.cy * c.height,
-      w: item.w * c.width,
-      h: item.h * c.height,
-      r: ((item.rotation || 0) * Math.PI) / 180,
-    };
-    drawItem(g, item, box, {
-      alpha: 0.62,
-      lineWidth: Math.max(2, long / 500),
-      badgeR: Math.max(12, long / 75),
-      showName: false,
-      index,
-    });
+  drawAllItems(g, 0, 0, c.width, c.height, {
+    alpha: 0.62,
+    lineWidth: Math.max(2, long / 500),
+    badgeR: Math.max(12, long / 75),
+    showName: false,
+    cache: false,
   });
   return c;
 }
 
 function currentPrompt() {
-  return buildPrompt(state.scene, state.items, state.photo?.W || 1, state.photo?.H || 1);
+  return buildPrompt(state.scene, state.items, state.photo?.W || 1, state.photo?.H || 1, state.room);
 }
 
 function openModal(title, node) {
@@ -1203,6 +1487,7 @@ $("saveProject").onclick = () => {
   const data = {
     stagerProject: 1,
     scene: state.scene,
+    room: state.room,
     items: state.items,
     photo: state.photo.src,
     results: state.results.filter((r) => r.status === "done").map(({ id, src, before }) => ({ id, src, before })),
@@ -1222,6 +1507,8 @@ $("projectInput").addEventListener("change", async (ev) => {
     state.items = data.items || [];
     state.selected = null;
     state.scene = { ...state.scene, ...(data.scene || {}) };
+    state.room = { ...S3.DEFAULT_ROOM, ...(data.room || {}) };
+    syncRoomFields();
     state.results = (data.results || []).map((r) => ({ ...r, status: "done" }));
     syncSceneFields();
     refreshItemPanel();
@@ -1245,6 +1532,7 @@ window.addEventListener("keydown", (ev) => {
     return undo();
   }
   if (isTyping(ev.target)) return;
+  if (ev.key === "Escape" && editMode === "camera") return $("roomAdjust").click();
   const item = selectedItem();
   if (!item) return;
   if (ev.key === "Delete" || ev.key === "Backspace") {
@@ -1258,6 +1546,19 @@ window.addEventListener("keydown", (ev) => {
   } else if (ev.key === "Escape") {
     state.selected = null;
     refreshItemPanel();
+    draw();
+  } else if (is3D(item) && (ev.key.startsWith("Arrow") || /^[qe]$/i.test(ev.key))) {
+    ev.preventDefault();
+    if (!ev.repeat) snapshot();
+    const step = ev.shiftKey ? 0.25 : 0.05;
+    if (ev.key === "ArrowLeft") item.x -= step;
+    if (ev.key === "ArrowRight") item.x += step;
+    if (ev.key === "ArrowUp") item.z = Math.min(-0.3, item.z - step);
+    if (ev.key === "ArrowDown") item.z = Math.min(-0.3, item.z + step);
+    if (/^q$/i.test(ev.key)) item.yaw -= ev.shiftKey ? 15 : 5;
+    if (/^e$/i.test(ev.key)) item.yaw += ev.shiftKey ? 15 : 5;
+    item.yaw = ((((item.yaw + 180) % 360) + 360) % 360) - 180;
+    syncItem3DFields(item);
     draw();
   } else if (ev.key.startsWith("Arrow")) {
     ev.preventDefault();
@@ -1292,6 +1593,11 @@ async function init() {
   );
   syncSceneFields();
   bindSceneFields();
+  syncRoomFields();
+  if (!S3.has3D()) {
+    state.room.enabled = false;
+    $("roomCard").querySelector(".hint").textContent = "3D placement could not load in this browser, so every piece is placed flat.";
+  }
   renderLibrary();
   renderResults();
   new ResizeObserver(resizeCanvas).observe(stage);

@@ -43,8 +43,8 @@ The key stays on the server. The browser never sees it.
 
 1. Upload a photo. You can also drag a file onto the canvas or paste one.
 2. Drag items from the library onto the photo, or click one to drop it in.
-3. Drag to move. Pull a corner to resize (hold Shift to keep proportions).
-   The round handle rotates (hold Shift to snap to 15 degrees).
+3. Match the camera (see below), then drag each piece into place, turn it,
+   and set its size.
 4. With an item selected, fill in "What to render" and the material and colour
    notes. Set which way it faces and whether it sits on the floor, on the wall,
    on a surface, or hangs from the ceiling.
@@ -55,34 +55,61 @@ The key stays on the server. The browser never sees it.
 Keyboard: Delete removes the selected item, Ctrl+D duplicates it, the arrow
 keys nudge it (Shift for bigger steps), Ctrl+Z undoes, Esc deselects.
 
-### Tips for placement
+### 3D blocks and the camera match
 
-- The bottom edge of a floor placeholder is where the item meets the floor.
-  Line it up with the floor in the photo and the scale usually comes out right.
-- Things further back in the room should be drawn smaller.
-- Put rugs at the back of the layer order (Send back) so other pieces sit on
-  top of them. New rugs start there.
-- Use Rotate to follow the line of a wall seen at an angle.
+Floor furniture (sofas, beds, tables, chairs, cabinets, rugs, plants, lamps)
+goes in as a 3D block model at real size, in centimetres. Stager draws it
+through a virtual camera matched to the photo, so a piece gets smaller as you
+drag it further back and follows the room's perspective on its own.
 
-### Angled and off-centre shots
+Match the camera once per photo, under Camera match:
 
-Most photos are not taken straight on, so every placeholder can be put in
-perspective. Select an item and use the sliders under "Angle and perspective":
+1. Click Match camera. A yellow line and a floor grid appear.
+2. Drag the yellow line to eye level: the height where lines running along the
+   floor and the ceiling would meet. In most real estate shots it sits a little
+   below the middle of the frame.
+3. Change Lens width until the grid runs with the floorboards, tiles or skirting.
+4. Set Camera height. Anything as tall as the camera touches the yellow line, so
+   if a 140 cm high object in the photo reaches the line, the camera is at
+   140 cm. The default is 140.
+5. Click Done.
+
+Then, with a 3D piece selected:
+
+- Drag it to slide it across the floor.
+- Drag the round handle in front of it to turn it (Shift snaps to 15 degrees),
+  or press Q and E. The solid coloured edge is the front.
+- Set width, depth and height in centimetres, and "Height off the floor" for
+  things that sit on other furniture, like a table lamp on a bedside table.
+- Arrow keys move it 5 cm (Shift for 25 cm). Up moves it further away.
+
+The guide image shows the shaded blocks, and the prompt gives the model each
+piece's real size, which way it faces, and where its front and back edges sit
+in the frame.
+
+The camera match assumes the camera was level, with upright walls in the photo.
+For a photo tilted up or down, or for any piece the blocks do not suit, click
+"Switch to flat placeholder" and use the flat tools below. Wall art, mirrors,
+curtains and pendant lights are always flat.
+
+### Flat placeholders
+
+Flat placeholders are 2D silhouettes. Drag to move, pull a corner to resize
+(Shift keeps proportions), and use the round handle to rotate. Under "Angle and
+perspective":
 
 - Skew across and Skew up and down slant the shape.
-- Turn away makes one side shorter, as if it is further from the camera. Use
-  it for a sofa along a side wall.
-- Tilt back makes the top edge narrower. Use it for rugs, beds and tables seen
-  from above.
+- Turn away makes one side shorter, as if it is further from the camera.
+- Tilt back makes the top edge narrower.
+- Drag corners (or double-click the item) lets you drag each corner onto the
+  photo. Click Done or press Esc to finish.
 
-For full control, click Drag corners (or double-click the item) and drag each
-corner onto the photo. This works well for rugs: put the four corners where
-the rug's corners should sit on the floor. Click Done or press Esc to finish.
-Reset angle clears all of it, and double-clicking a slider zeroes that one.
+Reset angle clears all of it, and double-clicking a slider zeroes that one. Put
+flat rugs at the back of the layer order (Send back) so other pieces sit on
+top.
 
-The guide image shows the warped shape, and the prompt gives the model the
-positions of each corner so it matches the angle instead of rendering the
-piece straight on.
+### Tips
+
 - For big rooms, stage in two passes. Render the main pieces, click "Use as
   base" on the best result, then add decor and render again.
 
@@ -102,7 +129,8 @@ another computer, so the team can share one set of pieces.
 
 The built-in pieces are in `public/library.js`. Each entry has a name, a
 category, a silhouette shape, a default width as a fraction of the photo, a
-width to height ratio, and the text the model is given.
+width to height ratio, the text the model is given, and for floor pieces a real
+size in metres. The 3D block models are in `public/scene3d.js`.
 
 ## Projects
 
@@ -119,6 +147,9 @@ and finished renders. Open project loads it back.
 | `public/library.js` | Built-in furniture, styles, room types, placeholder colours |
 | `public/shapes.js` | Silhouettes drawn for each placeholder |
 | `public/prompt.js` | Builds the prompt from the layout |
+| `public/scene3d.js` | 3D block models and the camera match |
+| `public/warp.js` | Perspective warp for flat placeholders |
+| `public/vendor/three.min.js` | three.js r128 (MIT), used for the 3D blocks |
 
 ## Limits
 
