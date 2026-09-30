@@ -566,6 +566,162 @@ def cmd_finish(a):
     print(f"{out}  ({W}x{H}, caption {pos}, {tone} ink)")
 
 
+# ---------------------------------------------------------------- cover
+
+PAPER = (243, 239, 232)
+
+
+def fit_font(draw, text, kind, weight, max_w, max_size, tracking_em=0.0):
+    """Largest font size that keeps text within max_w."""
+    size = max_size
+    while size > 10:
+        f = font(kind, size, weight)
+        if tracked_width(draw, text, f, size * tracking_em) <= max_w:
+            return f
+        size = int(size * 0.94)
+    return font(kind, 10, weight)
+
+
+def text_h(f):
+    box = f.getbbox("Hg")
+    return box[3] - box[1]
+
+
+def put(draw, x, y, text, f, ink, tracking=0.0, align="left", width=None):
+    """Draw text with its visual top at y. Returns the bottom y."""
+    tw = tracked_width(draw, text, f, tracking)
+    if align == "center":
+        x = x + (width - tw) / 2
+    elif align == "right":
+        x = x + width - tw
+    draw_tracked(draw, (x, y - f.getbbox("Hg")[1]), text, f, ink, tracking)
+    return y + text_h(f)
+
+
+def band_shade(img, top, bottom, dark, strength):
+    """Soft vertical gradient behind a text band, fading toward the middle."""
+    W, H = img.size
+    mask = Image.new("L", (1, H), 0)
+    px = mask.load()
+    for y in range(H):
+        if top is not None and y < top:
+            px[0, y] = int(strength * (1 - y / top) ** 1.6)
+        if bottom is not None and y > bottom:
+            px[0, y] = int(strength * ((y - bottom) / (H - bottom)) ** 1.6)
+    mask = mask.resize((W, H))
+    tint = Image.new("RGB", (W, H), (0, 0, 0) if dark else (255, 255, 255))
+    return Image.composite(tint, img, mask)
+
+
+def region_ink(img, box):
+    luma = ImageStat.Stat(img.convert("L").crop(box)).mean[0] / 255
+    return (INK_DARK, False) if luma > 0.58 else (INK_LIGHT, True)
+
+
+def cover_masthead(img, a):
+    W, H = img.size
+    m = int(W * 0.055)
+    top_box = (0, 0, W, int(H * 0.2))
+    bot_box = (0, int(H * 0.72), W, H)
+    ink_t, light_t = region_ink(img, top_box) if a.tone == "auto" else ((INK_LIGHT, True) if a.tone == "light" else (INK_DARK, False))
+    ink_b, light_b = region_ink(img, bot_box) if a.tone == "auto" else (ink_t, light_t)
+    if not a.no_shade:
+        img = band_shade(img, int(H * 0.26), None, light_t, 110)
+        if a.lines:
+            img = band_shade(img, None, int(H * 0.66), light_b, 120)
+    d = ImageDraw.Draw(img)
+
+    y = m
+    if a.kicker:
+        f = font("sans", int(W * 0.017), b"Medium")
+        y = put(d, 0, y, a.kicker.upper(), f, ink_t, f.size * 0.3, "center", W) + int(W * 0.018)
+    title = a.title.upper() if a.caps else a.title
+    tf = fit_font(d, title, "serif", b"Medium", W - 2 * m, int(W * 0.24), 0.02 if a.caps else 0)
+    y = put(d, m, y, title, tf, ink_t, tf.size * (0.02 if a.caps else 0), "center", W - 2 * m) + int(W * 0.02)
+    if a.issue_left or a.issue_right:
+        f = font("sans", int(W * 0.0145), b"Medium")
+        d.line((m, y, W - m, y), fill=ink_t, width=max(1, W // 900))
+        y += int(W * 0.014)
+        if a.issue_left:
+            put(d, m, y, a.issue_left.upper(), f, ink_t, f.size * 0.25)
+        if a.issue_right:
+            put(d, m, y, a.issue_right.upper(), f, ink_t, f.size * 0.25, "right", W - 2 * m)
+
+    if a.lines:
+        lead = font("serif", int(W * 0.052), b"Medium")
+        rest = font("sans", int(W * 0.0175), b"Medium")
+        blocks = [(a.lines[0], lead, 0)] + [(ln.upper(), rest, rest.size * 0.25) for ln in a.lines[1:]]
+        gap = int(W * 0.014)
+        total = sum(text_h(f) for _, f, _ in blocks) + gap * (len(blocks) - 1)
+        y = H - m - total
+        for text, f, tr in blocks:
+            y = put(d, m, y, text, f, ink_b, tr) + gap
+    if a.footer:
+        f = font("sans", int(W * 0.013), b"Regular")
+        put(d, m, H - m - text_h(f), a.footer.upper(), f, ink_b, f.size * 0.25, "right", W - 2 * m)
+    return img
+
+
+def cover_monograph(img, a, W, H):
+    page = Image.new("RGB", (W, H), PAPER)
+    side = int(W * 0.075)
+    photo_h = int(H * 0.76)
+    photo = crop_to(img, (W - 2 * side) / photo_h, a.focus).resize((W - 2 * side, photo_h), Image.LANCZOS)
+    page.paste(photo, (side, side))
+    d = ImageDraw.Draw(page)
+    y = side + photo_h + int(H * 0.03)
+    tf = fit_font(d, a.title, "serif", b"Regular", int((W - 2 * side) * 0.62), int(W * 0.075))
+    put(d, side, y, a.title, tf, INK_DARK)
+    small = font("sans", int(W * 0.0145), b"Medium")
+    ry = y
+    for text in [a.kicker, *(a.lines or [])]:
+        if text:
+            ry = put(d, side, ry, text.upper(), small, INK_DARK, small.size * 0.25, "right", W - 2 * side) + int(W * 0.012)
+    bottom = H - side + int(side * 0.35)
+    left = " ".join(t for t in (a.issue_left,) if t)
+    if left or a.issue_right or a.footer:
+        d.line((side, bottom - int(W * 0.03), W - side, bottom - int(W * 0.03)), fill=INK_DARK, width=max(1, W // 900))
+        f = font("sans", int(W * 0.013), b"Regular")
+        if left:
+            put(d, side, bottom - text_h(f), left.upper(), f, INK_DARK, f.size * 0.25)
+        right = a.issue_right or a.footer
+        if right:
+            put(d, side, bottom - text_h(f), right.upper(), f, INK_DARK, f.size * 0.25, "right", W - 2 * side)
+    return page
+
+
+def cover_minimal(img, a):
+    W, H = img.size
+    m = int(W * 0.06)
+    ink_t, light_t = region_ink(img, (0, 0, W, int(H * 0.12)))
+    ink_b, light_b = region_ink(img, (0, int(H * 0.86), W, H))
+    if not a.no_shade:
+        img = band_shade(img, int(H * 0.14), None, light_t, 120)
+        if a.lines:
+            img = band_shade(img, None, int(H * 0.84), light_b, 130)
+    d = ImageDraw.Draw(img)
+    f = font("sans", int(W * 0.022), b"Medium")
+    put(d, 0, m, (a.title or "").upper(), f, ink_t, f.size * 0.45, "center", W)
+    if a.lines:
+        lf = font("serif", int(W * 0.036), b"Regular")
+        put(d, 0, H - m - text_h(lf), a.lines[0], lf, ink_b, 0, "center", W)
+    return img
+
+
+def cmd_cover(a):
+    img = load(a.image)
+    W, H = FORMATS[a.format]
+    if a.layout == "monograph":
+        out_img = cover_monograph(img, a, W, H)
+    else:
+        img = crop_to(img, W / H, a.focus).resize((W, H), Image.LANCZOS)
+        out_img = cover_masthead(img, a) if a.layout == "masthead" else cover_minimal(img, a)
+    out = Path(a.out) if a.out else Path(a.image).with_name(f"cover-{a.layout}-{a.format.replace(':', 'x')}.jpg")
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out_img.save(out, "JPEG", quality=95, subsampling=0, optimize=True)
+    print(f"{out}  ({W}x{H}, {a.layout})")
+
+
 # ---------------------------------------------------------------- compare
 
 def cmd_compare(a):
@@ -726,6 +882,24 @@ def main():
     s.add_argument("--scrim", action="store_true", help="force a soft shade under the caption")
     s.add_argument("--out")
     s.set_defaults(func=cmd_finish)
+
+    s = sub.add_parser("cover", help="lay the image out as a magazine or book cover")
+    s.add_argument("image")
+    s.add_argument("--layout", choices=["masthead", "monograph", "minimal"], default="masthead")
+    s.add_argument("--title", required=True, help="the masthead, e.g. the agency name or 'Just listed'")
+    s.add_argument("--caps", action="store_true", help="set the masthead in capitals")
+    s.add_argument("--kicker", help="small line above the masthead")
+    s.add_argument("--issue-left", help="small line under the masthead, left")
+    s.add_argument("--issue-right", help="small line under the masthead, right")
+    s.add_argument("--line", dest="lines", action="append",
+                   help="cover line, repeatable. The first is set large. Only use details you were given.")
+    s.add_argument("--footer", help="tiny line bottom right, e.g. the agency")
+    s.add_argument("--format", choices=list(FORMATS), default="4:5")
+    s.add_argument("--focus", type=focus_arg, default=(0.5, 0.5))
+    s.add_argument("--tone", choices=["auto", "light", "dark"], default="auto")
+    s.add_argument("--no-shade", action="store_true", help="skip the soft gradients behind text")
+    s.add_argument("--out")
+    s.set_defaults(func=cmd_cover)
 
     s = sub.add_parser("compare", help="original and render side by side")
     s.add_argument("before")

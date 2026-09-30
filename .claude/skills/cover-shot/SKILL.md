@@ -144,6 +144,32 @@ is busy. Override with `--position`, `--tone`, `--size`, `--focus x,y`
 Text never goes into the generation prompt. Image models garble letters, and
 Pillow sets them cleanly.
 
+### Magazine cover layouts
+
+For a full cover instead of a small caption, use `cover`:
+
+```bash
+python3 scripts/cover_shot.py cover covers/<name>/render-1.jpg --layout masthead \
+  --title "Just Listed" --kicker "Agency name" --issue-left "Coming to market" \
+  --issue-right "Suburb" --line "Street name" --line "Open home Saturday"
+```
+
+- `masthead`: a big serif title across the top, with a rule and issue line
+  under it, and cover lines at the bottom left, like a magazine.
+- `monograph`: the photo inset on paper with the title underneath, like an
+  architecture book.
+- `minimal`: small tracked title at the top, one serif line at the bottom.
+
+Every line is optional except `--title`. Fill them only with details
+Lochlan gave. Ask for the street, suburb or agency name rather than
+guessing.
+
+Lochlan can also design covers by hand in the Listing Cover Studio page
+(https://claude.ai/artifact/VieQgJwCJKNYAkWcbEuSXM), which has the same three
+layouts and saves a JPG. Its source is `tools/cover-editor.html`. The
+published copy has a sample photo swapped in for `__SAMPLE__`; the repo copy
+does not, because the repo is public.
+
 ## 6. Hand over
 
 Show Lochlan the compare sheet and the finished post. Say which light preset

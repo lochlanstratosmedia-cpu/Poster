@@ -16,6 +16,7 @@ AI-writing patterns instead of its own instincts.
 | `content/` | Drafts |
 | `.claude/skills/cover-shot/SKILL.md` | Turns a property photo into a magazine-grade social post via Higgsfield |
 | `scripts/cover_shot.py` | Photo analysis, prompt builder, caption overlay and compare sheet for cover shots |
+| `tools/cover-editor.html` | Listing Cover Studio: edit cover text and layout by hand in the browser |
 | `assets/fonts/` | Inter and Cormorant Garamond (OFL) for captions |
 
 ## How it works
@@ -67,6 +68,7 @@ python3 scripts/cover_shot.py intake        # inbox/ -> covers/<name>/
 python3 scripts/cover_shot.py analyse photo.jpg
 python3 scripts/cover_shot.py prompt photo.jpg --source phone --shot kitchen --light keep
 python3 scripts/cover_shot.py finish render.jpg --label just-sold --line "Suburb"
+python3 scripts/cover_shot.py cover render.jpg --layout masthead --title "Just Listed" --line "Street name"
 python3 scripts/cover_shot.py compare photo.jpg render.jpg
 ```
 
