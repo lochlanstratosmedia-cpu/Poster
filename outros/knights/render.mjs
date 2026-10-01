@@ -1,8 +1,11 @@
 // Renders outro.html to 1080x1920 video, frame by frame.
 //
 //   node outros/knights/render.mjs                      # all variants
-//   node outros/knights/render.mjs heartbeat painted    # just these
-//   node outros/knights/render.mjs --logo path/to/logo.png
+//   node outros/knights/render.mjs card badge           # just these
+//   node outros/knights/render.mjs --love a.png --knights b.png
+//
+// Without --love/--knights it uses logos/love.png and logos/knights.png if they
+// exist, and a labelled placeholder if they do not.
 //   node outros/knights/render.mjs --fps 25 --seconds 10
 //
 // Opaque variants come out as H.264 MP4. The overlay variant also comes out
@@ -15,7 +18,7 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 const here = dirname(fileURLToPath(import.meta.url));
-const ALL = ["heartbeat", "stripes", "goldenhour", "painted", "overlay"];
+const ALL = ["card", "heartbeat", "hoops", "badge", "overlay"];
 const ALPHA = new Set(["overlay"]);
 
 const args = process.argv.slice(2);
@@ -28,7 +31,7 @@ const opt = (name, fallback) => {
 };
 const fps = Number(opt("fps", 30));
 const seconds = Number(opt("seconds", 8));
-const logo = opt("logo", null);
+const logos = { love: opt("love", null), knights: opt("knights", null) };
 const out = resolve(opt("out", resolve(here, "renders")));
 const variants = args.length ? args : ALL;
 mkdirSync(out, { recursive: true });
@@ -45,7 +48,7 @@ const page = await browser.newPage({ viewport: { width: 1080, height: 1920 }, de
 
 for (const v of variants) {
   const q = new URLSearchParams({ v, render: "1" });
-  if (logo) q.set("logo", pathToFileURL(resolve(logo)).href);
+  for (const k in logos) if (logos[k]) q.set(k, pathToFileURL(resolve(logos[k])).href);
   await page.goto(pathToFileURL(resolve(here, "outro.html")).href + "?" + q);
   await page.evaluate(() => window.ready);
 
