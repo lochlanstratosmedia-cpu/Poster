@@ -6,6 +6,7 @@
 //
 // Without --love/--knights it uses logos/love.png and logos/knights.png if they
 // exist, and a labelled placeholder if they do not.
+//   node outros/knights/render.mjs simple --tag "Go Knights" --name simple-go
 //   node outros/knights/render.mjs --fps 25 --seconds 10
 //
 // Opaque variants come out as H.264 MP4. The overlay variant also comes out
@@ -33,6 +34,8 @@ const fps = Number(opt("fps", 30));
 const seconds = Number(opt("seconds", 8));
 const logos = { love: opt("love", null), knights: opt("knights", null) };
 const out = resolve(opt("out", resolve(here, "renders")));
+const tag = opt("tag", null);
+const name = opt("name", null);
 const variants = args.length ? args : ALL;
 mkdirSync(out, { recursive: true });
 
@@ -49,6 +52,7 @@ const page = await browser.newPage({ viewport: { width: 1080, height: 1920 }, de
 for (const v of variants) {
   const q = new URLSearchParams({ v, render: "1" });
   for (const k in logos) if (logos[k]) q.set(k, pathToFileURL(resolve(logos[k])).href);
+  if (tag) q.set("tag", tag);
   await page.goto(pathToFileURL(resolve(here, "outro.html")).href + "?" + q);
   await page.evaluate(() => window.ready);
 
@@ -58,7 +62,7 @@ for (const v of variants) {
         ffmpeg(["-c:v", "png", "-pix_fmt", "rgba", `${out}/knights-outro-${v}.mov`]),
         ffmpeg(["-c:v", "libvpx-vp9", "-pix_fmt", "yuva420p", "-b:v", "0", "-crf", "28", `${out}/knights-outro-${v}.webm`]),
       ]
-    : [ffmpeg(["-c:v", "libx264", "-pix_fmt", "yuv420p", "-crf", "16", "-preset", "slow", "-movflags", "+faststart", `${out}/knights-outro-${v}.mp4`])];
+    : [ffmpeg(["-c:v", "libx264", "-pix_fmt", "yuv420p", "-crf", "16", "-preset", "slow", "-movflags", "+faststart", `${out}/knights-outro-${name || v}.mp4`])];
 
   const frames = Math.round(seconds * fps);
   for (let f = 0; f < frames; f++) {

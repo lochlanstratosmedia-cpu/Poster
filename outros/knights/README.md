@@ -15,6 +15,7 @@ logos side by side.
 | `hoops` | Jersey-style hoops roll in, big "Go Knights", logos on a white panel |
 | `badge` | A white seal stamps on, "With love from Newcastle" turns round the rim, logos inside |
 | `overlay` | Transparent: a striped ribbon and white card slide up over the last shot |
+| `simple` | Red and blue stripes, a two-tone card with the Love logo on navy and the Knights logo on white, one tagline (`--tag "..."`) |
 
 Renders are in `renders/`. The overlay comes as `.webm` with alpha. The `.mov`
 alpha master (PNG codec) is gitignored, so rebuild it with the script.
