@@ -373,7 +373,15 @@ VARIANTS.simple = function () {
   stage.style.background = NAVY;
   const bg = stripes({ angle: 0, width: 180, start: 0, stagger: .06, dur: .8, drift: 8 });
   const card = el("div", { position: "absolute", left: "80px", width: "920px", top: "690px", height: "440px", borderRadius: "40px", overflow: "hidden", display: "flex", boxShadow: "0 40px 90px rgba(0,0,0,.4)" });
-  const left = el("div", { flex: 1, background: "#071a45", display: "grid", placeItems: "center" }, card);
+  // Love's panel. The logo's dot is deep purple (#512162), so the panel is a
+  // lighter purple that glows behind the logo and keeps the dot readable.
+  const LOVE_BG = {
+    plum: "radial-gradient(circle at 55% 50%, #9a55b5 0%, #7a3a93 45%, #4c1d5c 100%)",
+    purple: "linear-gradient(135deg, #8a46a6 0%, #6a2f80 100%)",
+    royal: "linear-gradient(135deg, #2a62c4 0%, #163f8a 100%)",
+    navy: "#071a45",
+  };
+  const left = el("div", { flex: 1, background: LOVE_BG[params.get("lovebg")] || LOVE_BG.plum, display: "grid", placeItems: "center" }, card);
   const right = el("div", { flex: 1, background: "#fff", display: "grid", placeItems: "center" }, card);
   const love = logoSlot(left, "love", 340, 160, "#fff");
   const kn = logoSlot(right, "knights", 300, 340, NAVY);
