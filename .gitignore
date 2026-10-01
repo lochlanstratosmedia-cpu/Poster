@@ -11,3 +11,6 @@ covers/**/*.heic
 # Drop folder for cover shots. Only the README is tracked.
 inbox/*
 !inbox/README.md
+
+# Knights outro alpha master is large; rebuild with render.mjs
+outros/knights/renders/*.mov

@@ -1,0 +1,440 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Knights outro</title>
+<style>
+  @font-face { font-family: "Inter"; src: url("../../assets/fonts/Inter.ttf"); font-weight: 100 900; }
+  @font-face { font-family: "Cormorant"; src: url("../../assets/fonts/CormorantGaramond.ttf"); font-weight: 300 700; }
+
+  :root {
+    --navy: #0b1f4d;
+    --navy-deep: #071433;
+    --blue: #1d4fa3;
+    --red: #d3202f;
+    --cream: #f6efe3;
+    --white: #ffffff;
+  }
+  html, body { margin: 0; height: 100%; background: #111; overflow: hidden; }
+  body.render { background: transparent; }
+  #wrap { position: absolute; inset: 0; display: grid; place-items: center; }
+  #stage {
+    position: relative; width: 1080px; height: 1920px; overflow: hidden;
+    transform-origin: center center; font-family: "Inter", sans-serif; color: var(--white);
+  }
+  #stage * { box-sizing: border-box; }
+  .abs { position: absolute; }
+  .center-x { left: 0; right: 0; text-align: center; }
+  .letters span { display: inline-block; will-change: transform, opacity; }
+  .logo-slot { position: absolute; left: 50%; display: grid; place-items: center; }
+  .logo-slot img { max-width: 420px; max-height: 220px; display: block; }
+  .logo-ph {
+    width: 380px; height: 150px; border: 4px dashed currentColor; border-radius: 26px;
+    display: grid; place-items: center; font-weight: 600; font-size: 34px; letter-spacing: .28em;
+    opacity: .75;
+  }
+  #picker {
+    position: fixed; top: 12px; left: 12px; z-index: 10; display: flex; gap: 6px; flex-wrap: wrap;
+    font: 14px/1 system-ui, sans-serif;
+  }
+  #picker a { color: #fff; background: #333; padding: 8px 10px; border-radius: 6px; text-decoration: none; }
+  #picker a.on { background: #d3202f; }
+  body.render #picker { display: none; }
+</style>
+</head>
+<body>
+<div id="picker"></div>
+<div id="wrap"><div id="stage"></div></div>
+
+<script>
+// Every variant is a pure function of time: draw(t) sets the whole frame for
+// t seconds. render.mjs steps t frame by frame; the preview just plays it.
+
+const params = new URLSearchParams(location.search);
+const VARIANT = params.get("v") || "heartbeat";
+const LOGO = params.get("logo");
+const RENDER = params.has("render");
+const DURATION = 8;
+
+const stage = document.getElementById("stage");
+const NS = "http://www.w3.org/2000/svg";
+
+// ---------- helpers ----------
+const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
+const prog = (t, start, dur) => clamp((t - start) / dur);
+const lerp = (a, b, p) => a + (b - a) * p;
+const easeOut = p => 1 - Math.pow(1 - p, 3);
+const easeInOut = p => p < .5 ? 4 * p * p * p : 1 - Math.pow(-2 * p + 2, 3) / 2;
+const easeOutBack = p => { const c = 1.6; return 1 + (c + 1) * Math.pow(p - 1, 3) + c * Math.pow(p - 1, 2); };
+// one heartbeat thump, 0 -> 1 -> 0 over len seconds
+const thump = (t, at, len = .32) => { const x = (t - at) / len; return x > 0 && x < 1 ? Math.sin(Math.PI * x) : 0; };
+
+function el(tag, css = {}, parent = stage, html = "") {
+  const e = document.createElement(tag);
+  Object.assign(e.style, css);
+  if (html) e.innerHTML = html;
+  parent.appendChild(e);
+  return e;
+}
+function svgEl(tag, attrs = {}, parent) {
+  const e = document.createElementNS(NS, tag);
+  for (const k in attrs) e.setAttribute(k, attrs[k]);
+  if (parent) parent.appendChild(e);
+  return e;
+}
+function fullSvg(parent = stage) {
+  return svgEl("svg", { width: 1080, height: 1920, viewBox: "0 0 1080 1920", class: "abs", style: "left:0;top:0;overflow:visible" }, parent);
+}
+function letters(parent, text, css) {
+  const box = el("div", css, parent);
+  box.className = "letters";
+  const spans = [...text].map(ch => {
+    const s = el("span", {}, box);
+    s.textContent = ch === " " ? " " : ch;
+    return s;
+  });
+  return { box, spans };
+}
+// staggered rise-in for a letters() group
+function riseLetters(spans, t, start, { gap = .045, dur = .55, dist = 90 } = {}) {
+  spans.forEach((s, i) => {
+    const p = prog(t, start + i * gap, dur);
+    s.style.opacity = clamp(p * 2);
+    s.style.transform = `translateY(${(1 - easeOutBack(p)) * dist}px)`;
+  });
+}
+function strokeDraw(path, p) {
+  const L = path._len || (path._len = path.getTotalLength());
+  path.style.strokeDasharray = L;
+  path.style.strokeDashoffset = L * (1 - p);
+}
+function makeLogo(top, color) {
+  const slot = el("div", { top: top + "px", color, transform: "translate(-50%,0)" });
+  slot.className = "logo-slot";
+  if (LOGO) {
+    const img = el("img", {}, slot);
+    img.src = LOGO;
+  } else {
+    el("div", {}, slot, "YOUR LOGO").className = "logo-ph";
+  }
+  return slot;
+}
+function showLogo(slot, t, start) {
+  const p = prog(t, start, .7);
+  slot.style.opacity = easeOut(p);
+  slot.style.transform = `translate(-50%, ${(1 - easeOut(p)) * 40}px) scale(${lerp(.92, 1, easeOut(p))})`;
+}
+// heart outline, tip at bottom, centred on (cx, cy), width ~ 2*r
+function heartPath(cx, cy, r) {
+  const k = r / 210;
+  const P = (x, y) => `${cx + x * k} ${cy + y * k}`;
+  return `M ${P(0, 200)} C ${P(-120, 100)} ${P(-210, 30)} ${P(-210, -60)} ` +
+         `C ${P(-210, -140)} ${P(-150, -190)} ${P(-90, -190)} C ${P(-40, -190)} ${P(-10, -160)} ${P(0, -130)} ` +
+         `C ${P(10, -160)} ${P(40, -190)} ${P(90, -190)} C ${P(150, -190)} ${P(210, -140)} ${P(210, -60)} ` +
+         `C ${P(210, 30)} ${P(120, 100)} ${P(0, 200)} Z`;
+}
+
+// ---------- variants ----------
+const VARIANTS = {};
+
+// 1. Heartbeat: a pulse line runs in, traces a heart, the heart fills red and beats.
+VARIANTS.heartbeat = function () {
+  stage.style.background = "radial-gradient(circle at 50% 42%, #1a4290 0%, #0b1f4d 52%, #071433 100%)";
+  const svg = fullSvg();
+  const cx = 540, cy = 830, tipY = 1030;
+  const heart = heartPath(cx, cy, 210);
+  const lead = `M -40 ${tipY} L 230 ${tipY} L 280 ${tipY - 80} L 330 ${tipY + 90} L 375 ${tipY} L ${cx} ${tipY} `;
+  const trail = ` M ${cx} ${tipY} L 700 ${tipY} L 745 ${tipY - 70} L 790 ${tipY + 80} L 830 ${tipY} L 1120 ${tipY}`;
+  // heart traced as part of the one line: from the tip, up and around
+  const traced = lead + heart.replace(/^M [^C]+/, "").replace(/ Z$/, "") + trail;
+
+  const glow = svgEl("filter", { id: "glow", x: "-50%", y: "-50%", width: "200%", height: "200%" }, svg);
+  svgEl("feGaussianBlur", { stdDeviation: 14, result: "b" }, glow);
+  const m = svgEl("feMerge", {}, glow);
+  svgEl("feMergeNode", { in: "b" }, m); svgEl("feMergeNode", { in: "SourceGraphic" }, m);
+
+  const g = svgEl("g", {}, svg);
+  const fill = svgEl("path", { d: heart, fill: "#d3202f" }, g);
+  const outline = svgEl("path", { d: heart, fill: "none", stroke: "#fff", "stroke-width": 14, "stroke-linejoin": "round", filter: "url(#glow)" }, g);
+  const line = svgEl("path", { d: traced, fill: "none", stroke: "#fff", "stroke-width": 14, "stroke-linecap": "round", "stroke-linejoin": "round", filter: "url(#glow)" }, svg);
+
+  // small hearts that burst out on the first beat
+  const bits = [...Array(10)].map((_, i) => {
+    const a = (i / 10) * Math.PI * 2 + .3;
+    return { a, p: svgEl("path", { d: heartPath(0, 0, 26), fill: i % 2 ? "#fff" : "#d3202f" }, svg) };
+  });
+
+  const title = letters(stage, "GO KNIGHTS", { position: "absolute", left: 0, right: 0, top: "1170px", textAlign: "center", fontWeight: 900, fontSize: "158px", letterSpacing: ".02em", lineHeight: 1 });
+  const bar = el("div", { position: "absolute", left: "390px", width: "300px", height: "12px", top: "1360px", background: "#d3202f", borderRadius: "6px", transformOrigin: "center" });
+  const sub = el("div", { position: "absolute", left: 0, right: 0, top: "1400px", textAlign: "center", fontFamily: "Cormorant", fontWeight: 600, fontSize: "76px" }, stage, "With love from Newcastle");
+  const logo = makeLogo(1620, "#fff");
+
+  return t => {
+    const draw = easeInOut(prog(t, .15, 2.3));
+    strokeDraw(line, draw);
+    const swap = prog(t, 2.45, .45);           // hand the heart over from the line to its own outline
+    line.style.opacity = 1 - swap;
+    outline.style.opacity = t > 2.45 ? 1 : 0;
+    fill.style.opacity = easeOut(prog(t, 2.5, .35));
+
+    let s = 1 + .1 * thump(t, 2.85) + .06 * thump(t, 3.25);
+    if (t > 4) s += .018 * Math.sin((t - 4) * 5.5);
+    g.setAttribute("transform", `translate(${cx} ${cy}) scale(${s}) translate(${-cx} ${-cy})`);
+
+    const bp = prog(t, 2.85, 1.1);
+    bits.forEach(({ a, p }) => {
+      const d = 250 + easeOut(bp) * 260;
+      p.setAttribute("transform", `translate(${cx + Math.cos(a) * d} ${cy + Math.sin(a) * d}) scale(${.4 + bp})`);
+      p.style.opacity = bp > 0 ? (1 - bp) : 0;
+    });
+
+    riseLetters(title.spans, t, 3.0);
+    bar.style.transform = `scaleX(${easeOut(prog(t, 3.55, .5))})`;
+    const sp = easeOut(prog(t, 3.75, .7));
+    sub.style.opacity = sp; sub.style.transform = `translateY(${(1 - sp) * 30}px)`;
+    showLogo(logo, t, 4.3);
+  };
+};
+
+// 2. Stripes: club-colour bands sweep through and settle into a navy panel with stacked type.
+VARIANTS.stripes = function () {
+  stage.style.background = "#f6efe3";
+  const bands = [["#d3202f", .05], ["#1d4fa3", .25], ["#ffffff", .42]].map(([c, d]) => ({
+    d, e: el("div", { position: "absolute", left: "-60%", top: "-20%", width: "60%", height: "140%", background: c, transform: "skewX(-18deg)" })
+  }));
+  const panel = el("div", { position: "absolute", inset: 0, background: "#0b1f4d" });
+  const edge = el("div", { position: "absolute", left: "-5%", width: "110%", height: "34px", top: "1040px", background: "#d3202f", transform: "rotate(-5.5deg)", transformOrigin: "left center" });
+
+  const lines = ["NEWCASTLE", "IS BEHIND", "YOU"].map((txt, i) => {
+    const mask = el("div", { position: "absolute", left: "80px", top: `${330 + i * 170}px`, overflow: "hidden", height: "170px" });
+    const inner = el("div", { fontWeight: 900, fontSize: "152px", lineHeight: "170px", letterSpacing: "-.01em", whiteSpace: "nowrap" }, mask, txt);
+    return inner;
+  });
+  const hsvg = svgEl("svg", { width: 150, height: 150, viewBox: "-230 -230 460 460", class: "abs", style: "left:405px;top:672px;overflow:visible" }, stage);
+  const hp = svgEl("path", { d: heartPath(0, -10, 200), fill: "#d3202f" }, hsvg);
+
+  const go = el("div", { position: "absolute", left: 0, right: 0, top: "1210px", textAlign: "center", color: "#0b1f4d", fontWeight: 900, fontSize: "132px", lineHeight: 1 }, stage, "GO KNIGHTS");
+  const sub = el("div", { position: "absolute", left: 0, right: 0, top: "1370px", textAlign: "center", color: "#d3202f", fontFamily: "Cormorant", fontWeight: 700, fontSize: "70px" }, stage, "With love from Newcastle");
+  const logo = makeLogo(1610, "#0b1f4d");
+
+  return t => {
+    bands.forEach(({ d, e }) => {
+      const p = easeInOut(prog(t, d, .9));
+      e.style.transform = `translateX(${p * 330}%) skewX(-18deg)`;
+    });
+    // panel grows from the left edge as a diagonal wipe, then settles to its slanted bottom
+    const w = easeInOut(prog(t, .55, .75));
+    const x = lerp(-40, 140, w);
+    const settle = easeInOut(prog(t, 1.25, .55));
+    const bl = lerp(100, 58.5, settle), br = lerp(100, 52, settle);
+    panel.style.clipPath = `polygon(0 0, ${x - 25}% 0, ${x}% 100%, 0 100%)`;
+    if (t >= 1.25) panel.style.clipPath = `polygon(0 0, 100% 0, 100% ${br}%, 0 ${bl}%)`;
+    edge.style.opacity = t >= 1.25 ? 1 : 0;
+    edge.style.top = `${lerp(1920, 1040, settle)}px`;
+    edge.style.transform = `rotate(-5.5deg) scaleX(${easeOut(prog(t, 1.3, .6))})`;
+
+    lines.forEach((ln, i) => {
+      const p = easeOut(prog(t, 1.55 + i * .2, .6));
+      ln.style.transform = `translateY(${(1 - p) * 100}%)`;
+    });
+    const hpP = prog(t, 2.25, .6);
+    let hs = easeOutBack(hpP) + .1 * thump(t, 3.0) + .07 * thump(t, 3.4);
+    if (t > 4) hs += .02 * Math.sin((t - 4) * 5.5);
+    hsvg.style.transform = `scale(${hs}) rotate(${(1 - easeOut(hpP)) * -25}deg)`;
+    hsvg.style.opacity = clamp(hpP * 3);
+
+    const gp = easeOut(prog(t, 2.6, .9));
+    go.style.opacity = gp;
+    go.style.letterSpacing = `${lerp(.35, .03, gp)}em`;
+    const sp = easeOut(prog(t, 3.2, .7));
+    sub.style.opacity = sp; sub.style.transform = `translateY(${(1 - sp) * 30}px)`;
+    showLogo(logo, t, 3.7);
+  };
+};
+
+// 3. Golden hour: sun comes up over painted houses and the water, hearts drift up.
+VARIANTS.goldenhour = function () {
+  const sky = el("div", { position: "absolute", inset: 0 });
+  const svg = fullSvg();
+  const horizon = 1180;
+  const sunClip = svgEl("clipPath", { id: "aboveWater" }, svg);
+  svgEl("rect", { x: 0, y: 0, width: 1080, height: horizon }, sunClip);
+  const sunG = svgEl("g", { "clip-path": "url(#aboveWater)" }, svg);
+  const halo = svgEl("circle", { cx: 540, r: 330, fill: "#ffd49a", opacity: .25 }, sunG);
+  const sun = svgEl("circle", { cx: 540, r: 175, fill: "#ffe2a8" }, sunG);
+
+  svgEl("rect", { x: 0, y: horizon, width: 1080, height: 1920 - horizon, fill: "#0f2a5c" }, svg);
+  const glints = [...Array(9)].map((_, i) => svgEl("rect", { x: 0, y: horizon + 22 + i * 34, height: 8, rx: 4, fill: "#ffcf8a" }, svg));
+  const waves = [...Array(5)].map((_, i) => svgEl("path", { fill: "none", stroke: "#ffffff", "stroke-opacity": .18 - i * .02, "stroke-width": 5, "stroke-linecap": "round" }, svg));
+
+  // a row of houses along the horizon, in club colours
+  const colours = ["#d3202f", "#ffffff", "#1d4fa3", "#d3202f", "#f6efe3", "#1d4fa3", "#ffffff", "#d3202f", "#1d4fa3"];
+  const houses = colours.map((c, i) => {
+    const w = 104 + (i % 3) * 14, h = 96 + ((i * 37) % 50);
+    const x = 18 + i * 116 + (i % 2) * 6;
+    const g = svgEl("g", {}, svg);
+    svgEl("path", { d: `M ${x} ${horizon} V ${horizon - h} L ${x + w / 2} ${horizon - h - 58} L ${x + w} ${horizon - h} V ${horizon} Z`, fill: c }, g);
+    const win = svgEl("rect", { x: x + w / 2 - 17, y: horizon - h + 26, width: 34, height: 34, rx: 4, fill: "#ffd77a" }, g);
+    return { g, x: x + w / 2, win };
+  });
+
+  const floaters = [...Array(14)].map((_, i) => ({
+    x: 80 + ((i * 397) % 920), delay: 3.0 + (i * .29) % 2.6, size: 18 + (i * 7) % 20,
+    p: svgEl("path", { d: heartPath(0, 0, 1), fill: i % 3 === 0 ? "#ffffff" : "#d3202f" }, svg)
+  }));
+  floaters.forEach(f => f.p.setAttribute("d", heartPath(0, 0, f.size)));
+
+  const kicker = el("div", { position: "absolute", left: 0, right: 0, top: "300px", textAlign: "center", fontFamily: "Cormorant", fontWeight: 600, fontSize: "74px", textShadow: "0 2px 18px rgba(0,0,0,.25)" }, stage, "From all of us in Newcastle");
+  const title = letters(stage, "GO KNIGHTS", { position: "absolute", left: 0, right: 0, top: "410px", textAlign: "center", fontWeight: 900, fontSize: "164px", lineHeight: 1, textShadow: "0 6px 30px rgba(11,31,77,.35)" });
+  const logo = makeLogo(1600, "#fff");
+
+  return t => {
+    const day = easeInOut(prog(t, 0, 3));
+    sky.style.background = `linear-gradient(180deg, ${mix("#0b1f4d", "#2f4f9a", day)} 0%, ${mix("#4a3b7a", "#e98a6a", day)} 48%, ${mix("#a35a6a", "#ffc98e", day)} 62%)`;
+    const sunY = lerp(horizon + 200, horizon - 120, easeOut(prog(t, 0, 3.2)));
+    sun.setAttribute("cy", sunY); halo.setAttribute("cy", sunY);
+    halo.setAttribute("r", 330 + 18 * Math.sin(t * 2));
+
+    glints.forEach((g, i) => {
+      const w = (260 - i * 20) * (.75 + .25 * Math.sin(t * 3 + i * 1.7)) * day;
+      g.setAttribute("x", 540 - w / 2); g.setAttribute("width", Math.max(0, w));
+      g.setAttribute("opacity", .55 - i * .05);
+    });
+    waves.forEach((w, i) => {
+      const y = horizon + 80 + i * 120; let d = "";
+      for (let x = -20; x <= 1100; x += 20) {
+        const yy = y + Math.sin(x / 90 + t * 1.6 + i) * (8 + i * 2);
+        d += (x === -20 ? "M " : "L ") + x + " " + yy.toFixed(1) + " ";
+      }
+      w.setAttribute("d", d);
+    });
+
+    houses.forEach((h, i) => {
+      const p = prog(t, .7 + i * .11, .55);
+      h.g.setAttribute("transform", `translate(0 ${horizon}) scale(1 ${Math.max(.001, easeOutBack(p))}) translate(0 ${-horizon})`);
+      h.win.style.opacity = prog(t, 2.3 + (i * .13) % .8, .25);
+    });
+
+    floaters.forEach(f => {
+      const life = 4.2, a = t - f.delay;
+      if (a < 0) { f.p.style.opacity = 0; return; }
+      const q = (a % life) / life;
+      const y = horizon - 150 - q * 440;
+      const x = f.x + Math.sin(a * 2 + f.x) * 26;
+      f.p.setAttribute("transform", `translate(${x} ${y}) rotate(${Math.sin(a * 2.4 + f.x) * 14})`);
+      f.p.style.opacity = Math.sin(Math.PI * q) * .9;
+    });
+
+    const kp = easeOut(prog(t, 2.3, .8));
+    kicker.style.opacity = kp; kicker.style.transform = `translateY(${(1 - kp) * 28}px)`;
+    riseLetters(title.spans, t, 2.7, { dist: -90 });
+    showLogo(logo, t, 3.6);
+  };
+};
+
+// 4. Painted: brush strokes in red and blue, white type on the paint, signed off by hand.
+VARIANTS.painted = function () {
+  stage.style.background = "#f4ede1";
+  const svg = fullSvg();
+  const defs = svgEl("defs", {}, svg);
+  const rough = svgEl("filter", { id: "rough", filterUnits: "userSpaceOnUse", x: -300, y: 0, width: 1680, height: 1920 }, defs);
+  svgEl("feTurbulence", { type: "fractalNoise", baseFrequency: ".035 .09", numOctaves: 3, seed: 7, result: "n" }, rough);
+  svgEl("feDisplacementMap", { in: "SourceGraphic", in2: "n", scale: 34 }, rough);
+  const paper = svgEl("filter", { id: "paper" }, defs);
+  svgEl("feTurbulence", { type: "fractalNoise", baseFrequency: .9, numOctaves: 2, seed: 3 }, paper);
+  svgEl("feColorMatrix", { values: "0 0 0 0 .4  0 0 0 0 .35  0 0 0 0 .3  0 0 0 .07 0" }, paper);
+  svgEl("rect", { width: 1080, height: 1920, filter: "url(#paper)" }, svg);
+
+  const s1 = svgEl("path", { d: "M -60 800 C 260 770, 700 760, 1140 735", stroke: "#d3202f", "stroke-width": 210, fill: "none", "stroke-linecap": "round", filter: "url(#rough)" }, svg);
+  const s2 = svgEl("path", { d: "M 1140 1020 C 800 1040, 360 1050, -60 1075", stroke: "#1d4fa3", "stroke-width": 250, fill: "none", "stroke-linecap": "round", filter: "url(#rough)" }, svg);
+  const drips = [[180, 860, "#d3202f"], [860, 1150, "#1d4fa3"], [930, 1170, "#1d4fa3"], [120, 700, "#d3202f"], [990, 650, "#d3202f"], [70, 1190, "#1d4fa3"]]
+    .map(([x, y, c], i) => svgEl("circle", { cx: x, cy: y, r: 10 + (i % 3) * 7, fill: c }, svg));
+
+  const hp = svgEl("path", { d: heartPath(540, 470, 150), fill: "#d3202f", "fill-opacity": 0, stroke: "#d3202f", "stroke-width": 26, "stroke-linejoin": "round", "stroke-linecap": "round", filter: "url(#rough)" }, svg);
+
+  const t1 = el("div", { position: "absolute", left: 0, right: 0, top: "700px", textAlign: "center", fontWeight: 900, fontSize: "112px", lineHeight: 1, transform: "rotate(-1.5deg)" }, stage, "WE'RE WITH YOU");
+  const t2 = el("div", { position: "absolute", left: 0, right: 0, top: "975px", textAlign: "center", fontWeight: 900, fontSize: "158px", lineHeight: 1, transform: "rotate(-1.2deg)" }, stage, "GO KNIGHTS");
+  const sign = el("div", { position: "absolute", left: 0, right: 0, top: "1250px", textAlign: "center", color: "#0b1f4d", fontFamily: "Cormorant", fontWeight: 700, fontSize: "112px", lineHeight: 1.1 }, stage, "Love, Newcastle");
+  const logo = makeLogo(1600, "#0b1f4d");
+  const wipe = (node, p) => node.style.clipPath = `inset(-20% ${100 - p * 100}% -20% 0)`;
+
+  return t => {
+    strokeDraw(s1, easeInOut(prog(t, .2, .8)));
+    strokeDraw(s2, easeInOut(prog(t, .7, .8)));
+    drips.forEach((d, i) => {
+      const p = prog(t, .6 + i * .12, .3);
+      d.setAttribute("transform", `translate(${d.getAttribute("cx")} ${d.getAttribute("cy")}) scale(${easeOutBack(p)}) translate(${-d.getAttribute("cx")} ${-d.getAttribute("cy")})`);
+    });
+    wipe(t1, easeOut(prog(t, .75, .6)));
+    wipe(t2, easeOut(prog(t, 1.3, .6)));
+    strokeDraw(hp, easeInOut(prog(t, 1.8, .9)));
+    hp.setAttribute("fill-opacity", easeOut(prog(t, 2.6, .4)));
+    let hs = 1 + .09 * thump(t, 3.0) + .06 * thump(t, 3.4);
+    if (t > 4.2) hs += .018 * Math.sin((t - 4.2) * 5.5);
+    hp.setAttribute("transform", `translate(540 470) scale(${hs}) translate(-540 -470)`);
+    wipe(sign, easeInOut(prog(t, 2.6, 1.0)));
+    showLogo(logo, t, 3.6);
+  };
+};
+
+// 5. Overlay: transparent lower card to sit over the last shot of footage.
+VARIANTS.overlay = function () {
+  const scrim = el("div", { position: "absolute", left: 0, right: 0, bottom: 0, height: "62%", background: "linear-gradient(180deg, rgba(7,20,51,0) 0%, rgba(7,20,51,.72) 45%, rgba(7,20,51,.92) 100%)" });
+  const hsvg = svgEl("svg", { width: 150, height: 150, viewBox: "-230 -230 460 460", class: "abs", style: "left:465px;top:1010px;overflow:visible" }, stage);
+  svgEl("path", { d: heartPath(0, -10, 200), fill: "#d3202f", stroke: "#fff", "stroke-width": 22 }, hsvg);
+  const title = letters(stage, "GO KNIGHTS", { position: "absolute", left: 0, right: 0, top: "1190px", textAlign: "center", fontWeight: 900, fontSize: "150px", lineHeight: 1 });
+  const bar = el("div", { position: "absolute", left: "410px", width: "260px", height: "10px", top: "1370px", background: "#d3202f", borderRadius: "5px" });
+  const sub = el("div", { position: "absolute", left: 0, right: 0, top: "1405px", textAlign: "center", fontFamily: "Cormorant", fontWeight: 600, fontSize: "70px" }, stage, "With love from Newcastle");
+  const logo = makeLogo(1610, "#fff");
+  return t => {
+    scrim.style.opacity = easeInOut(prog(t, 0, 1));
+    const hp = prog(t, .5, .6);
+    let hs = easeOutBack(hp) + .1 * thump(t, 1.3) + .06 * thump(t, 1.7);
+    if (t > 2.6) hs += .02 * Math.sin((t - 2.6) * 5.5);
+    hsvg.style.transform = `scale(${hs})`; hsvg.style.opacity = clamp(hp * 3);
+    riseLetters(title.spans, t, .9);
+    bar.style.transform = `scaleX(${easeOut(prog(t, 1.5, .5))})`;
+    const sp = easeOut(prog(t, 1.7, .7));
+    sub.style.opacity = sp; sub.style.transform = `translateY(${(1 - sp) * 30}px)`;
+    showLogo(logo, t, 2.2);
+  };
+};
+
+function mix(a, b, p) {
+  const h = s => [1, 3, 5].map(i => parseInt(s.slice(i, i + 2), 16));
+  const [A, B] = [h(a), h(b)];
+  return `rgb(${A.map((v, i) => Math.round(lerp(v, B[i], p))).join(",")})`;
+}
+
+// ---------- boot ----------
+const draw = (VARIANTS[VARIANT] || VARIANTS.heartbeat)();
+window.draw = draw;
+window.DURATION = DURATION;
+
+if (RENDER) {
+  document.body.classList.add("render");
+  document.documentElement.style.background = "transparent";
+  document.getElementById("wrap").style.placeItems = "start";
+} else {
+  const fit = () => {
+    const s = Math.min(innerWidth / 1080, innerHeight / 1920);
+    stage.style.transform = `scale(${s})`;
+  };
+  fit(); addEventListener("resize", fit);
+  const picker = document.getElementById("picker");
+  Object.keys(VARIANTS).forEach(k => {
+    const a = el("a", {}, picker, k);
+    const q = new URLSearchParams(location.search); q.set("v", k);
+    a.href = "?" + q; if (k === VARIANT) a.className = "on";
+  });
+  document.fonts.ready.then(() => {
+    const t0 = performance.now();
+    const loop = now => { draw(((now - t0) / 1000) % (DURATION + 1)); requestAnimationFrame(loop); };
+    requestAnimationFrame(loop);
+  });
+}
+window.ready = document.fonts.ready.then(() => true);
+</script>
+</body>
+</html>
