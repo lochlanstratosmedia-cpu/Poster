@@ -400,6 +400,29 @@ VARIANTS.simple = function () {
   };
 };
 
+// 7. Thumbnail: a still Reel cover that matches the simple outro. Everything
+//    sits inside the middle 1080x1440, which is what the profile grid shows.
+//    ?head= and ?sub= set the words; ?guides shows the grid and square crops.
+VARIANTS.thumb = function () {
+  stage.style.background = NAVY;
+  const bg = stripes({ angle: 0, width: 180, start: -10, drift: 0 });
+  el("div", { position: "absolute", inset: 0, background: "radial-gradient(ellipse 80% 40% at 50% 45%, rgba(4,12,32,.55) 0%, rgba(4,12,32,0) 100%)" });
+  const sub = el("div", { position: "absolute", left: 0, right: 0, top: "430px", textAlign: "center", fontSize: "40px", textShadow: "0 2px 16px rgba(0,0,0,.5)" }, stage, params.get("sub") || "A message from Liam");
+  sub.className = "caps";
+  const head = el("div", { position: "absolute", left: "60px", right: "60px", top: "500px", textAlign: "center", fontSize: "176px", lineHeight: 1.02, textShadow: "0 10px 50px rgba(0,0,0,.5)" }, stage, params.get("head") || "Dear<br>Knights,");
+  head.className = "serif";
+  const card = el("div", { position: "absolute", left: "150px", width: "780px", top: "1020px", height: "370px", borderRadius: "36px", overflow: "hidden", display: "flex", boxShadow: "0 40px 90px rgba(0,0,0,.4)" });
+  const left = el("div", { flex: 1, background: "linear-gradient(135deg, #2a62c4 0%, #163f8a 100%)", display: "grid", placeItems: "center" }, card);
+  const right = el("div", { flex: 1, background: "#fff", display: "grid", placeItems: "center" }, card);
+  logoSlot(left, "love", 290, 140, "#fff");
+  logoSlot(right, "knights", 250, 290, NAVY);
+  if (params.has("guides")) {
+    el("div", { position: "absolute", left: 0, right: 0, top: "240px", height: "1440px", outline: "4px dashed #ff0", zIndex: 5 });
+    el("div", { position: "absolute", left: 0, right: 0, top: "420px", height: "1080px", outline: "4px dashed #0f0", zIndex: 5 });
+  }
+  return t => bg(10);
+};
+
 // ---------- boot ----------
 const draw = (VARIANTS[VARIANT] || VARIANTS.card)();
 window.draw = draw;

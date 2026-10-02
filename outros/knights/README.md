@@ -70,3 +70,10 @@ python3 outros/knights/sound.py
 
 It writes `renders/knights-outro-simple-sfx.wav` (effects only, about -16 LUFS,
 for mixing under the song) and `renders/knights-outro-simple-sound.mp4`.
+
+## Thumbnail
+
+The `thumb` variant is a still Reel cover (1080x1920) that matches the outro.
+Everything sits inside the middle 1080x1440 that the profile grid shows. Open
+`outro.html?v=thumb&guides` to see the grid and square crops. `head` and `sub`
+change the words, for example `?v=thumb&head=Go%20the%3Cbr%3EKnights`.
