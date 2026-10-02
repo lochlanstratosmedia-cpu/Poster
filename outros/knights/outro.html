@@ -407,11 +407,11 @@ VARIANTS.thumb = function () {
   stage.style.background = NAVY;
   const bg = stripes({ angle: 0, width: 180, start: -10, drift: 0 });
   el("div", { position: "absolute", inset: 0, background: "radial-gradient(ellipse 80% 40% at 50% 45%, rgba(4,12,32,.55) 0%, rgba(4,12,32,0) 100%)" });
-  const sub = el("div", { position: "absolute", left: 0, right: 0, top: "430px", textAlign: "center", fontSize: "40px", textShadow: "0 2px 16px rgba(0,0,0,.5)" }, stage, params.get("sub") || "A message from Liam");
+  const sub = el("div", { position: "absolute", left: 0, right: 0, top: "880px", textAlign: "center", fontSize: "40px", textShadow: "0 2px 16px rgba(0,0,0,.5)" }, stage, params.get("sub") || "A message from Love");
   sub.className = "caps";
-  const head = el("div", { position: "absolute", left: "60px", right: "60px", top: "500px", textAlign: "center", fontSize: "176px", lineHeight: 1.02, textShadow: "0 10px 50px rgba(0,0,0,.5)" }, stage, params.get("head") || "Dear<br>Knights,");
+  const head = el("div", { position: "absolute", left: "60px", right: "60px", top: "470px", textAlign: "center", fontSize: "176px", lineHeight: 1.02, textShadow: "0 10px 50px rgba(0,0,0,.5)" }, stage, params.get("head") || "Dear<br>Knights,");
   head.className = "serif";
-  const card = el("div", { position: "absolute", left: "150px", width: "780px", top: "1020px", height: "370px", borderRadius: "36px", overflow: "hidden", display: "flex", boxShadow: "0 40px 90px rgba(0,0,0,.4)" });
+  const card = el("div", { position: "absolute", left: "150px", width: "780px", top: "1010px", height: "370px", borderRadius: "36px", overflow: "hidden", display: "flex", boxShadow: "0 40px 90px rgba(0,0,0,.4)" });
   const left = el("div", { flex: 1, background: "linear-gradient(135deg, #2a62c4 0%, #163f8a 100%)", display: "grid", placeItems: "center" }, card);
   const right = el("div", { flex: 1, background: "#fff", display: "grid", placeItems: "center" }, card);
   logoSlot(left, "love", 290, 140, "#fff");
