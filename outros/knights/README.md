@@ -50,3 +50,23 @@ ProximaNova-Extrabold.otf
 
 Needs Node with Playwright and ffmpeg. Open `outro.html` in a browser to
 preview any variant live; the buttons at the top switch between them.
+
+## Sound
+
+`sound.py` builds sound effects for the `simple` outro from scratch (no
+samples, so nothing to license) and times each one to the animation:
+
+| Time | Sound |
+|---|---|
+| 0.0 s | Whoosh as the stripes slide in, panned across |
+| 1.2 s | Soft low thump as the card lands |
+| 1.5 s, 1.7 s | Two pops, Love then Knights |
+| 2.1 s | Warm chime and shimmer under the tagline |
+
+```bash
+pip install numpy scipy
+python3 outros/knights/sound.py
+```
+
+It writes `renders/knights-outro-simple-sfx.wav` (effects only, about -16 LUFS,
+for mixing under the song) and `renders/knights-outro-simple-sound.mp4`.
