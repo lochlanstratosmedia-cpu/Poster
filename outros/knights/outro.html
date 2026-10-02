@@ -423,6 +423,25 @@ VARIANTS.thumb = function () {
   return t => bg(10);
 };
 
+// 8. Thumbnail, type only: "Dear Knights," over the stripes, then
+//    "A message from" with the Love logo standing in for the word.
+VARIANTS.thumbtype = function () {
+  stage.style.background = NAVY;
+  const bg = stripes({ angle: 0, width: 180, start: -10, drift: 0 });
+  el("div", { position: "absolute", inset: 0, background: "radial-gradient(ellipse 85% 34% at 50% 50%, rgba(4,12,32,.6) 0%, rgba(4,12,32,0) 100%)" });
+  const head = el("div", { position: "absolute", left: "60px", right: "60px", top: "650px", textAlign: "center", fontSize: "190px", lineHeight: 1.02, textShadow: "0 10px 50px rgba(0,0,0,.5)" }, stage, params.get("head") || "Dear<br>Knights,");
+  head.className = "serif";
+  const row = el("div", { position: "absolute", left: 0, right: 0, top: "1100px", display: "flex", alignItems: "baseline", justifyContent: "center", gap: "26px", filter: "drop-shadow(0 4px 18px rgba(0,0,0,.5))" });
+  const words = el("div", { fontSize: "44px", letterSpacing: ".2em" }, row, "A message from");
+  words.className = "caps";
+  logoSlot(row, "love", 250, 104, "#fff");
+  if (params.has("guides")) {
+    el("div", { position: "absolute", left: 0, right: 0, top: "240px", height: "1440px", outline: "4px dashed #ff0", zIndex: 5 });
+    el("div", { position: "absolute", left: 0, right: 0, top: "420px", height: "1080px", outline: "4px dashed #0f0", zIndex: 5 });
+  }
+  return t => bg(10);
+};
+
 // ---------- boot ----------
 const draw = (VARIANTS[VARIANT] || VARIANTS.card)();
 window.draw = draw;

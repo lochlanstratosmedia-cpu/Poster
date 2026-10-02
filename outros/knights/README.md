@@ -76,4 +76,5 @@ for mixing under the song) and `renders/knights-outro-simple-sound.mp4`.
 The `thumb` variant is a still Reel cover (1080x1920) that matches the outro.
 Everything sits inside the middle 1080x1440 that the profile grid shows. Open
 `outro.html?v=thumb&guides` to see the grid and square crops. `head` and `sub`
-change the words, for example `?v=thumb&head=Go%20the%3Cbr%3EKnights`.
+change the words, for example `?v=thumb&head=Go%20the%3Cbr%3EKnights`. `thumbtype` is the
+type-only cover: "Dear Knights," then "A message from" and the Love logo.
