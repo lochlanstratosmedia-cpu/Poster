@@ -85,7 +85,7 @@ Open `tools/drone-pins.html` in a browser. No install or build step.
 2. Type the property address in the search field and pick the match.
 3. Pins appear on the schools, beaches, parks, stations, shopping centres,
    hospitals, sport grounds, landmarks and suburbs in the shot. Toggle any of
-   them in the Places list, rename them inline, or press P and click to add
+   them in the Places tab, rename them inline, or press P and click to add
    your own.
 4. Export (Cmd+E) at full resolution, one photo or all of them as a zip.
 
@@ -98,7 +98,7 @@ the camera re-solves so every other pin moves with it. Two or three dragged
 pins fix height and lens error too. Photos with no location data start from
 the address with a guessed camera, and need two or three dragged pins.
 
-Brand styles live in the Style panel: six pin designs (Classic, Glass,
+Brand styles live in the Style tab: six pin designs (Classic, Glass,
 Beacon, Editorial, Bold, Tag), colours, font, size, line length, capitals,
 distances, icons and a logo for the property pin. Brands save in the browser.
 Use the ... menu to export a brand as a `.pinpoint.json` file and import it
