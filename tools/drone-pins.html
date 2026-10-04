@@ -814,18 +814,21 @@ async function searchAddress(q, bias) {
   });
 }
 const OVERPASS = ["https://overpass-api.de/api/interpreter", "https://overpass.kumi.systems/api/interpreter", "https://overpass.private.coffee/api/interpreter"];
+// A bounding box is much cheaper for Overpass than around:, so search the
+// square around the circle and trim the corners afterwards.
 function overpassQuery(lat, lon, r) {
-  const a = `(around:${Math.round(r)},${lat.toFixed(6)},${lon.toFixed(6)})`;
-  return `[out:json][timeout:45];(
-nwr["amenity"~"^(school|university|college|hospital|ferry_terminal|bus_station)$"]["name"]${a};
-nwr["leisure"~"^(park|nature_reserve|stadium|golf_course|marina)$"]["name"]${a};
-nwr["natural"~"^(beach|bay|peak)$"]["name"]${a};
-nwr["railway"~"^(station|halt)$"]["name"]${a};
-nwr["aeroway"="aerodrome"]["name"]${a};
-nwr["shop"~"^(mall|department_store|supermarket)$"]["name"]${a};
-nwr["tourism"~"^(attraction|museum|zoo|theme_park)$"]["name"]${a};
-nwr["boundary"="national_park"]["name"]${a};
-node["place"~"^(city|town|suburb|village|quarter)$"]["name"]${a};
+  const dLat = r / (R_EARTH * D), dLon = r / (R_EARTH * D * Math.cos(lat * D));
+  const box = [lat - dLat, lon - dLon, lat + dLat, lon + dLon].map(v => v.toFixed(5)).join(",");
+  return `[out:json][timeout:30][bbox:${box}];(
+nwr["amenity"~"^(school|university|college|hospital|ferry_terminal|bus_station)$"]["name"];
+nwr["leisure"~"^(park|nature_reserve|stadium|golf_course|marina)$"]["name"];
+nwr["natural"~"^(beach|bay|peak)$"]["name"];
+nwr["railway"~"^(station|halt)$"]["name"];
+nwr["aeroway"="aerodrome"]["name"];
+nwr["shop"~"^(mall|department_store|supermarket)$"]["name"];
+nwr["tourism"~"^(attraction|museum|zoo|theme_park)$"]["name"];
+nwr["boundary"="national_park"]["name"];
+node["place"~"^(city|town|suburb|village|quarter)$"]["name"];
 );out center tags;`;
 }
 function classify(t) {
@@ -848,16 +851,43 @@ function classify(t) {
   if (t.place) return ["area", "area", { city: 8, town: 6.5, suburb: 5.5, village: 5, quarter: 4 }[t.place] || 4];
   return null;
 }
-async function fetchPlaces(center, radius) {
-  const body = "data=" + encodeURIComponent(overpassQuery(center.lat, center.lon, radius));
-  let lastErr;
-  for (const ep of OVERPASS) {
-    try {
-      const j = await getJSON(ep, { method: "POST", body, headers: { "Content-Type": "application/x-www-form-urlencoded" } }, 50000);
-      return parsePlaces(j.elements || []);
-    } catch (e) { lastErr = e; }
+// Places are cached on this computer, so a second job in the same suburb is instant.
+const PLACE_TTL = 14 * 864e5;
+function cachedPlaces(center, radius) {
+  const cache = store.get("placeCache", []);
+  const hit = cache.find(c => Date.now() - c.t < PLACE_TTL && c.r >= radius && haversine(c, center) + radius <= c.r * 1.02);
+  return hit ? hit.places.filter(p => haversine(center, p) <= radius) : null;
+}
+function cachePlaces(center, radius, places) {
+  const cache = store.get("placeCache", []).filter(c => Date.now() - c.t < PLACE_TTL);
+  cache.unshift({ lat: center.lat, lon: center.lon, r: radius, t: Date.now(), places });
+  // Browser storage holds about 5 MB; keep the newest areas that fit.
+  for (let n = Math.min(cache.length, 30); n > 0; n--) {
+    try { localStorage.setItem("pinpoint.placeCache", JSON.stringify(cache.slice(0, n))); return; } catch {}
   }
-  throw lastErr || new Error("No map server answered");
+}
+// Ask every Overpass server at once and take the first good answer.
+async function fetchPlaces(center, radius) {
+  const hit = cachedPlaces(center, radius);
+  if (hit) return hit;
+  const body = "data=" + encodeURIComponent(overpassQuery(center.lat, center.lon, radius));
+  const ctrls = OVERPASS.map(() => new AbortController());
+  const timer = setTimeout(() => ctrls.forEach(c => c.abort()), 40000);
+  try {
+    const j = await Promise.any(OVERPASS.map(async (ep, i) => {
+      const r = await fetch(ep, { method: "POST", body, headers: { "Content-Type": "application/x-www-form-urlencoded" }, signal: ctrls[i].signal });
+      if (!r.ok) throw new Error("HTTP " + r.status);
+      const j = await r.json();
+      if (j.remark && !(j.elements || []).length) throw new Error(j.remark);
+      ctrls.forEach((c, k) => { if (k !== i) c.abort(); });
+      return j;
+    }));
+    const places = parsePlaces(j.elements || []).filter(p => haversine(center, p) <= radius);
+    cachePlaces(center, radius, places);
+    return places;
+  } catch (e) {
+    throw new Error(e instanceof AggregateError ? "No map server answered" : e.message);
+  } finally { clearTimeout(timer); }
 }
 function parsePlaces(elements) {
   const raw = [];
@@ -879,7 +909,9 @@ function parsePlaces(elements) {
   return out;
 }
 async function ensurePlaces() {
-  const center = state.address || (() => { const p = state.photos.find(p => p.base0?.lat != null); return p ? { lat: p.base0.lat, lon: p.base0.lon } : null; })();
+  // Centre on the drone when a photo has GPS, so adding the address later doesn't start the search again.
+  const gps = state.photos.find(p => p.has?.gps);
+  const center = gps ? { lat: gps.base0.lat, lon: gps.base0.lon } : state.address;
   if (!center) return;
   const radius = state.settings.range;
   const key = `${center.lat.toFixed(4)},${center.lon.toFixed(4)},${radius}`;
