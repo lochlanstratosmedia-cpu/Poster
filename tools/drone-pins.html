@@ -886,7 +886,9 @@ async function fetchPlaces(center, radius) {
     cachePlaces(center, radius, places);
     return places;
   } catch (e) {
-    throw new Error(e instanceof AggregateError ? "No map server answered" : e.message);
+    // Keep each server's reason so the message on screen says what went wrong.
+    const why = e instanceof AggregateError ? e.errors.map((x, i) => `${new URL(OVERPASS[i]).hostname.split(".").slice(-2, -1)[0]}: ${x.name === "AbortError" ? "timed out" : x.message}`).join(" · ") : e.message;
+    throw new Error(why);
   } finally { clearTimeout(timer); }
 }
 function parsePlaces(elements) {
@@ -1236,7 +1238,7 @@ function renderHud() {
   else if (state.addMode) html = `<span>Click the photo where the new pin goes</span><button data-act="cancelAdd">Cancel</button>`;
   else if (!ph.base) html = `<span>No location in this photo. Add the property address to place pins.</span>`;
   else if (state.placesStatus === "loading") html = `<span class="spinner"></span><span>Finding nearby places…</span>`;
-  else if (state.placesStatus === "error") html = `<span>Couldn't reach OpenStreetMap.</span><button data-act="retry">Try again</button>`;
+  else if (state.placesStatus === "error") html = `<span>Couldn't load places (${esc(state.placesError || "no answer")})</span><button data-act="retry">Try again</button>`;
   else if (state.placesStatus === "ready" && !ph.hintShown) {
     const n = computePins(ph).inView.length;
     html = n ? `<span>${n} place${n === 1 ? "" : "s"} in view. Drag any pin onto its real spot and the rest follow.</span><button data-act="okHint">OK</button>` : `<span>No mapped places in this view. Try a wider range.</span><button data-act="okHint">OK</button>`;
