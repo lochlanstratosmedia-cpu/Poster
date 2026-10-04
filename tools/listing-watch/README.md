@@ -135,6 +135,13 @@ fiction.
   the first import.
 - **Time zone**: decides when a new day starts. Australia/Sydney by default.
 
+## Online demo
+
+`web-demo/` builds a one-page version that runs entirely in the browser with
+made-up data, for trying the app without installing it. `demo-server.js`
+repeats the rules from `lw/` in JavaScript, so change both when a rule
+changes. Build it with `python3 web-demo/build.py`.
+
 ## Tests
 
 ```

@@ -81,13 +81,14 @@ def load(db_path, folder):
     so the watchlist-to-ready notification shows up."""
     if os.path.exists(db_path):
         os.remove(db_path)
-    real_today = engine.today()
-    yesterday = real_today - timedelta(days=1)
     conn = db.connect(db_path)
     with conn:
         db.set_settings(conn, {"our_agencies": [OUR_AGENCY], "office_name": "Demo office"})
         for name in ("Alex Example", "Sam Sample", "Jordan Placeholder"):
             engine.save_agent(conn, name)
+    # The office's date, not the computer's: they differ around midnight.
+    real_today = engine.today(conn)
+    yesterday = real_today - timedelta(days=1)
     engine.TODAY_OVERRIDE = yesterday
     try:
         paths = make_files(folder, real_today)

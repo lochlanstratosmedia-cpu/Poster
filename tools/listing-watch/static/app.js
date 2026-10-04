@@ -119,7 +119,8 @@ function confirmBox({ title, body, ok = "Yes, go ahead", danger = false }) {
 async function loadAgents() {
   state.agents = await api("/api/agents");
   const sel = $("#person");
-  const saved = localStorage.getItem("lw-person") || "";
+  let saved = "";
+  try { saved = localStorage.getItem("lw-person") || ""; } catch {}
   const names = state.agents.filter((a) => a.active).map((a) => a.name);
   const extra = saved && !names.includes(saved) ? [saved] : [];
   sel.innerHTML = `<option value="">Choose your name</option>` +
