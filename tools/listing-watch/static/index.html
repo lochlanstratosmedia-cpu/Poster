@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en-AU">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Listing Watch</title>
+<link rel="stylesheet" href="/static/app.css">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%231f4d3a'/%3E%3Ctext x='16' y='22' font-family='Arial' font-weight='700' font-size='14' fill='white' text-anchor='middle'%3E70%3C/text%3E%3C/svg%3E">
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">
+    <span class="logo" aria-hidden="true">70</span>
+    <div><div class="brand-name">Listing Watch</div><div class="brand-sub" id="office"></div></div>
+  </div>
+  <nav class="tabs" id="tabs" aria-label="Sections">
+    <a href="#/today" data-tab="today">Today</a>
+    <a href="#/ready" data-tab="ready">Ready to assign <span class="count" id="c-ready"></span></a>
+    <a href="#/watch" data-tab="watch">Watchlist <span class="count" id="c-watch"></span></a>
+    <a href="#/tracker" data-tab="tracker">Tracker <span class="count" id="c-tracker"></span></a>
+    <a href="#/sheets" data-tab="sheets">Contact sheets</a>
+    <a href="#/import" data-tab="import">Import data</a>
+    <a href="#/settings" data-tab="settings">Settings</a>
+  </nav>
+  <div class="who">
+    <button class="bell" id="bell" title="Notifications" aria-label="Notifications"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="currentColor" d="M12 22a2.5 2.5 0 0 0 2.45-2h-4.9A2.5 2.5 0 0 0 12 22Zm7-6V11a7 7 0 0 0-5.5-6.84V3.5a1.5 1.5 0 0 0-3 0v.66A7 7 0 0 0 5 11v5l-2 2v1h18v-1l-2-2Z"/></svg><span class="badge" id="unread" hidden></span></button>
+    <label class="person" id="person-wrap"><span>You are</span>
+      <select id="person" aria-label="Who is using Listing Watch"></select>
+    </label>
+  </div>
+</header>
+<div id="banners"></div>
+<main id="view" tabindex="-1"></main>
+<div id="drawer" class="drawer" hidden aria-modal="true" role="dialog"><div class="drawer-back" data-close></div><aside class="drawer-panel" id="drawer-panel"></aside></div>
+<div id="modal" class="modal" hidden role="dialog" aria-modal="true"><div class="modal-back" data-close></div><div class="modal-panel" id="modal-panel"></div></div>
+<div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+<script src="/static/app.js"></script>
+</body>
+</html>
