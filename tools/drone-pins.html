@@ -1,0 +1,1575 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pinpoint</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Montserrat:wght@500;600;700;800&family=DM+Sans:wght@400;500;700&family=Gloock&family=Cormorant+Garamond:wght@500;600;700&display=swap">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" defer></script>
+<style>
+/*
+  Pinpoint: drop drone photos, add the property address, get labelled pins on
+  every nearby place, export. Layout is a macOS style window: toolbar, photo
+  sidebar, stage, inspector.
+*/
+:root {
+  --ui: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", "Helvetica Neue", system-ui, sans-serif;
+  --win: #ffffff;
+  --stage: #f2f2f4;
+  --bar: rgba(250, 250, 252, 0.82);
+  --side: rgba(242, 242, 246, 0.86);
+  --panel: #ffffff;
+  --group: rgba(0, 0, 0, 0.035);
+  --ink: #1d1d1f;
+  --ink2: #6e6e73;
+  --ink3: #a1a1a6;
+  --sep: rgba(60, 60, 67, 0.13);
+  --fill: rgba(118, 118, 128, 0.12);
+  --fill2: rgba(118, 118, 128, 0.2);
+  --seg-on: #ffffff;
+  --accent: #007aff;
+  --accent-soft: rgba(0, 122, 255, 0.12);
+  --switch-off: rgba(120, 120, 128, 0.24);
+  --shadow: 0 0 0 0.5px rgba(0, 0, 0, 0.08), 0 8px 28px rgba(0, 0, 0, 0.12);
+  --danger: #ff3b30;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --win: #1e1e1e; --stage: #141415; --bar: rgba(38, 38, 40, 0.84); --side: rgba(30, 30, 32, 0.86);
+    --panel: #232325; --group: rgba(255, 255, 255, 0.045); --ink: #f5f5f7; --ink2: #98989d; --ink3: #636366;
+    --sep: rgba(84, 84, 88, 0.55); --fill: rgba(118, 118, 128, 0.24); --fill2: rgba(118, 118, 128, 0.34);
+    --seg-on: #636366; --accent: #0a84ff; --accent-soft: rgba(10, 132, 255, 0.2); --switch-off: rgba(120, 120, 128, 0.34);
+    --shadow: 0 0 0 0.5px rgba(255, 255, 255, 0.1), 0 10px 30px rgba(0, 0, 0, 0.5); --danger: #ff453a;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --win: #1e1e1e; --stage: #141415; --bar: rgba(38, 38, 40, 0.84); --side: rgba(30, 30, 32, 0.86);
+  --panel: #232325; --group: rgba(255, 255, 255, 0.045); --ink: #f5f5f7; --ink2: #98989d; --ink3: #636366;
+  --sep: rgba(84, 84, 88, 0.55); --fill: rgba(118, 118, 128, 0.24); --fill2: rgba(118, 118, 128, 0.34);
+  --seg-on: #636366; --accent: #0a84ff; --accent-soft: rgba(10, 132, 255, 0.2); --switch-off: rgba(120, 120, 128, 0.34);
+  --shadow: 0 0 0 0.5px rgba(255, 255, 255, 0.1), 0 10px 30px rgba(0, 0, 0, 0.5); --danger: #ff453a;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { height: 100%; }
+body { margin: 0; background: var(--win); color: var(--ink); font: 13px/1.38 var(--ui); -webkit-font-smoothing: antialiased; overflow: hidden; }
+button, input, select { font: inherit; color: inherit; }
+button { cursor: default; }
+:focus-visible { outline: 3px solid var(--accent-soft); outline-offset: 0; }
+svg.i { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+
+/* Window */
+.app { height: 100vh; height: 100dvh; display: grid; grid-template-rows: 52px minmax(0, 1fr); grid-template-columns: 216px minmax(0, 1fr) 300px; grid-template-areas: "bar bar bar" "side stage insp"; }
+.app.no-side { grid-template-columns: 0 minmax(0, 1fr) 300px; }
+.app.no-side .sidebar { visibility: hidden; }
+
+/* Toolbar */
+.toolbar { grid-area: bar; display: grid; grid-template-columns: 1fr minmax(0, 460px) 1fr; align-items: center; gap: 12px; padding: 0 12px; background: var(--bar); backdrop-filter: saturate(180%) blur(24px); -webkit-backdrop-filter: saturate(180%) blur(24px); border-bottom: 1px solid var(--sep); position: relative; z-index: 5; }
+.tb-left, .tb-right { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.tb-right { justify-content: flex-end; }
+.app-title { display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 14px; letter-spacing: -0.01em; white-space: nowrap; margin-left: 4px; }
+.app-icon { width: 22px; height: 22px; border-radius: 6px; background: linear-gradient(180deg, #3d9bff, #0066e0); display: grid; place-items: center; box-shadow: inset 0 0 0 0.5px rgba(0,0,0,0.15); }
+.app-icon svg { width: 14px; height: 14px; stroke: #fff; stroke-width: 2.2; fill: none; }
+.tb-btn { height: 28px; min-width: 32px; padding: 0 7px; border: 0; border-radius: 6px; background: transparent; color: var(--ink2); display: inline-flex; align-items: center; justify-content: center; gap: 5px; }
+.tb-btn:hover { background: var(--fill); color: var(--ink); }
+.tb-btn[aria-pressed="true"] { background: var(--fill2); color: var(--ink); }
+.tb-btn:disabled { opacity: 0.35; background: transparent; }
+.btn-primary { height: 28px; padding: 0 14px; border: 0; border-radius: 6px; background: var(--accent); color: #fff; font-weight: 500; display: inline-flex; align-items: center; gap: 6px; }
+.btn-primary:hover { filter: brightness(1.06); }
+.btn-primary:active { filter: brightness(0.94); }
+.btn-primary:disabled { opacity: 0.4; filter: none; }
+.btn { height: 26px; padding: 0 12px; border: 0; border-radius: 6px; background: var(--fill); color: var(--ink); font-weight: 500; display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+.btn:hover { background: var(--fill2); }
+.btn.small { height: 22px; padding: 0 9px; font-size: 12px; }
+
+/* Search field */
+.search { position: relative; height: 30px; display: flex; align-items: center; gap: 6px; padding: 0 8px; border-radius: 8px; background: var(--fill); transition: background .15s, box-shadow .15s; }
+.search:focus-within { background: var(--panel); box-shadow: 0 0 0 3px var(--accent-soft), 0 0 0 1px var(--accent); }
+.search svg { color: var(--ink2); }
+.search input { flex: 1; min-width: 0; height: 100%; border: 0; background: transparent; outline: 0; font-size: 13px; }
+.search input::placeholder { color: var(--ink2); }
+.search .clear { border: 0; background: var(--ink3); color: var(--win); width: 15px; height: 15px; border-radius: 50%; display: grid; place-items: center; padding: 0; }
+.search .clear svg { width: 9px; height: 9px; stroke-width: 3; color: var(--win); }
+.spinner { width: 14px; height: 14px; border-radius: 50%; border: 2px solid var(--fill2); border-top-color: var(--ink2); animation: spin .8s linear infinite; flex: none; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.suggest { position: absolute; top: calc(100% + 6px); left: 0; right: 0; background: var(--panel); border-radius: 10px; box-shadow: var(--shadow); padding: 5px; z-index: 20; }
+.suggest button { width: 100%; display: flex; gap: 10px; align-items: center; text-align: left; border: 0; background: transparent; padding: 7px 8px; border-radius: 6px; }
+.suggest button.on, .suggest button:hover { background: var(--accent); color: #fff; }
+.suggest button.on .s2, .suggest button:hover .s2 { color: rgba(255,255,255,0.8); }
+.suggest .s1 { font-weight: 500; }
+.suggest .s2 { color: var(--ink2); font-size: 12px; }
+.suggest .pinimg { width: 26px; height: 26px; border-radius: 50%; background: var(--danger); display: grid; place-items: center; flex: none; }
+.suggest .pinimg svg { stroke: #fff; width: 14px; height: 14px; }
+.suggest .none { padding: 10px; color: var(--ink2); }
+
+/* Sidebar */
+.sidebar { grid-area: side; background: var(--side); border-right: 1px solid var(--sep); overflow: auto; padding: 10px 8px; min-width: 0; }
+.side-head { display: flex; align-items: center; justify-content: space-between; padding: 2px 6px 8px; color: var(--ink2); font-size: 11px; font-weight: 600; }
+.side-head .tb-btn { height: 22px; min-width: 22px; padding: 0; }
+.photos { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+.photos li { display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: 10px; align-items: center; padding: 6px; border-radius: 8px; position: relative; }
+.photos li:hover { background: var(--fill); }
+.photos li.on { background: var(--accent); color: #fff; }
+.photos li.on .pmeta { color: rgba(255,255,255,0.8); }
+.photos img { width: 64px; height: 44px; object-fit: cover; border-radius: 5px; display: block; box-shadow: 0 0 0 0.5px rgba(0,0,0,0.15); }
+.pname { font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pmeta { color: var(--ink2); font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.photos .rm { position: absolute; top: 2px; left: 2px; width: 18px; height: 18px; border-radius: 50%; border: 0; background: rgba(0,0,0,0.6); color: #fff; display: none; place-items: center; padding: 0; }
+.photos .rm svg { width: 9px; height: 9px; stroke-width: 3; }
+.photos li:hover .rm { display: grid; }
+.side-empty { color: var(--ink3); padding: 6px; font-size: 12px; }
+
+/* Stage */
+.stage { grid-area: stage; background: var(--stage); position: relative; display: grid; place-items: center; overflow: hidden; min-width: 0; min-height: 0; padding: 28px; }
+#view { display: block; max-width: 100%; max-height: 100%; border-radius: 4px; box-shadow: 0 1px 2px rgba(0,0,0,0.1), 0 18px 50px -18px rgba(0,0,0,0.45); touch-action: none; }
+#view.add { cursor: crosshair; }
+#view.grab { cursor: grab; }
+#view.grabbing { cursor: grabbing; }
+.empty { width: min(520px, 100%); aspect-ratio: 16 / 10; border: 2px dashed var(--fill2); border-radius: 18px; display: grid; place-items: center; text-align: center; padding: 24px; transition: border-color .15s, background .15s; }
+.empty.over { border-color: var(--accent); background: var(--accent-soft); }
+.empty .art { width: 72px; height: 72px; margin: 0 auto 14px; border-radius: 18px; background: linear-gradient(180deg, #3d9bff, #0066e0); display: grid; place-items: center; box-shadow: 0 6px 18px -6px rgba(0, 102, 224, 0.6); }
+.empty .art svg { width: 38px; height: 38px; stroke: #fff; stroke-width: 1.7; fill: none; }
+.empty h2 { margin: 0 0 6px; font-size: 20px; font-weight: 600; letter-spacing: -0.02em; }
+.empty p { margin: 0 auto 16px; color: var(--ink2); max-width: 340px; }
+.steps { display: flex; gap: 18px; justify-content: center; margin-top: 18px; color: var(--ink2); font-size: 12px; flex-wrap: wrap; }
+.steps span { display: inline-flex; gap: 6px; align-items: center; }
+.steps b { width: 18px; height: 18px; border-radius: 50%; background: var(--fill2); color: var(--ink); display: inline-grid; place-items: center; font-size: 11px; font-weight: 600; }
+.hud { position: absolute; left: 50%; bottom: 18px; transform: translateX(-50%); display: flex; align-items: center; gap: 8px; max-width: calc(100% - 32px); padding: 8px 14px; border-radius: 999px; background: rgba(30, 30, 32, 0.78); color: #fff; backdrop-filter: blur(20px) saturate(180%); -webkit-backdrop-filter: blur(20px) saturate(180%); font-size: 12.5px; box-shadow: 0 6px 24px rgba(0,0,0,0.25); white-space: nowrap; }
+.hud span { overflow: hidden; text-overflow: ellipsis; }
+.hud .spinner { border-color: rgba(255,255,255,0.25); border-top-color: #fff; }
+.hud button { border: 0; background: rgba(255,255,255,0.18); color: #fff; border-radius: 999px; padding: 3px 10px; font-weight: 500; }
+.drop-veil { position: fixed; inset: 0; background: rgba(0, 122, 255, 0.08); border: 3px solid var(--accent); border-radius: 12px; z-index: 50; pointer-events: none; display: grid; place-items: center; }
+.drop-veil div { background: var(--accent); color: #fff; padding: 10px 18px; border-radius: 999px; font-weight: 600; box-shadow: 0 8px 24px rgba(0,0,0,0.2); }
+
+/* Inspector */
+.inspector { grid-area: insp; border-left: 1px solid var(--sep); background: var(--win); overflow-y: auto; overflow-x: hidden; padding: 4px 14px 30px; min-width: 0; }
+.sec { padding: 14px 0 4px; }
+.sec-h { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin: 0 2px 8px; }
+.sec-h h3 { margin: 0; font-size: 13px; font-weight: 600; }
+.sec-h .aside { color: var(--ink2); font-size: 12px; }
+.group { background: var(--group); border-radius: 10px; padding: 2px 10px; margin-bottom: 10px; }
+.row { display: flex; align-items: center; gap: 10px; min-height: 34px; padding: 4px 0; border-bottom: 1px solid var(--sep); min-width: 0; }
+.row:last-child { border-bottom: 0; }
+.row > .lbl { flex: 1; min-width: 0; color: var(--ink); }
+.row .val { color: var(--ink2); font-variant-numeric: tabular-nums; min-width: 42px; text-align: right; font-size: 12px; }
+.row input[type="range"] { width: 120px; }
+.row select, .row input[type="text"] { max-width: 150px; height: 24px; border-radius: 6px; border: 0; background: var(--fill); padding: 0 8px; outline: 0; }
+.row input[type="text"]:focus { box-shadow: 0 0 0 3px var(--accent-soft), 0 0 0 1px var(--accent); background: var(--panel); }
+.hint { color: var(--ink2); font-size: 12px; margin: 2px 2px 10px; }
+.hint.warn { color: #b25000; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .hint.warn { color: #ffb340; } }
+:root[data-theme="dark"] .hint.warn { color: #ffb340; }
+
+input[type="range"] { -webkit-appearance: none; appearance: none; height: 18px; background: transparent; accent-color: var(--accent); }
+input[type="range"]::-webkit-slider-runnable-track { height: 4px; border-radius: 2px; background: var(--fill2); }
+input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 16px; height: 16px; margin-top: -6px; border-radius: 50%; background: #fff; box-shadow: 0 0.5px 3px rgba(0,0,0,0.35), 0 0 0 0.5px rgba(0,0,0,0.1); }
+input[type="range"]::-moz-range-track { height: 4px; border-radius: 2px; background: var(--fill2); }
+input[type="range"]::-moz-range-thumb { width: 16px; height: 16px; border: 0; border-radius: 50%; background: #fff; box-shadow: 0 0.5px 3px rgba(0,0,0,0.35); }
+
+.switch { -webkit-appearance: none; appearance: none; width: 32px; height: 20px; border-radius: 10px; background: var(--switch-off); position: relative; transition: background .2s; margin: 0; flex: none; }
+.switch::after { content: ""; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,0.25), 0 0 0 0.5px rgba(0,0,0,0.04); transition: transform .2s; }
+.switch:checked { background: var(--accent); }
+.switch:checked::after { transform: translateX(12px); }
+
+.seg { display: flex; background: var(--fill); border-radius: 7px; padding: 2px; gap: 2px; }
+.seg button { flex: 1; border: 0; background: transparent; font-size: 12px; font-weight: 500; padding: 3px 8px; border-radius: 5px; white-space: nowrap; }
+.seg button[aria-pressed="true"] { background: var(--seg-on); box-shadow: 0 1px 2px rgba(0,0,0,0.12), 0 0 0 0.5px rgba(0,0,0,0.05); }
+.stepper { display: inline-flex; align-items: center; background: var(--fill); border-radius: 6px; }
+.stepper button { width: 24px; height: 22px; border: 0; background: transparent; font-size: 15px; line-height: 1; padding: 0; }
+.stepper span { min-width: 18px; text-align: center; font-variant-numeric: tabular-nums; font-weight: 500; }
+
+.chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 2px 0 12px; }
+.chip { display: inline-flex; align-items: center; gap: 5px; height: 24px; padding: 0 9px 0 7px; border-radius: 999px; border: 0; background: var(--fill); font-size: 12px; font-weight: 500; color: var(--ink2); }
+.chip svg { width: 13px; height: 13px; }
+.chip[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent); }
+
+.place { display: grid; grid-template-columns: 26px minmax(0, 1fr) auto; gap: 9px; align-items: center; padding: 5px 0; border-bottom: 1px solid var(--sep); }
+.place:last-child { border-bottom: 0; }
+.place.sel { background: var(--accent-soft); margin: 0 -10px; padding: 5px 10px; }
+.tile { width: 26px; height: 26px; border-radius: 7px; display: grid; place-items: center; color: #fff; }
+.tile svg { width: 15px; height: 15px; stroke-width: 2.1; }
+.place .nm { display: block; width: 100%; border: 0; background: transparent; padding: 1px 4px; margin-left: -4px; border-radius: 4px; font-weight: 500; text-overflow: ellipsis; outline: 0; }
+.place .nm:focus { background: var(--panel); box-shadow: 0 0 0 2px var(--accent); }
+.place .sub { color: var(--ink2); font-size: 11.5px; display: flex; align-items: center; gap: 5px; white-space: nowrap; overflow: hidden; }
+.place .sub .anch { color: var(--accent); display: inline-flex; align-items: center; gap: 3px; border: 0; background: transparent; padding: 0; font-size: 11.5px; }
+.place .sub .anch svg { width: 11px; height: 11px; stroke-width: 2.4; }
+.place .del { border: 0; background: transparent; color: var(--ink3); padding: 2px; }
+.place .del:hover { color: var(--danger); }
+.more { border: 0; background: transparent; color: var(--accent); padding: 8px 0 6px; font-weight: 500; }
+.list-empty { color: var(--ink2); padding: 10px 0; font-size: 12px; }
+
+.styles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-bottom: 12px; }
+.styles button { border: 0; padding: 0; background: transparent; display: grid; gap: 4px; justify-items: center; font-size: 11px; color: var(--ink2); }
+.styles canvas { width: 100%; aspect-ratio: 3 / 2; border-radius: 8px; display: block; box-shadow: 0 0 0 1px var(--sep); }
+.styles button[aria-pressed="true"] canvas { box-shadow: 0 0 0 2.5px var(--accent); }
+.styles button[aria-pressed="true"] { color: var(--ink); font-weight: 500; }
+.brandbar { display: flex; gap: 6px; margin-bottom: 10px; }
+.brandbar select { flex: 1; min-width: 0; height: 28px; border-radius: 7px; border: 0; background: var(--fill); padding: 0 8px; font-weight: 500; }
+.brandbar .tb-btn { background: var(--fill); color: var(--ink); }
+.swatch { -webkit-appearance: none; appearance: none; width: 24px; height: 24px; border: 0; padding: 0; border-radius: 50%; background: transparent; overflow: hidden; box-shadow: 0 0 0 1px var(--sep); }
+.swatch::-webkit-color-swatch-wrapper { padding: 0; }
+.swatch::-webkit-color-swatch { border: 0; border-radius: 50%; }
+.swatch::-moz-color-swatch { border: 0; border-radius: 50%; }
+.logo-thumb { height: 22px; max-width: 70px; object-fit: contain; border-radius: 3px; background: repeating-conic-gradient(#ccc 0 25%, #fff 0 50%) 0 0 / 8px 8px; }
+
+.menu { position: fixed; z-index: 60; min-width: 190px; background: var(--panel); border-radius: 9px; box-shadow: var(--shadow); padding: 5px; }
+.menu button { width: 100%; text-align: left; border: 0; background: transparent; padding: 5px 9px; border-radius: 5px; }
+.menu button:hover { background: var(--accent); color: #fff; }
+.menu button.danger { color: var(--danger); }
+.menu button.danger:hover { background: var(--danger); color: #fff; }
+.menu hr { border: 0; border-top: 1px solid var(--sep); margin: 4px 6px; }
+
+dialog.sheet { border: 0; padding: 0; border-radius: 14px; background: var(--panel); color: var(--ink); box-shadow: var(--shadow), 0 30px 80px rgba(0,0,0,0.3); width: min(380px, calc(100vw - 32px)); }
+dialog.sheet::backdrop { background: rgba(0,0,0,0.2); }
+.sheet-in { padding: 20px; }
+.sheet h2 { margin: 0 0 4px; font-size: 15px; font-weight: 600; }
+.sheet p { margin: 0 0 14px; color: var(--ink2); font-size: 12px; }
+.sheet .group { background: var(--group); }
+.sheet .row .seg { min-width: 170px; }
+.sheet .acts { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
+
+@media (max-width: 900px) {
+  body { overflow: auto; }
+  .app, .app.no-side { height: auto; min-height: 100dvh; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto auto minmax(60vh, auto) auto; grid-template-areas: "bar" "side" "stage" "insp"; }
+  .toolbar { grid-template-columns: auto minmax(0, 1fr) auto; padding: 8px 16px; position: sticky; top: 0; }
+  .app-title span.t { display: none; }
+  .sidebar { border-right: 0; border-bottom: 1px solid var(--sep); padding: 8px 16px; }
+  .app.no-side .sidebar { visibility: visible; }
+  .photos { grid-auto-flow: column; grid-auto-columns: 200px; overflow-x: auto; }
+  .stage { padding: 16px; min-height: 60vh; }
+  .inspector { border-left: 0; padding: 4px 16px 30px; }
+  #toggleSidebar { display: none; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation-duration: 0.01ms !important; } }
+</style>
+</head>
+<body>
+<div class="app" id="app">
+  <header class="toolbar">
+    <div class="tb-left">
+      <button class="tb-btn" id="toggleSidebar" title="Show or hide photos" aria-label="Show or hide photos">
+        <svg class="i" viewBox="0 0 24 24"><rect x="3" y="4.5" width="18" height="15" rx="3"/><path d="M9.5 4.5v15"/></svg>
+      </button>
+      <div class="app-title"><span class="app-icon"><svg viewBox="0 0 24 24"><path d="M12 21.5s-7-6-7-11.5a7 7 0 0 1 14 0c0 5.5-7 11.5-7 11.5Z"/><circle cx="12" cy="10" r="2.4"/></svg></span><span class="t">Pinpoint</span></div>
+    </div>
+    <div class="tb-center">
+      <div class="search" id="search">
+        <svg class="i" viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m20 20-4.8-4.8"/></svg>
+        <input id="addr" type="text" placeholder="Property address" autocomplete="off" spellcheck="false" aria-label="Property address">
+        <span class="spinner" id="addrSpin" hidden></span>
+        <button class="clear" id="addrClear" hidden aria-label="Clear address"><svg class="i" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+        <div class="suggest" id="suggest" hidden role="listbox"></div>
+      </div>
+    </div>
+    <div class="tb-right">
+      <button class="tb-btn" id="addPinBtn" title="Add your own pin (P)" aria-label="Add your own pin" aria-pressed="false" disabled>
+        <svg class="i" viewBox="0 0 24 24"><path d="M12 21.5s-7-6-7-11.5a7 7 0 0 1 14 0c0 5.5-7 11.5-7 11.5Z"/><path d="M12 7v6M9 10h6"/></svg>
+      </button>
+      <button class="btn-primary" id="exportBtn" disabled>
+        <svg class="i" viewBox="0 0 24 24" style="width:14px;height:14px"><path d="M12 15V3.5M7.5 8 12 3.5 16.5 8"/><path d="M5 13v5.5A2.5 2.5 0 0 0 7.5 21h9a2.5 2.5 0 0 0 2.5-2.5V13"/></svg>
+        Export
+      </button>
+    </div>
+  </header>
+
+  <aside class="sidebar" id="sidebar" aria-label="Photos">
+    <div class="side-head"><span>PHOTOS</span>
+      <button class="tb-btn" id="addPhotos" title="Add photos" aria-label="Add photos"><svg class="i" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>
+    </div>
+    <ul class="photos" id="photoList"></ul>
+    <div class="side-empty" id="sideEmpty">No photos yet</div>
+  </aside>
+
+  <main class="stage" id="stage">
+    <div class="empty" id="empty">
+      <div>
+        <div class="art"><svg viewBox="0 0 24 24"><rect x="2.5" y="5" width="19" height="14" rx="2.5"/><path d="m2.5 16 5-4.5 4 3.5 3-2.5 7 5.5"/><path d="M16 4.2s-2.6-2.2-2.6-4.2" stroke="none"/><path d="M16.5 11.5s-2.8-2.4-2.8-4.6a2.8 2.8 0 0 1 5.6 0c0 2.2-2.8 4.6-2.8 4.6Z" fill="#fff" stroke="#fff"/></svg></div>
+        <h2>Drop drone photos</h2>
+        <p>Original DJI JPGs work best. They carry the position and angle Pinpoint needs to place every pin.</p>
+        <button class="btn-primary" id="choose">Choose Photos…</button>
+        <div class="steps"><span><b>1</b>Drop photos</span><span><b>2</b>Add the address</span><span><b>3</b>Export</span></div>
+      </div>
+    </div>
+    <canvas id="view" hidden></canvas>
+    <div class="hud" id="hud" hidden></div>
+  </main>
+
+  <aside class="inspector" id="inspector" aria-label="Inspector">
+    <section class="sec" id="placesSec">
+      <div class="sec-h"><h3>Places</h3><span class="aside" id="placeCount"></span></div>
+      <div class="group">
+        <div class="row"><span class="lbl">Range</span>
+          <div class="seg" id="rangeSeg"><button data-v="1000">1 km</button><button data-v="3000">3 km</button><button data-v="8000">8 km</button></div>
+        </div>
+        <div class="row"><span class="lbl">Pins per photo</span>
+          <div class="stepper"><button id="pinsMinus" aria-label="Fewer pins">−</button><span id="pinsVal">6</span><button id="pinsPlus" aria-label="More pins">+</button></div>
+        </div>
+      </div>
+      <div class="chips" id="cats"></div>
+      <div class="group" id="placeList"><div class="list-empty">Drop a photo to see the places in view.</div></div>
+    </section>
+
+    <section class="sec">
+      <div class="sec-h"><h3>Style</h3></div>
+      <div class="brandbar">
+        <select id="brandSel" aria-label="Brand"></select>
+        <button class="tb-btn" id="brandMenuBtn" title="Brand options" aria-label="Brand options"><svg class="i" viewBox="0 0 24 24"><circle cx="5.5" cy="12" r="1" fill="currentColor"/><circle cx="12" cy="12" r="1" fill="currentColor"/><circle cx="18.5" cy="12" r="1" fill="currentColor"/></svg></button>
+      </div>
+      <div class="styles" id="styleTiles"></div>
+      <div class="group">
+        <div class="row"><span class="lbl">Accent</span><input class="swatch" type="color" id="bAccent"></div>
+        <div class="row"><span class="lbl">Label</span><input class="swatch" type="color" id="bLabel"></div>
+        <div class="row"><span class="lbl">Text</span><input class="swatch" type="color" id="bText"></div>
+        <div class="row"><span class="lbl">Font</span><select id="bFont"></select></div>
+      </div>
+      <div class="group">
+        <div class="row"><span class="lbl">Size</span><input type="range" id="bSize" min="0.5" max="2.2" step="0.05"></div>
+        <div class="row"><span class="lbl">Line length</span><input type="range" id="bStem" min="0" max="3" step="0.05"></div>
+        <div class="row"><span class="lbl">Corners</span><input type="range" id="bRadius" min="0" max="1" step="0.05"></div>
+      </div>
+      <div class="group">
+        <div class="row"><span class="lbl">Show distance</span><input class="switch" type="checkbox" id="bDistance"></div>
+        <div class="row"><span class="lbl">Show icons</span><input class="switch" type="checkbox" id="bIcons"></div>
+        <div class="row"><span class="lbl">Colour by category</span><input class="switch" type="checkbox" id="bCatColors"></div>
+        <div class="row"><span class="lbl">Capitals</span><input class="switch" type="checkbox" id="bUpper"></div>
+      </div>
+      <div class="group">
+        <div class="row"><span class="lbl">Property pin</span><input class="switch" type="checkbox" id="bHero"></div>
+        <div class="row"><span class="lbl">Logo</span><img class="logo-thumb" id="bLogoImg" alt="" hidden><button class="btn small" id="bLogoBtn">Choose…</button><button class="btn small" id="bLogoRm" hidden>Remove</button></div>
+      </div>
+      <input type="file" id="logoInput" accept="image/png,image/svg+xml,image/jpeg,image/webp" hidden>
+      <input type="file" id="brandInput" accept="application/json,.json" hidden>
+    </section>
+
+    <section class="sec" id="camSec">
+      <div class="sec-h"><h3>Camera</h3><span class="aside" id="camSrc"></span></div>
+      <p class="hint" id="camHint">Pins come from the drone's position and angle. Drag any pin onto its real spot and the rest follow.</p>
+      <div class="group">
+        <div class="row"><span class="lbl">Heading</span><input type="range" id="cYaw" min="-180" max="180" step="0.5"><span class="val" id="cYawV"></span></div>
+        <div class="row"><span class="lbl">Tilt</span><input type="range" id="cPitch" min="-90" max="10" step="0.25"><span class="val" id="cPitchV"></span></div>
+        <div class="row"><span class="lbl">Height</span><input type="range" id="cH" min="5" max="500" step="1"><span class="val" id="cHV"></span></div>
+        <div class="row"><span class="lbl">Lens</span><input type="range" id="cFov" min="20" max="130" step="0.5"><span class="val" id="cFovV"></span></div>
+      </div>
+      <button class="btn" id="resetCam" style="width:100%">Reset to photo data</button>
+    </section>
+  </aside>
+</div>
+
+<input type="file" id="fileInput" accept="image/jpeg,image/png,image/webp" multiple hidden>
+
+<dialog class="sheet" id="exportSheet">
+  <form method="dialog" class="sheet-in">
+    <h2>Export</h2>
+    <p id="exportNote">Pins are drawn at full resolution.</p>
+    <div class="group">
+      <div class="row"><span class="lbl">Photos</span><div class="seg" id="exScope"><button type="button" data-v="one" aria-pressed="true">This photo</button><button type="button" data-v="all" aria-pressed="false" id="exAllBtn">All</button></div></div>
+      <div class="row"><span class="lbl">Format</span><div class="seg" id="exFormat"><button type="button" data-v="jpeg" aria-pressed="true">JPEG</button><button type="button" data-v="png" aria-pressed="false">PNG</button></div></div>
+      <div class="row"><span class="lbl">Size</span><div class="seg" id="exSize"><button type="button" data-v="0" aria-pressed="true">Original</button><button type="button" data-v="3840" aria-pressed="false">4K</button><button type="button" data-v="1920" aria-pressed="false">HD</button></div></div>
+    </div>
+    <div class="acts"><button class="btn" value="cancel">Cancel</button><button class="btn-primary" value="ok" id="exGo">Export</button></div>
+  </form>
+</dialog>
+
+<script>
+"use strict";
+/* ------------------------------------------------------------------ basics */
+const $ = (s, r = document) => r.querySelector(s);
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const D = Math.PI / 180, R_EARTH = 6371008.8;
+const store = {
+  get(k, d) { try { const v = localStorage.getItem("pinpoint." + k); return v ? JSON.parse(v) : d; } catch { return d; } },
+  set(k, v) { try { localStorage.setItem("pinpoint." + k, JSON.stringify(v)); } catch {} },
+};
+const uid = () => Math.random().toString(36).slice(2, 10);
+function haversine(a, b) {
+  const dLat = (b.lat - a.lat) * D, dLon = (b.lon - a.lon) * D;
+  const s = Math.sin(dLat / 2) ** 2 + Math.cos(a.lat * D) * Math.cos(b.lat * D) * Math.sin(dLon / 2) ** 2;
+  return 2 * R_EARTH * Math.asin(Math.sqrt(s));
+}
+function fmtDist(m) {
+  if (m < 1000) return Math.max(10, Math.round(m / 10) * 10) + " m";
+  return (m < 10000 ? (m / 1000).toFixed(1) : Math.round(m / 1000)) + " km";
+}
+function esc(s) { return String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]); }
+
+/* ------------------------------------------------------------------ icons
+   One set of 24 unit stroke paths, used both in the UI and on the photo. */
+const ICONS = {
+  school: "M2 9.5 12 5l10 4.5-10 4.5L2 9.5Z M6 11.5v4.8c0 1.3 2.7 2.7 6 2.7s6-1.4 6-2.7v-4.8 M22 9.5V15",
+  park: "M12 2.5 6 11h3l-4 6.5h14L15 11h3L12 2.5Z M12 17.5V22",
+  beach: "M2 16c1.7-1.6 3.3-1.6 5 0s3.3 1.6 5 0 3.3-1.6 5 0 3.3 1.6 5 0 M2 20.5c1.7-1.6 3.3-1.6 5 0s3.3 1.6 5 0 3.3-1.6 5 0 3.3 1.6 5 0 M8.5 8a3.5 3.5 0 1 0 7 0a3.5 3.5 0 1 0-7 0",
+  train: "M7.5 3h9A2.5 2.5 0 0 1 19 5.5V14a3 3 0 0 1-3 3H8a3 3 0 0 1-3-3V5.5A2.5 2.5 0 0 1 7.5 3Z M5 10h14 M8.5 13.5h.01 M15.5 13.5h.01 M8 21.5l2-4.5 M16 21.5l-2-4.5",
+  plane: "M2.5 13.5 10 11V5a2 2 0 0 1 4 0v6l7.5 2.5v2L14 14v4l2.5 2v1.5L12 20.5l-4.5 1V20l2.5-2v-4l-7.5 1.5v-2Z",
+  ferry: "M3 14h18l-3 6.5H6L3 14Z M6 14v-4.5h12V14 M10 9.5V5.5h4v4",
+  shopping: "M5 8h14l-1.2 12.2a1 1 0 0 1-1 .8H7.2a1 1 0 0 1-1-.8L5 8Z M9 10V7a3 3 0 0 1 6 0v3",
+  health: "M9.5 3.5h5v6h6v5h-6v6h-5v-6h-6v-5h6v-6Z",
+  sport: "M7 4h10v5a5 5 0 0 1-10 0V4Z M7 6H4.5a2.5 2.5 0 0 0 2.5 4 M17 6h2.5a2.5 2.5 0 0 1-2.5 4 M12 14v4 M8 21h8 M9.5 18h5",
+  landmark: "M12 3.5l2.6 5.4 5.9.8-4.3 4.1 1 5.8L12 16.8l-5.2 2.8 1-5.8-4.3-4.1 5.9-.8L12 3.5Z",
+  area: "M12 21.5s-7-6-7-11.5a7 7 0 0 1 14 0c0 5.5-7 11.5-7 11.5Z M9.5 10a2.5 2.5 0 1 0 5 0a2.5 2.5 0 1 0-5 0",
+  home: "M3.5 11 12 4l8.5 7 M5.5 9.5V20h13V9.5 M10 20v-5.5h4V20",
+  custom: "M12 21.5s-7-6-7-11.5a7 7 0 0 1 14 0c0 5.5-7 11.5-7 11.5Z M12 7.5v5 M9.5 10h5",
+};
+const PATHS = {};
+const svgPath = (d, cls = "i") => `<svg class="${cls}" viewBox="0 0 24 24"><path d="${d}"/></svg>`;
+const svgIcon = (k, cls) => svgPath(ICONS[k], cls);
+function drawIcon(ctx, key, cx, cy, size, color, weight = 2.1) {
+  const p = PATHS[key] || (PATHS[key] = new Path2D(ICONS[key]));
+  ctx.save();
+  ctx.translate(cx - size / 2, cy - size / 2);
+  ctx.scale(size / 24, size / 24);
+  ctx.strokeStyle = color; ctx.lineWidth = weight; ctx.lineCap = "round"; ctx.lineJoin = "round";
+  ctx.stroke(p);
+  ctx.restore();
+}
+
+/* ------------------------------------------------------------------ categories */
+const CATS = {
+  school:   { label: "Schools",   one: "School",    color: "#ff9500", icon: "school",   w: 7 },
+  beach:    { label: "Beaches",   one: "Beach",     color: "#32ade6", icon: "beach",    w: 8 },
+  park:     { label: "Parks",     one: "Park",      color: "#34c759", icon: "park",     w: 4.5 },
+  transport:{ label: "Transport", one: "Transport", color: "#007aff", icon: "train",    w: 7 },
+  shopping: { label: "Shopping",  one: "Shopping",  color: "#af52de", icon: "shopping", w: 6 },
+  health:   { label: "Health",    one: "Hospital",  color: "#ff3b30", icon: "health",   w: 5 },
+  sport:    { label: "Sport",     one: "Sport",     color: "#ffcc00", icon: "sport",    w: 5 },
+  landmark: { label: "Landmarks", one: "Landmark",  color: "#a2845e", icon: "landmark", w: 6 },
+  area:     { label: "Suburbs",   one: "Suburb",    color: "#8e8e93", icon: "area",     w: 5.5 },
+};
+
+/* ------------------------------------------------------------------ brands */
+const FONTS = {
+  system: { label: "SF Pro", stack: '-apple-system, BlinkMacSystemFont, "SF Pro Display", "Helvetica Neue", Inter, Arial, sans-serif', load: "Inter" },
+  inter: { label: "Inter", stack: "Inter, sans-serif", load: "Inter" },
+  montserrat: { label: "Montserrat", stack: "Montserrat, sans-serif", load: "Montserrat" },
+  dmsans: { label: "DM Sans", stack: '"DM Sans", sans-serif', load: "DM Sans" },
+  gloock: { label: "Gloock", stack: "Gloock, serif", load: "Gloock" },
+  cormorant: { label: "Cormorant", stack: '"Cormorant Garamond", serif', load: "Cormorant Garamond" },
+};
+const STYLE_NAMES = { classic: "Classic", glass: "Glass", beacon: "Beacon", editorial: "Editorial", bold: "Bold", tag: "Tag" };
+const BRAND_DEFAULTS = { style: "classic", accent: "#007aff", labelBg: "#ffffff", text: "#1d1d1f", font: "system", weight: 600, upper: false, distance: true, icons: true, catColors: true, size: 1, stem: 1, radius: 0.6, heroOn: true, logo: null };
+const BUILTIN_BRANDS = [
+  { id: "classic", name: "Classic", style: "classic" },
+  { id: "glass", name: "Glass", style: "glass", labelBg: "#1c1c1e", text: "#ffffff", radius: 0.7 },
+  { id: "beacon", name: "Beacon", style: "beacon", accent: "#ff2d55", catColors: true },
+  { id: "editorial", name: "Editorial", style: "editorial", text: "#ffffff", font: "montserrat", upper: true, icons: false, accent: "#ffffff" },
+  { id: "bold", name: "Bold", style: "bold", accent: "#1f4d3a", text: "#ffffff", labelBg: "#ffffff", font: "montserrat", weight: 800, upper: true, icons: false, radius: 0.15 },
+  { id: "tag", name: "Tag", style: "tag", accent: "#111111", labelBg: "#ffffff", text: "#111111", font: "dmsans", weight: 700, radius: 1, catColors: false },
+].map(b => ({ ...BRAND_DEFAULTS, ...b }));
+
+/* ------------------------------------------------------------------ state */
+const state = {
+  photos: [], current: null,
+  address: store.get("address", null),
+  places: [], placesKey: "", placesStatus: "idle", placesError: "",
+  names: {}, selected: null, addMode: false,
+  settings: Object.assign({ range: 3000, maxPins: 6, cats: Object.fromEntries(Object.keys(CATS).map(k => [k, true])) }, store.get("settings", {})),
+  brands: store.get("brands", null) || BUILTIN_BRANDS.map(b => ({ ...b })),
+  brandId: store.get("brandId", "classic"),
+  showAll: false,
+};
+state.brands = state.brands.map(b => ({ ...BRAND_DEFAULTS, ...b }));
+if (!state.brands.some(b => b.id === state.brandId)) state.brandId = state.brands[0].id;
+const brand = () => state.brands.find(b => b.id === state.brandId) || state.brands[0];
+const cur = () => state.photos.find(p => p.id === state.current) || null;
+function saveBrands() { store.set("brands", state.brands); store.set("brandId", state.brandId); }
+function saveSettings() { store.set("settings", state.settings); }
+
+/* ------------------------------------------------------------------ metadata
+   Reads EXIF (GPS, focal length) and DJI XMP (gimbal angles, height above
+   takeoff) straight from the JPEG bytes. */
+async function readMeta(file) {
+  const buf = await file.slice(0, Math.min(file.size, 1024 * 1024)).arrayBuffer();
+  const dv = new DataView(buf);
+  const m = { xmp: {}, exif: {}, gps: null };
+  try {
+    if (dv.byteLength > 4 && dv.getUint16(0) === 0xFFD8) {
+      let off = 2;
+      while (off + 4 <= dv.byteLength) {
+        const marker = dv.getUint16(off);
+        if ((marker & 0xFF00) !== 0xFF00 || marker === 0xFFDA) break;
+        const len = dv.getUint16(off + 2);
+        if (marker === 0xFFE1 && off + 10 < dv.byteLength && dv.getUint32(off + 4) === 0x45786966 && dv.getUint16(off + 8) === 0) parseTiff(dv, off + 10, m);
+        off += 2 + len;
+      }
+    }
+  } catch (e) { console.warn("EXIF read failed", e); }
+  const text = new TextDecoder("latin1").decode(new Uint8Array(buf));
+  const re = /drone-dji:(\w+)\s*=\s*"([^"]*)"|<drone-dji:(\w+)>([^<]*)</g;
+  let r;
+  while ((r = re.exec(text))) m.xmp[r[1] || r[3]] = (r[2] ?? r[4]).trim();
+  const mk = /tiff:Make\s*=\s*"([^"]*)"/.exec(text); if (mk && !m.exif.make) m.exif.make = mk[1];
+  return m;
+}
+function parseTiff(dv, t, m) {
+  const le = dv.getUint16(t) === 0x4949;
+  const SIZES = { 1: 1, 2: 1, 3: 2, 4: 4, 5: 8, 7: 1, 9: 4, 10: 8 };
+  const ifd = off => {
+    const out = {};
+    if (t + off + 2 > dv.byteLength) return out;
+    const n = dv.getUint16(t + off, le);
+    for (let i = 0; i < n; i++) {
+      const e = t + off + 2 + i * 12; if (e + 12 > dv.byteLength) break;
+      const tag = dv.getUint16(e, le), type = dv.getUint16(e + 2, le), count = dv.getUint32(e + 4, le);
+      const size = SIZES[type] || 1;
+      const p = size * count > 4 ? t + dv.getUint32(e + 8, le) : e + 8;
+      if (type === 2) { let s = ""; for (let k = 0; k < count && p + k < dv.byteLength; k++) { const c = dv.getUint8(p + k); if (!c) break; s += String.fromCharCode(c); } out[tag] = s.trim(); continue; }
+      const vals = [];
+      for (let k = 0; k < Math.min(count, 8); k++) {
+        const q = p + k * size; if (q + size > dv.byteLength) break;
+        let v;
+        if (type === 3) v = dv.getUint16(q, le); else if (type === 4) v = dv.getUint32(q, le); else if (type === 9) v = dv.getInt32(q, le);
+        else if (type === 5) { const d = dv.getUint32(q + 4, le); v = d ? dv.getUint32(q, le) / d : 0; }
+        else if (type === 10) { const d = dv.getInt32(q + 4, le); v = d ? dv.getInt32(q, le) / d : 0; }
+        else v = dv.getUint8(q);
+        vals.push(v);
+      }
+      out[tag] = count === 1 ? vals[0] : vals;
+    }
+    return out;
+  };
+  const i0 = ifd(dv.getUint32(t + 4, le));
+  m.exif.make = i0[0x010F]; m.exif.model = i0[0x0110];
+  if (i0[0x8769]) {
+    const ex = ifd(i0[0x8769]);
+    m.exif.focal = ex[0x920A]; m.exif.focal35 = ex[0xA405]; m.exif.zoom = ex[0xA404];
+    m.exif.pxW = ex[0xA002]; m.exif.pxH = ex[0xA003];
+  }
+  if (i0[0x8825]) {
+    const g = ifd(i0[0x8825]);
+    const dms = v => Array.isArray(v) ? v[0] + (v[1] || 0) / 60 + (v[2] || 0) / 3600 : v;
+    if (g[2] != null && g[4] != null) {
+      const lat = dms(g[2]) * (g[1] === "S" ? -1 : 1), lon = dms(g[4]) * (g[3] === "W" ? -1 : 1);
+      if (isFinite(lat) && isFinite(lon) && (lat || lon)) m.gps = { lat, lon, alt: g[6] != null ? g[6] * (g[5] === 1 ? -1 : 1) : null };
+    }
+  }
+}
+const num = v => { const n = parseFloat(v); return isFinite(n) ? n : null; };
+
+/* ------------------------------------------------------------------ camera
+   Camera: position (lat, lon), height above the ground it took off from (h),
+   heading (yaw, 0 = north, clockwise), tilt (pitch, -90 = straight down),
+   roll, and focal length f as a fraction of image width. */
+function fovToF(fovDiag, aspect) { return (Math.sqrt(1 + 1 / (aspect * aspect)) / 2) / Math.tan(fovDiag * D / 2); }
+function fToFov(f, aspect) { return 2 * Math.atan((Math.sqrt(1 + 1 / (aspect * aspect)) / 2) / f) / D; }
+function cameraFromMeta(m, w, h) {
+  const x = m.xmp, aspect = w / h;
+  const lat = num(x.GpsLatitude) ?? m.gps?.lat ?? null;
+  const lon = num(x.GpsLongitude) ?? num(x.GpsLongtitude) ?? m.gps?.lon ?? null;
+  const rel = num(x.RelativeAltitude);
+  const yaw = num(x.GimbalYawDegree) ?? num(x.FlightYawDegree);
+  const pitch = num(x.GimbalPitchDegree);
+  const roll = num(x.GimbalRollDegree) ?? 0;
+  let f = null, fsrc = "default";
+  const cal = num(x.CalibratedFocalLength);
+  if (cal && m.exif.pxW && Math.abs(m.exif.pxW - w) < 2) { f = cal / w; fsrc = "calibrated"; }
+  else if (m.exif.focal35) { f = m.exif.focal35 * Math.hypot(w, h) / 43.27 / w; fsrc = "35mm"; }
+  if (!f) f = fovToF(84, aspect);
+  const has = { gps: lat != null && lon != null, h: rel != null, yaw: yaw != null, pitch: pitch != null, f: fsrc !== "default" };
+  return {
+    has,
+    cam: { lat, lon, h: rel != null ? Math.max(1, rel) : 60, yaw: yaw ?? 0, pitch: pitch ?? -30, roll: has.pitch ? roll : 0, f },
+  };
+}
+function basis(c) {
+  const y = c.yaw * D, p = c.pitch * D, r = c.roll * D;
+  const f = [Math.sin(y) * Math.cos(p), Math.cos(y) * Math.cos(p), Math.sin(p)];
+  const r0 = [Math.cos(y), -Math.sin(y), 0];
+  const u0 = [r0[1] * f[2] - r0[2] * f[1], r0[2] * f[0] - r0[0] * f[2], r0[0] * f[1] - r0[1] * f[0]];
+  const cr = Math.cos(r), sr = Math.sin(r);
+  return { f, r: r0.map((v, i) => v * cr + u0[i] * sr), u: u0.map((v, i) => v * cr - r0[i] * sr) };
+}
+// Project a ground point to normalised image coords (0..1 across and down).
+function project(c, aspect, lat, lon, B = basis(c)) {
+  const e = (lon - c.lon) * D * R_EARTH * Math.cos(c.lat * D), n = (lat - c.lat) * D * R_EARTH;
+  const d2 = e * e + n * n;
+  const up = -c.h - d2 / (2 * R_EARTH) * 0.87; // earth curve, less standard refraction
+  const z = e * B.f[0] + n * B.f[1] + up * B.f[2];
+  if (z < 1) return null;
+  const xr = e * B.r[0] + n * B.r[1] + up * B.r[2], yu = e * B.u[0] + n * B.u[1] + up * B.u[2];
+  return { x: 0.5 + c.f * xr / z, y: 0.5 - c.f * aspect * yu / z, z, dist: Math.sqrt(d2) };
+}
+function nelderMead(fn, x0, step, iters) {
+  const n = x0.length;
+  let P = [x0.slice()];
+  for (let i = 0; i < n; i++) { const p = x0.slice(); p[i] += step; P.push(p); }
+  let F = P.map(fn);
+  for (let it = 0; it < iters; it++) {
+    const idx = [...F.keys()].sort((a, b) => F[a] - F[b]);
+    P = idx.map(i => P[i]); F = idx.map(i => F[i]);
+    if (F[n] - F[0] < 1e-9 * (1 + Math.abs(F[0]))) break;
+    const c = new Array(n).fill(0);
+    for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) c[j] += P[i][j] / n;
+    const xr = c.map((v, j) => 2 * v - P[n][j]), fr = fn(xr);
+    if (fr < F[0]) {
+      const xe = c.map((v, j) => 3 * v - 2 * P[n][j]), fe = fn(xe);
+      if (fe < fr) { P[n] = xe; F[n] = fe; } else { P[n] = xr; F[n] = fr; }
+    } else if (fr < F[n - 1]) { P[n] = xr; F[n] = fr; }
+    else {
+      const xc = fr < F[n] ? c.map((v, j) => v + 0.5 * (xr[j] - v)) : c.map((v, j) => v + 0.5 * (P[n][j] - v));
+      const fc = fn(xc);
+      if (fc < Math.min(fr, F[n])) { P[n] = xc; F[n] = fc; }
+      else for (let i = 1; i <= n; i++) { P[i] = P[i].map((v, j) => P[0][j] + 0.5 * (v - P[0][j])); F[i] = fn(P[i]); }
+    }
+  }
+  let b = 0; for (let i = 1; i <= n; i++) if (F[i] < F[b]) b = i;
+  return { x: P[b], f: F[b] };
+}
+/* Fit the camera to the pins the user dragged. Each parameter has a prior from
+   the photo's metadata, so one dragged pin mostly corrects heading and tilt,
+   and more pins also settle height, lens and position. */
+function solveCamera(ph, quick) {
+  const base = ph.base;
+  const anchors = Object.values(ph.anchors);
+  if (!base || base.lat == null) { ph.cam = base ? { ...base } : null; return; }
+  if (!anchors.length) { ph.cam = { ...base }; ph.solX = null; return; }
+  const h = ph.has;
+  const sig = [h.gps ? 8 : 400, h.gps ? 8 : 400, h.h ? 10 : 80, h.yaw ? 8 : 120, h.pitch ? 4 : 30, h.pitch ? 1.5 : 4, h.f ? 0.06 : 0.35];
+  const aspect = ph.w / ph.h;
+  const cosLat = Math.cos(base.lat * D);
+  const toCam = x => ({
+    lat: base.lat + x[1] * sig[1] / (R_EARTH * D),
+    lon: base.lon + x[0] * sig[0] / (R_EARTH * D * cosLat),
+    h: Math.max(2, base.h + x[2] * sig[2]),
+    yaw: base.yaw + x[3] * sig[3],
+    pitch: clamp(base.pitch + x[4] * sig[4], -90, 25),
+    roll: base.roll + x[5] * sig[5],
+    f: base.f * Math.exp(x[6] * sig[6]),
+  });
+  const px = 0.004;
+  const cost = x => {
+    let c = 0;
+    for (const v of x) c += v * v;
+    const cam = toCam(x), B = basis(cam);
+    for (const a of anchors) {
+      const p = project(cam, aspect, a.lat, a.lon, B);
+      if (!p) { c += 1e6; continue; }
+      const dx = p.x - a.x, dy = (p.y - a.y) / aspect;
+      c += (dx * dx + dy * dy) / (px * px);
+    }
+    return c;
+  };
+  let best = { x: ph.solX || new Array(7).fill(0), f: Infinity };
+  best.f = cost(best.x);
+  const starts = quick ? [best.x] : [best.x, new Array(7).fill(0)];
+  for (const s of starts) {
+    let r = nelderMead(cost, s, quick ? 0.35 : 0.9, quick ? 260 : 700);
+    r = nelderMead(cost, r.x, 0.15, quick ? 200 : 500);
+    if (r.f < best.f) best = r;
+  }
+  ph.solX = best.x;
+  ph.cam = toCam(best.x);
+}
+// Camera for a photo with no GPS: hover south of the property, looking north.
+function placeholderCamera(ph) {
+  if (!state.address) return null;
+  const back = 160;
+  return { lat: state.address.lat - back / (R_EARTH * D), lon: state.address.lon, h: ph.base0.h, yaw: ph.has.yaw ? ph.base0.yaw : 0, pitch: ph.has.pitch ? ph.base0.pitch : -22, roll: 0, f: ph.base0.f };
+}
+function rebase(ph) {
+  if (ph.has.gps) ph.base = { ...ph.base0 };
+  else { const c = placeholderCamera(ph); ph.base = c ? { ...c, ...(ph.manual || {}) } : null; }
+  if (ph.base && ph.manual && ph.has.gps) Object.assign(ph.base, ph.manual);
+  solveCamera(ph);
+}
+
+/* ------------------------------------------------------------------ network */
+async function getJSON(url, opts = {}, ms = 25000) {
+  const ac = new AbortController(); const t = setTimeout(() => ac.abort(), ms);
+  try {
+    const r = await fetch(url, { ...opts, signal: ac.signal });
+    if (!r.ok) throw new Error("HTTP " + r.status);
+    return await r.json();
+  } finally { clearTimeout(t); }
+}
+async function searchAddress(q, bias) {
+  const coord = /^\s*(-?\d+(?:\.\d+)?)\s*[, ]\s*(-?\d+(?:\.\d+)?)\s*$/.exec(q);
+  if (coord) return [{ title: q.trim(), sub: "Coordinates", lat: +coord[1], lon: +coord[2] }];
+  try {
+    let u = "https://photon.komoot.io/api/?limit=6&q=" + encodeURIComponent(q);
+    if (bias) u += `&lat=${bias.lat.toFixed(4)}&lon=${bias.lon.toFixed(4)}`;
+    const j = await getJSON(u, {}, 8000);
+    const out = (j.features || []).map(f => {
+      const p = f.properties || {};
+      const street = [p.housenumber, p.street].filter(Boolean).join(" ");
+      const title = p.name && p.name !== p.street ? (street ? `${p.name}, ${street}` : p.name) : (street || p.name || "");
+      const sub = [p.district || p.locality, p.city, p.state, p.postcode].filter(Boolean).filter((v, i, a) => a.indexOf(v) === i).join(", ");
+      return { title, sub, short: street || p.name || title, lat: f.geometry.coordinates[1], lon: f.geometry.coordinates[0] };
+    }).filter(r => r.title);
+    if (out.length) return out;
+  } catch (e) { console.warn("Photon failed", e); }
+  const j = await getJSON("https://nominatim.openstreetmap.org/search?format=jsonv2&addressdetails=1&limit=6&q=" + encodeURIComponent(q), { headers: { "Accept-Language": "en" } }, 12000);
+  return j.map(r => {
+    const a = r.address || {};
+    const street = [a.house_number, a.road].filter(Boolean).join(" ");
+    const parts = r.display_name.split(", ");
+    return { title: street || parts[0], sub: [a.suburb, a.city || a.town, a.state, a.postcode].filter(Boolean).join(", ") || parts.slice(1, 4).join(", "), short: street || parts[0], lat: +r.lat, lon: +r.lon };
+  });
+}
+const OVERPASS = ["https://overpass-api.de/api/interpreter", "https://overpass.kumi.systems/api/interpreter", "https://overpass.private.coffee/api/interpreter"];
+function overpassQuery(lat, lon, r) {
+  const a = `(around:${Math.round(r)},${lat.toFixed(6)},${lon.toFixed(6)})`;
+  return `[out:json][timeout:45];(
+nwr["amenity"~"^(school|university|college|hospital|ferry_terminal|bus_station)$"]["name"]${a};
+nwr["leisure"~"^(park|nature_reserve|stadium|golf_course|marina)$"]["name"]${a};
+nwr["natural"~"^(beach|bay|peak)$"]["name"]${a};
+nwr["railway"~"^(station|halt)$"]["name"]${a};
+nwr["aeroway"="aerodrome"]["name"]${a};
+nwr["shop"~"^(mall|department_store|supermarket)$"]["name"]${a};
+nwr["tourism"~"^(attraction|museum|zoo|theme_park)$"]["name"]${a};
+nwr["boundary"="national_park"]["name"]${a};
+node["place"~"^(city|town|suburb|village|quarter)$"]["name"]${a};
+);out center tags;`;
+}
+function classify(t) {
+  if (t.amenity === "school") return ["school", "school", 7];
+  if (t.amenity === "university" || t.amenity === "college") return ["school", "school", 8];
+  if (t.amenity === "hospital") return ["health", "health", 6];
+  if (t.natural === "beach") return ["beach", "beach", 8];
+  if (t.natural === "bay") return ["beach", "beach", 6];
+  if (t.natural === "peak") return ["landmark", "landmark", 4];
+  if (t.aeroway === "aerodrome") return t.iata || t.aerodrome === "international" ? ["transport", "plane", 8] : ["transport", "plane", 3];
+  if (t.railway === "station" || t.railway === "halt") return ["transport", "train", t.railway === "station" ? 7.5 : 6];
+  if (t.amenity === "ferry_terminal") return ["transport", "ferry", 6.5];
+  if (t.amenity === "bus_station") return ["transport", "train", 4];
+  if (t.shop === "mall" || t.shop === "department_store") return ["shopping", "shopping", 7];
+  if (t.shop === "supermarket") return ["shopping", "shopping", 4];
+  if (t.leisure === "park" || t.leisure === "nature_reserve" || t.boundary === "national_park") return ["park", "park", t.boundary === "national_park" ? 7 : 4.5];
+  if (t.leisure === "stadium") return ["sport", "sport", 7];
+  if (t.leisure === "golf_course" || t.leisure === "marina") return ["sport", "sport", 5];
+  if (t.tourism) return ["landmark", "landmark", 5.5];
+  if (t.place) return ["area", "area", { city: 8, town: 6.5, suburb: 5.5, village: 5, quarter: 4 }[t.place] || 4];
+  return null;
+}
+async function fetchPlaces(center, radius) {
+  const body = "data=" + encodeURIComponent(overpassQuery(center.lat, center.lon, radius));
+  let lastErr;
+  for (const ep of OVERPASS) {
+    try {
+      const j = await getJSON(ep, { method: "POST", body, headers: { "Content-Type": "application/x-www-form-urlencoded" } }, 50000);
+      return parsePlaces(j.elements || []);
+    } catch (e) { lastErr = e; }
+  }
+  throw lastErr || new Error("No map server answered");
+}
+function parsePlaces(elements) {
+  const raw = [];
+  for (const el of elements) {
+    const t = el.tags || {}; const name = t["name:en"] || t.name; if (!name) continue;
+    const lat = el.lat ?? el.center?.lat, lon = el.lon ?? el.center?.lon; if (lat == null) continue;
+    const c = classify(t); if (!c) continue;
+    let score = c[2] + (t.wikidata || t.wikipedia ? 1.5 : 0);
+    if (/\b(public school|primary|high school|grammar|college|university)\b/i.test(name)) score += 0.3;
+    raw.push({ id: `${el.type[0]}${el.id}`, name, cat: c[0], icon: c[1], lat, lon, score });
+  }
+  // One pin per name: stations, malls and parks are often mapped several times.
+  raw.sort((a, b) => b.score - a.score);
+  const out = [];
+  for (const p of raw) {
+    const dupe = out.find(o => o.name.toLowerCase() === p.name.toLowerCase() && haversine(o, p) < 1500);
+    if (!dupe) out.push(p);
+  }
+  return out;
+}
+async function ensurePlaces() {
+  const center = state.address || (() => { const p = state.photos.find(p => p.base0?.lat != null); return p ? { lat: p.base0.lat, lon: p.base0.lon } : null; })();
+  if (!center) return;
+  const radius = state.settings.range;
+  const key = `${center.lat.toFixed(4)},${center.lon.toFixed(4)},${radius}`;
+  if (key === state.placesKey && state.placesStatus !== "error") return;
+  state.placesKey = key; state.placesStatus = "loading"; state.placesError = "";
+  render();
+  try {
+    const places = await fetchPlaces(center, radius);
+    if (key !== state.placesKey) return;
+    state.places = places; state.placesStatus = "ready";
+    state.photos.forEach(p => { p.hintShown = false; });
+  } catch (e) {
+    if (key !== state.placesKey) return;
+    state.placesStatus = "error"; state.placesError = e.message || String(e);
+  }
+  render();
+}
+
+/* ------------------------------------------------------------------ pins */
+function refPoint(ph) {
+  if (state.address) return state.address;
+  const c = ph.cam; return c && c.lat != null ? { lat: c.lat, lon: c.lon } : null;
+}
+function placeName(p) { return state.names[p.id] ?? p.name; }
+function heroName() { return state.names.hero ?? (state.address?.short || "The Property"); }
+// Everything the inspector and renderer need for one photo.
+function computePins(ph) {
+  const res = { pins: [], inView: [], hero: null };
+  const cam = ph.cam; if (!cam || cam.lat == null) return res;
+  const aspect = ph.w / ph.h, B = basis(cam), ref = refPoint(ph);
+  for (const pl of state.places) {
+    if (!state.settings.cats[pl.cat]) continue;
+    const pr = project(cam, aspect, pl.lat, pl.lon, B);
+    const anchored = ph.anchors[pl.id];
+    if (!anchored && (!pr || pr.x < 0.02 || pr.x > 0.98 || pr.y < 0.035 || pr.y > 0.985)) continue;
+    const d = ref ? haversine(ref, pl) : pr?.dist || 0;
+    res.inView.push({ pl, x: pr ? pr.x : anchored.x, y: pr ? pr.y : anchored.y, d, rank: pl.score - Math.min(3, d / 1500) });
+  }
+  res.inView.sort((a, b) => b.rank - a.rank);
+  let auto = ph.frozenAuto;
+  if (!auto) {
+    auto = new Set(); const picked = [];
+    for (const c of res.inView) {
+      if (picked.length >= state.settings.maxPins) break;
+      if (picked.some(o => Math.hypot(o.x - c.x, (o.y - c.y) / aspect) < 0.075)) continue;
+      picked.push(c); auto.add(c.pl.id);
+    }
+  }
+  res.auto = auto;
+  for (const c of res.inView) {
+    c.on = ph.overrides[c.pl.id] ?? auto.has(c.pl.id);
+    if (!c.on) continue;
+    const a = ph.anchors[c.pl.id];
+    res.pins.push({ id: c.pl.id, kind: "place", cat: c.pl.cat, icon: c.pl.icon, name: placeName(c.pl), sub: ref ? fmtDist(c.d) : "", x: c.x, y: c.y, anchored: !!a });
+  }
+  if (state.address) {
+    const pr = project(cam, aspect, state.address.lat, state.address.lon, B);
+    const a = ph.anchors.hero;
+    const vis = a || (pr && pr.x > -0.05 && pr.x < 1.05 && pr.y > -0.05 && pr.y < 1.05);
+    res.hero = { visible: !!vis };
+    if (vis && brand().heroOn && ph.overrides.hero !== false) {
+      res.pins.unshift({ id: "hero", kind: "hero", cat: "home", icon: "home", name: heroName(), sub: "", x: pr ? pr.x : a.x, y: pr ? pr.y : a.y, anchored: !!a });
+    }
+  }
+  for (const c of ph.custom) res.pins.push({ id: c.id, kind: "custom", cat: "custom", icon: "custom", name: c.name, sub: "", x: c.x, y: c.y });
+  if (ph.drag) {
+    const p = res.pins.find(p => p.id === ph.drag.id);
+    if (p) { p.x = ph.drag.x; p.y = ph.drag.y; }
+  }
+  return res;
+}
+
+/* ------------------------------------------------------------------ drawing
+   One renderer for the preview and the export, so what you see is what you
+   get. Sizes scale with image width (u = 1/1000 of it). */
+const LOGOS = new Map();
+function logoImg(src) {
+  if (!src) return null;
+  let im = LOGOS.get(src);
+  if (!im) { im = new Image(); im.onload = () => render(); im.src = src; LOGOS.set(src, im); }
+  return im.complete && im.naturalWidth ? im : null;
+}
+const LS = typeof CanvasRenderingContext2D !== "undefined" && "letterSpacing" in CanvasRenderingContext2D.prototype;
+const FILTER = (() => { try { const c = document.createElement("canvas").getContext("2d"); c.filter = "blur(2px)"; return c.filter === "blur(2px)"; } catch { return false; } })();
+function setFont(ctx, weight, px, b, track) {
+  ctx.font = `${weight} ${px}px ${FONTS[b.font]?.stack || FONTS.system.stack}`;
+  if (LS) ctx.letterSpacing = track ? `${(px * track).toFixed(2)}px` : "0px";
+}
+function luminance(hex) {
+  const n = parseInt(hex.slice(1), 16), c = [(n >> 16) & 255, (n >> 8) & 255, n & 255].map(v => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; });
+  return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
+}
+const onColor = hex => luminance(hex) > 0.45 ? "#111111" : "#ffffff";
+function rrect(ctx, x, y, w, h, r) { ctx.beginPath(); ctx.roundRect ? ctx.roundRect(x, y, w, h, Math.min(r, h / 2, w / 2)) : ctx.rect(x, y, w, h); }
+function iconColor(b, pin) { return pin.kind === "hero" ? b.accent : b.catColors && CATS[pin.cat] ? CATS[pin.cat].color : b.accent; }
+
+function measurePin(ctx, pin, b, u) {
+  const hero = pin.kind === "hero", k = hero ? 1.16 : 1, st = b.style;
+  const fs1 = 15 * u * k, fs2 = 11.5 * u * k;
+  const track = b.upper ? 0.07 : st === "editorial" ? 0.02 : 0;
+  const name = b.upper ? pin.name.toUpperCase() : pin.name;
+  const sub = b.distance && pin.sub ? (b.upper ? pin.sub.toUpperCase() : pin.sub) : "";
+  setFont(ctx, b.weight, fs1, b, track); const w1 = ctx.measureText(name).width;
+  setFont(ctx, 500, fs2, b, track); const w2 = sub ? ctx.measureText(sub).width : 0;
+  const lh1 = fs1 * 1.2, lh2 = sub ? fs2 * 1.3 : 0;
+  const textW = Math.max(w1, w2), textH = lh1 + lh2;
+  const logo = hero ? logoImg(b.logo) : null;
+  const padX = 12 * u * k, padY = 8 * u * k, gap = 8 * u * k;
+  const m = { hero, k, fs1, fs2, track, name, sub, lh1, lh2, textW, textH, logo, padX, padY, gap };
+  if (st === "editorial") {
+    m.logoH = logo ? textH * 1.4 : 0; m.logoW = logo ? m.logoH * logo.naturalWidth / logo.naturalHeight : 0;
+    m.w = Math.max(textW, m.logoW); m.h = textH + (logo ? m.logoH + 6 * u : 0);
+  } else if (st === "beacon") {
+    const d = textH + padY * 2;
+    m.d = d; m.slotW = logo ? Math.min(d * 3, (d - 6 * u) * logo.naturalWidth / logo.naturalHeight) + 6 * u : d;
+    m.w = m.slotW + gap + textW + padX; m.h = d;
+  } else {
+    const showIcon = (b.icons && st !== "tag") || logo;
+    m.iconW = logo ? Math.min(textH * 3, textH * logo.naturalWidth / logo.naturalHeight) : showIcon ? fs1 * 1.3 : 0;
+    m.w = padX * 2 + m.iconW + (m.iconW ? gap : 0) + textW; m.h = textH + padY * 2;
+    if (st === "tag") { m.w += 10 * u * k; }
+  }
+  return m;
+}
+function layoutPins(ctx, pins, b, W, H) {
+  const u = W / 1000 * b.size, margin = 8 * u;
+  const placed = [], out = [];
+  // Every pin's dot is an obstacle, so no label covers a point it labels.
+  for (const pin of pins) { const d = 9 * u; placed.push({ x: pin.x * W - d, y: pin.y * H - d, w: 2 * d, h: 2 * d }); }
+  const order = pins.slice().sort((a, b2) => (b2.kind === "hero") - (a.kind === "hero") || b2.y - a.y);
+  const hits = (r) => placed.some(o => r.x < o.x + o.w + 5 * u && r.x + r.w + 5 * u > o.x && r.y < o.y + o.h + 5 * u && r.y + r.h + 5 * u > o.y);
+  for (const pin of order) {
+    const m = measurePin(ctx, pin, b, u);
+    const px = pin.x * W, py = pin.y * H;
+    const L = (b.style === "bold" ? 26 : 44) * u * Math.max(0.05, b.stem) * (pin.kind === "hero" ? 1.2 : 1) + (b.style === "bold" || b.style === "tag" ? 8 * u : 0);
+    const left = clamp(px - m.w / 2, margin, Math.max(margin, W - margin - m.w));
+    // Try heights above the point, then below; if every spot collides, take the one that overlaps least.
+    let box = null, best = null;
+    const area = r => placed.reduce((a, o) => a + Math.max(0, Math.min(r.x + r.w, o.x + o.w) - Math.max(r.x, o.x)) * Math.max(0, Math.min(r.y + r.h, o.y + o.h) - Math.max(r.y, o.y)), 0);
+    const tries = [1, 1.7, 2.4, 3.1, 3.8, 0.55].map(f => ({ x: left, y: py - L * f - m.h, w: m.w, h: m.h, up: true }))
+      .concat([1, 1.7, 2.4].map(f => ({ x: left, y: py + L * f, w: m.w, h: m.h, up: false })));
+    for (const r of tries) {
+      if (r.y < margin || r.y + r.h > H - margin) continue;
+      if (!hits(r)) { box = r; break; }
+      const a = area(r); if (!best || a < best.a) best = { r, a };
+    }
+    if (!box) box = best ? best.r : { x: left, y: clamp(py - L - m.h, margin, H - margin - m.h), w: m.w, h: m.h, up: py - L - m.h >= margin };
+    placed.push(box);
+    out.push({ pin, m, box, px, py, u });
+  }
+  return out;
+}
+function drawText(ctx, m, b, x, y, color, subColor, align) {
+  ctx.textBaseline = "alphabetic"; ctx.textAlign = align;
+  setFont(ctx, b.weight, m.fs1, b, m.track); ctx.fillStyle = color;
+  ctx.fillText(m.name, x, y + m.fs1 * 0.98);
+  if (m.sub) { setFont(ctx, 500, m.fs2, b, m.track); ctx.fillStyle = subColor; ctx.fillText(m.sub, x, y + m.lh1 + m.fs2 * 1.02); }
+  if (LS) ctx.letterSpacing = "0px";
+}
+function withAlpha(hex, a) { const n = parseInt(hex.slice(1), 16); return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`; }
+function drawPin(ctx, L, b, src, W, H, selected) {
+  const { pin, m, box, px, py, u } = L, st = b.style, hero = m.hero;
+  const r = (st === "tag" ? m.h / 2 : 14 * u * m.k * b.radius);
+  const stemTop = box.up ? box.y + box.h : box.y;
+  const stemColor = st === "beacon" || st === "bold" ? b.accent : st === "editorial" ? b.text : "#ffffff";
+  // stem
+  ctx.save();
+  ctx.shadowColor = "rgba(0,0,0,0.35)"; ctx.shadowBlur = 4 * u;
+  ctx.strokeStyle = stemColor; ctx.lineWidth = (st === "editorial" ? 1.4 : 2) * u * m.k; ctx.lineCap = "round";
+  ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(px, stemTop); ctx.stroke();
+  // dot
+  const dr = 5 * u * m.k;
+  if (st === "editorial") {
+    ctx.lineWidth = 1.6 * u; ctx.beginPath(); ctx.arc(px, py, dr, 0, 7); ctx.stroke();
+    ctx.shadowBlur = 0; ctx.fillStyle = stemColor; ctx.beginPath(); ctx.arc(px, py, dr * 0.35, 0, 7); ctx.fill();
+  } else {
+    ctx.fillStyle = "#ffffff"; ctx.beginPath(); ctx.arc(px, py, dr, 0, 7); ctx.fill();
+    ctx.shadowBlur = 0; ctx.fillStyle = hero || st !== "classic" ? b.accent : iconColor(b, pin);
+    ctx.beginPath(); ctx.arc(px, py, dr * 0.58, 0, 7); ctx.fill();
+  }
+  ctx.restore();
+
+  // label
+  const { x, y, w, h } = box;
+  ctx.save();
+  if (st !== "editorial") { ctx.shadowColor = "rgba(0,0,0,0.28)"; ctx.shadowBlur = 16 * u; ctx.shadowOffsetY = 4 * u; }
+  let ink = b.text, sub = withAlpha(b.text, 0.62), fill = b.labelBg;
+  if (st === "classic" || st === "tag") {
+    if (hero) { fill = b.accent; ink = onColor(b.accent); sub = withAlpha(ink, 0.75); }
+    rrect(ctx, x, y, w, h, r); ctx.fillStyle = fill; ctx.fill();
+  } else if (st === "glass") {
+    rrect(ctx, x, y, w, h, r); ctx.fillStyle = "rgba(0,0,0,0.001)"; ctx.fill();
+    ctx.shadowColor = "transparent";
+    ctx.save(); rrect(ctx, x, y, w, h, r); ctx.clip();
+    if (src && FILTER) {
+      const pad = 30 * u, sx = src.width / W, sy = src.height / H;
+      const rx = Math.max(0, x - pad), ry = Math.max(0, y - pad), rw = Math.min(W, x + w + pad) - rx, rh = Math.min(H, y + h + pad) - ry;
+      ctx.filter = `blur(${(14 * u).toFixed(1)}px) saturate(1.6)`;
+      ctx.drawImage(src, rx * sx, ry * sy, rw * sx, rh * sy, rx, ry, rw, rh);
+      ctx.filter = "none";
+    }
+    ctx.fillStyle = hero ? withAlpha(b.accent, 0.78) : withAlpha(b.labelBg, FILTER ? 0.42 : 0.7); ctx.fillRect(x, y, w, h);
+    ctx.restore();
+    rrect(ctx, x + 0.5 * u, y + 0.5 * u, w - u, h - u, r); ctx.strokeStyle = "rgba(255,255,255,0.32)"; ctx.lineWidth = u; ctx.stroke();
+    if (hero) { ink = onColor(b.accent); sub = withAlpha(ink, 0.78); }
+  } else if (st === "beacon") {
+    rrect(ctx, x, y, w, h, h / 2 * Math.max(0.25, b.radius)); ctx.fillStyle = fill; ctx.fill();
+  } else if (st === "bold") {
+    fill = hero ? b.labelBg : b.accent; ink = hero ? b.accent : b.text; sub = withAlpha(ink, 0.75);
+    rrect(ctx, x, y, w, h, r); ctx.fillStyle = fill; ctx.fill();
+    const t = 7 * u * m.k, tx = clamp(px, x + r + t, x + w - r - t);
+    ctx.beginPath();
+    if (box.up) { ctx.moveTo(tx - t, y + h - 0.5); ctx.lineTo(tx, y + h + t); ctx.lineTo(tx + t, y + h - 0.5); }
+    else { ctx.moveTo(tx - t, y + 0.5); ctx.lineTo(tx, y - t); ctx.lineTo(tx + t, y + 0.5); }
+    ctx.fill();
+  } else if (st === "editorial") {
+    ctx.shadowColor = "rgba(0,0,0,0.55)"; ctx.shadowBlur = 10 * u; ctx.shadowOffsetY = 1 * u;
+  }
+  if (st !== "editorial") { ctx.shadowColor = "transparent"; ctx.shadowBlur = 0; ctx.shadowOffsetY = 0; }
+
+  // contents
+  if (st === "editorial") {
+    let ty = y;
+    if (m.logo) { ctx.drawImage(m.logo, x + (w - m.logoW) / 2, y, m.logoW, m.logoH); ty += m.logoH + 6 * u; }
+    drawText(ctx, m, b, x + w / 2, ty, b.text, withAlpha(b.text, 0.85), "center");
+    if (hero) { ctx.fillStyle = b.accent; ctx.fillRect(x + w / 2 - 12 * u, y + h + 3 * u, 24 * u, 2 * u); }
+  } else if (st === "beacon") {
+    if (m.logo) {
+      const lh = m.d - 6 * u, lw = m.slotW - 6 * u;
+      ctx.drawImage(m.logo, x + 3 * u, y + 3 * u, lw, lh);
+    } else {
+      const c = iconColor(b, pin);
+      ctx.fillStyle = hero ? b.accent : (b.catColors ? c : b.accent);
+      ctx.beginPath(); ctx.arc(x + m.d / 2, y + m.d / 2, m.d / 2 - 3 * u, 0, 7); ctx.fill();
+      drawIcon(ctx, pin.icon, x + m.d / 2, y + m.d / 2, m.d * 0.5, "#ffffff", 2.3);
+    }
+    drawText(ctx, m, b, x + m.slotW + m.gap, y + m.padY, ink, sub, "left");
+  } else {
+    let tx = x + m.padX + (st === "tag" ? 10 * u * m.k : 0);
+    if (st === "tag") { ctx.fillStyle = hero ? onColor(b.accent) : b.accent; ctx.beginPath(); ctx.arc(x + m.padX + 2 * u, y + h / 2, 3.5 * u * m.k, 0, 7); ctx.fill(); }
+    if (m.logo) { ctx.drawImage(m.logo, tx, y + m.padY, m.iconW, m.textH); tx += m.iconW + m.gap; }
+    else if (m.iconW) {
+      const col = hero ? ink : st === "bold" || st === "glass" ? ink : iconColor(b, pin);
+      drawIcon(ctx, pin.icon, tx + m.iconW / 2, y + h / 2, m.iconW, col, 2.2);
+      tx += m.iconW + m.gap;
+    }
+    drawText(ctx, m, b, tx, y + m.padY, ink, sub, "left");
+  }
+  ctx.restore();
+  if (selected) {
+    ctx.save(); ctx.strokeStyle = "#0a84ff"; ctx.lineWidth = Math.max(1.5, 2 * u); ctx.setLineDash([6 * u, 4 * u]);
+    rrect(ctx, x - 4 * u, y - 4 * u, w + 8 * u, h + 8 * u, r + 4 * u); ctx.stroke(); ctx.restore();
+  }
+}
+function drawScene(ctx, W, H, ph, src, opts = {}) {
+  ctx.clearRect(0, 0, W, H);
+  ctx.drawImage(src, 0, 0, W, H);
+  const b = opts.brand || brand();
+  const { pins } = computePins(ph);
+  const layout = layoutPins(ctx, pins, b, W, H);
+  for (const L of layout.slice().reverse()) drawPin(ctx, L, b, src, W, H, !opts.export && L.pin.id === state.selected);
+  return layout;
+}
+
+/* ------------------------------------------------------------------ photos */
+async function addFiles(files) {
+  const list = [...files].filter(f => /^image\/(jpeg|png|webp)$/.test(f.type) || /\.(jpe?g|png|webp)$/i.test(f.name));
+  if (!list.length) { flash("Pinpoint reads JPG, PNG and WebP photos."); return; }
+  for (const file of list) {
+    try {
+      const url = URL.createObjectURL(file);
+      const img = new Image(); img.src = url; await img.decode();
+      const w = img.naturalWidth, h = img.naturalHeight;
+      const meta = await readMeta(file);
+      const { cam, has } = cameraFromMeta(meta, w, h);
+      const scale = Math.min(1, 2400 / Math.max(w, h));
+      const pv = document.createElement("canvas"); pv.width = Math.round(w * scale); pv.height = Math.round(h * scale);
+      pv.getContext("2d").drawImage(img, 0, 0, pv.width, pv.height);
+      const th = document.createElement("canvas"); const ts = 160 / w; th.width = 160; th.height = Math.round(h * ts);
+      th.getContext("2d").drawImage(pv, 0, 0, th.width, th.height);
+      const ph = { id: uid(), name: file.name, img, preview: pv, thumb: th.toDataURL("image/jpeg", 0.8), w, h, meta, has, base0: cam, base: null, cam: null, anchors: {}, overrides: {}, custom: [], solX: null, manual: null };
+      rebase(ph);
+      state.photos.push(ph);
+      if (!state.current) state.current = ph.id;
+    } catch (e) { console.error(e); flash(`Couldn't open ${file.name}.`); }
+  }
+  if (!cur()) state.current = state.photos[0]?.id || null;
+  render();
+  ensurePlaces();
+}
+function removePhoto(id) {
+  const i = state.photos.findIndex(p => p.id === id); if (i < 0) return;
+  URL.revokeObjectURL(state.photos[i].img.src);
+  state.photos.splice(i, 1);
+  if (state.current === id) state.current = state.photos[Math.min(i, state.photos.length - 1)]?.id || null;
+  render();
+}
+
+/* ------------------------------------------------------------------ view */
+const view = $("#view"), vctx = view.getContext("2d");
+let lastLayout = [], flashMsg = null, flashTimer = 0;
+function flash(msg) { flashMsg = msg; clearTimeout(flashTimer); flashTimer = setTimeout(() => { flashMsg = null; renderHud(); }, 3200); renderHud(); }
+function sizeView(ph) {
+  const st = $("#stage"), cs = getComputedStyle(st);
+  const aw = st.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+  const ah = st.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom) - 30;
+  const s = Math.min(aw / ph.w, ah / ph.h);
+  const cw = Math.max(50, Math.floor(ph.w * s)), ch = Math.max(30, Math.floor(ph.h * s));
+  const dpr = Math.min(2, window.devicePixelRatio || 1);
+  if (view.width !== Math.round(cw * dpr) || view.height !== Math.round(ch * dpr)) { view.width = Math.round(cw * dpr); view.height = Math.round(ch * dpr); }
+  view.style.width = cw + "px"; view.style.height = ch + "px";
+}
+let raf = 0;
+function drawView() { cancelAnimationFrame(raf); raf = requestAnimationFrame(() => { const ph = cur(); if (!ph) return; sizeView(ph); lastLayout = drawScene(vctx, view.width, view.height, ph, ph.preview); }); }
+function renderHud() {
+  const hud = $("#hud"), ph = cur();
+  let html = "";
+  if (flashMsg) html = `<span>${esc(flashMsg)}</span>`;
+  else if (!ph) html = "";
+  else if (state.addMode) html = `<span>Click the photo where the new pin goes</span><button data-act="cancelAdd">Cancel</button>`;
+  else if (!ph.base) html = `<span>No location in this photo. Add the property address to place pins.</span>`;
+  else if (state.placesStatus === "loading") html = `<span class="spinner"></span><span>Finding nearby places…</span>`;
+  else if (state.placesStatus === "error") html = `<span>Couldn't reach OpenStreetMap.</span><button data-act="retry">Try again</button>`;
+  else if (state.placesStatus === "ready" && !ph.hintShown) {
+    const n = computePins(ph).inView.length;
+    html = n ? `<span>${n} place${n === 1 ? "" : "s"} in view. Drag any pin onto its real spot and the rest follow.</span><button data-act="okHint">OK</button>` : `<span>No mapped places in this view. Try a wider range.</span><button data-act="okHint">OK</button>`;
+  }
+  hud.innerHTML = html; hud.hidden = !html;
+}
+$("#hud").addEventListener("click", e => {
+  const a = e.target.closest("button")?.dataset.act; if (!a) return;
+  if (a === "retry") { state.placesKey = ""; ensurePlaces(); }
+  if (a === "cancelAdd") setAddMode(false);
+  if (a === "okHint") { const ph = cur(); if (ph) ph.hintShown = true; renderHud(); }
+});
+
+/* ------------------------------------------------------------------ inspector */
+function renderPhotos() {
+  const ul = $("#photoList");
+  ul.innerHTML = state.photos.map(p => {
+    const c = p.base0;
+    const meta = p.has.gps ? `${p.meta.exif.model || p.meta.exif.make || "Drone"} · ${Math.round(c.h)} m${p.has.yaw ? "" : " · no heading"}` : "No location data";
+    return `<li class="${p.id === state.current ? "on" : ""}" data-id="${p.id}"><img src="${p.thumb}" alt=""><div style="min-width:0"><div class="pname">${esc(p.name)}</div><div class="pmeta">${esc(meta)}</div></div><button class="rm" data-rm="${p.id}" aria-label="Remove photo">${svgPath("M6 6l12 12M18 6 6 18")}</button></li>`;
+  }).join("");
+  $("#sideEmpty").hidden = state.photos.length > 0;
+}
+$("#photoList").addEventListener("click", e => {
+  const rm = e.target.closest("[data-rm]"); if (rm) { e.stopPropagation(); removePhoto(rm.dataset.rm); return; }
+  const li = e.target.closest("li"); if (li) { state.current = li.dataset.id; state.selected = null; render(); }
+});
+
+function renderCats() {
+  $("#cats").innerHTML = Object.entries(CATS).map(([k, c]) => `<button class="chip" data-cat="${k}" aria-pressed="${!!state.settings.cats[k]}">${svgIcon(c.icon)}${c.label}</button>`).join("");
+}
+$("#cats").addEventListener("click", e => {
+  const b = e.target.closest("[data-cat]"); if (!b) return;
+  state.settings.cats[b.dataset.cat] = !state.settings.cats[b.dataset.cat]; saveSettings(); renderCats(); render();
+});
+
+function placeRow(o) {
+  const { id, name, sub, icon, color, on, anchored, kind } = o;
+  const anch = anchored ? `<button class="anch" data-unanchor="${id}" title="Release this pin">${svgPath("M12 17v5 M8 3h8l-1 6 3 4H6l3-4-1-6Z")}Placed</button>` : "";
+  const right = kind === "custom" ? `<button class="del" data-del="${id}" aria-label="Delete pin">${svgPath("M5 7h14 M10 7V4.5h4V7 M7 7l1 13h8l1-13")}</button>` : `<input class="switch" type="checkbox" data-toggle="${id}" ${on ? "checked" : ""} aria-label="Show ${esc(name)}">`;
+  return `<div class="place${state.selected === id ? " sel" : ""}" data-id="${id}"><span class="tile" style="background:${color}">${svgIcon(icon)}</span><div style="min-width:0"><input class="nm" data-name="${id}" value="${esc(name)}" aria-label="Pin label"><div class="sub">${esc(sub)}${anch}</div></div>${right}</div>`;
+}
+function renderPlaces() {
+  const ph = cur(), el = $("#placeList");
+  if (!ph) { el.innerHTML = `<div class="list-empty">Drop a photo to see the places in view.</div>`; $("#placeCount").textContent = ""; return; }
+  if (!ph.base) { el.innerHTML = `<div class="list-empty">This photo has no GPS. Add the property address and Pinpoint will start from there.</div>`; $("#placeCount").textContent = ""; return; }
+  const res = computePins(ph);
+  const rows = [];
+  if (state.address && res.hero?.visible) rows.push(placeRow({ id: "hero", kind: "hero", name: heroName(), sub: "Property", icon: "home", color: brand().accent, on: brand().heroOn && ph.overrides.hero !== false, anchored: !!ph.anchors.hero }));
+  const list = res.inView.slice().sort((a, b) => (b.on - a.on) || b.rank - a.rank);
+  const limit = state.showAll ? list.length : Math.max(12, list.filter(c => c.on).length);
+  for (const c of list.slice(0, limit)) rows.push(placeRow({ id: c.pl.id, kind: "place", name: placeName(c.pl), sub: `${CATS[c.pl.cat].one} · ${fmtDist(c.d)}`, icon: c.pl.icon, color: CATS[c.pl.cat].color, on: c.on, anchored: !!ph.anchors[c.pl.id] }));
+  for (const c of ph.custom) rows.push(placeRow({ id: c.id, kind: "custom", name: c.name, sub: "Your pin", icon: "custom", color: "#636366", on: true }));
+  let html = rows.join("");
+  if (list.length > limit) html += `<button class="more" data-act="all">Show all ${list.length}</button>`;
+  else if (state.showAll && list.length > 12) html += `<button class="more" data-act="fewer">Show fewer</button>`;
+  if (!rows.length) html = `<div class="list-empty">${state.placesStatus === "loading" ? "Finding nearby places…" : state.placesStatus === "error" ? "Couldn't load places." : "No mapped places in view. Try a wider range or more categories."}</div>`;
+  const focused = document.activeElement?.dataset?.name;
+  el.innerHTML = html;
+  if (focused) { const f = el.querySelector(`[data-name="${CSS.escape(focused)}"]`); if (f) { f.focus(); const v = f.value.length; f.setSelectionRange(v, v); } }
+  const shown = res.pins.length;
+  $("#placeCount").textContent = state.placesStatus === "ready" ? `${shown} shown · ${res.inView.length} in view` : "";
+}
+$("#placeList").addEventListener("change", e => {
+  const ph = cur(); if (!ph) return;
+  const t = e.target;
+  if (t.dataset.toggle) {
+    ph.overrides[t.dataset.toggle] = t.checked;
+    if (!t.checked && ph.anchors[t.dataset.toggle]) { delete ph.anchors[t.dataset.toggle]; solveCamera(ph); }
+    render();
+  }
+});
+$("#placeList").addEventListener("input", e => {
+  const id = e.target.dataset.name; if (!id) return;
+  const ph = cur(), c = ph?.custom.find(c => c.id === id);
+  if (c) c.name = e.target.value; else state.names[id] = e.target.value;
+  drawView();
+});
+$("#placeList").addEventListener("keydown", e => { if (e.key === "Enter" && e.target.dataset.name) e.target.blur(); });
+$("#placeList").addEventListener("click", e => {
+  const ph = cur(); if (!ph) return;
+  const un = e.target.closest("[data-unanchor]"), del = e.target.closest("[data-del]"), more = e.target.closest("[data-act]");
+  if (un) { delete ph.anchors[un.dataset.unanchor]; solveCamera(ph); render(); return; }
+  if (del) { ph.custom = ph.custom.filter(c => c.id !== del.dataset.del); render(); return; }
+  if (more) { state.showAll = more.dataset.act === "all"; renderPlaces(); return; }
+  const row = e.target.closest(".place");
+  if (row && !e.target.closest("input")) { state.selected = row.dataset.id; render(); }
+});
+
+function renderSettings() {
+  document.querySelectorAll("#rangeSeg button").forEach(b => b.setAttribute("aria-pressed", String(+b.dataset.v === state.settings.range)));
+  $("#pinsVal").textContent = state.settings.maxPins;
+}
+$("#rangeSeg").addEventListener("click", e => {
+  const b = e.target.closest("button"); if (!b) return;
+  state.settings.range = +b.dataset.v; saveSettings(); renderSettings(); ensurePlaces();
+});
+$("#pinsMinus").onclick = () => { state.settings.maxPins = Math.max(0, state.settings.maxPins - 1); saveSettings(); render(); };
+$("#pinsPlus").onclick = () => { state.settings.maxPins = Math.min(20, state.settings.maxPins + 1); saveSettings(); render(); };
+
+/* Brand editor */
+function renderBrand() {
+  const b = brand();
+  $("#brandSel").innerHTML = state.brands.map(x => `<option value="${x.id}" ${x.id === b.id ? "selected" : ""}>${esc(x.name)}</option>`).join("");
+  $("#bAccent").value = b.accent; $("#bLabel").value = b.labelBg; $("#bText").value = b.text;
+  $("#bFont").innerHTML = Object.entries(FONTS).map(([k, f]) => `<option value="${k}" ${k === b.font ? "selected" : ""}>${f.label}</option>`).join("");
+  $("#bSize").value = b.size; $("#bStem").value = b.stem; $("#bRadius").value = b.radius;
+  $("#bDistance").checked = b.distance; $("#bIcons").checked = b.icons; $("#bCatColors").checked = b.catColors; $("#bUpper").checked = b.upper; $("#bHero").checked = b.heroOn;
+  $("#bLogoImg").hidden = !b.logo; if (b.logo) $("#bLogoImg").src = b.logo;
+  $("#bLogoRm").hidden = !b.logo; $("#bLogoBtn").textContent = b.logo ? "Change…" : "Choose…";
+  renderStyleTiles();
+}
+const tileBg = (() => {
+  const c = document.createElement("canvas"); c.width = 300; c.height = 200; const x = c.getContext("2d");
+  const g = x.createLinearGradient(0, 0, 0, 200); g.addColorStop(0, "#9fb7c9"); g.addColorStop(0.45, "#7f9a8a"); g.addColorStop(1, "#5d6e55"); x.fillStyle = g; x.fillRect(0, 0, 300, 200);
+  x.fillStyle = "rgba(255,255,255,0.18)"; for (let i = 0; i < 9; i++) x.fillRect(20 + i * 31, 120 + (i % 3) * 18, 22, 14);
+  return c;
+})();
+function renderStyleTiles() {
+  const b = brand(), wrap = $("#styleTiles");
+  if (wrap.children.length !== Object.keys(STYLE_NAMES).length) {
+    wrap.innerHTML = Object.entries(STYLE_NAMES).map(([k, n]) => `<button data-style="${k}" aria-label="${n} style"><canvas width="300" height="200"></canvas>${n}</button>`).join("");
+  }
+  [...wrap.children].forEach(btn => {
+    const s = btn.dataset.style; btn.setAttribute("aria-pressed", String(s === b.style));
+    const c = btn.querySelector("canvas"), x = c.getContext("2d");
+    const tb = { ...b, style: s, size: 1, stem: 1 };
+    if (s !== b.style) Object.assign(tb, BUILTIN_BRANDS.find(z => z.style === s), { font: b.font, logo: null });
+    x.drawImage(tileBg, 0, 0);
+    const pin = { id: "t", kind: "place", cat: "beach", icon: "beach", name: "Beach", sub: "800 m", x: 0.5, y: 0.82 };
+    const Ls = layoutPins(x, [pin], { ...tb, size: 5.2 }, 300, 200);
+    for (const L of Ls) drawPin(x, L, tb, tileBg, 300, 200, false);
+  });
+}
+function editBrand(patch) { Object.assign(brand(), patch); saveBrands(); renderBrand(); render(); }
+$("#styleTiles").addEventListener("click", e => {
+  const s = e.target.closest("[data-style]")?.dataset.style; if (!s) return;
+  const preset = BUILTIN_BRANDS.find(z => z.style === s);
+  // Switching style keeps the brand's colours unless the style needs dark text on light or the reverse.
+  const patch = { style: s };
+  if (s === "glass" || s === "editorial") { patch.text = "#ffffff"; if (s === "glass") patch.labelBg = "#1c1c1e"; }
+  else if (brand().text === "#ffffff" && s !== "bold") { patch.text = preset.text; patch.labelBg = preset.labelBg; }
+  editBrand(patch);
+});
+$("#brandSel").onchange = e => { state.brandId = e.target.value; saveBrands(); renderBrand(); render(); loadFont(); };
+$("#bAccent").oninput = e => editBrand({ accent: e.target.value });
+$("#bLabel").oninput = e => editBrand({ labelBg: e.target.value });
+$("#bText").oninput = e => editBrand({ text: e.target.value });
+$("#bFont").onchange = e => { editBrand({ font: e.target.value }); loadFont(); };
+$("#bSize").oninput = e => editBrand({ size: +e.target.value });
+$("#bStem").oninput = e => editBrand({ stem: +e.target.value });
+$("#bRadius").oninput = e => editBrand({ radius: +e.target.value });
+$("#bDistance").onchange = e => editBrand({ distance: e.target.checked });
+$("#bIcons").onchange = e => editBrand({ icons: e.target.checked });
+$("#bCatColors").onchange = e => editBrand({ catColors: e.target.checked });
+$("#bUpper").onchange = e => editBrand({ upper: e.target.checked });
+$("#bHero").onchange = e => editBrand({ heroOn: e.target.checked });
+$("#bLogoBtn").onclick = () => $("#logoInput").click();
+$("#bLogoRm").onclick = () => editBrand({ logo: null });
+$("#logoInput").onchange = async e => {
+  const f = e.target.files[0]; e.target.value = ""; if (!f) return;
+  const url = URL.createObjectURL(f); const im = new Image(); im.src = url;
+  try { await im.decode(); } catch { flash("That logo file didn't open."); return; }
+  const s = Math.min(1, 600 / Math.max(im.naturalWidth || 600, im.naturalHeight || 600));
+  const c = document.createElement("canvas"); c.width = Math.round((im.naturalWidth || 600) * s); c.height = Math.round((im.naturalHeight || 300) * s);
+  c.getContext("2d").drawImage(im, 0, 0, c.width, c.height); URL.revokeObjectURL(url);
+  editBrand({ logo: c.toDataURL("image/png") });
+};
+async function loadFont() {
+  const f = FONTS[brand().font]; if (!f || !document.fonts) return;
+  try { await Promise.all([document.fonts.load(`${brand().weight} 20px "${f.load}"`), document.fonts.load(`500 20px "${f.load}"`)]); } catch {}
+  renderStyleTiles(); drawView();
+}
+
+/* Brand menu */
+function openMenu(anchor, items) {
+  closeMenu();
+  const m = document.createElement("div"); m.className = "menu"; m.id = "menu";
+  m.innerHTML = items.map((it, i) => it === "-" ? "<hr>" : `<button data-i="${i}" class="${it.danger ? "danger" : ""}">${esc(it.label)}</button>`).join("");
+  document.body.appendChild(m);
+  const r = anchor.getBoundingClientRect();
+  m.style.top = r.bottom + 6 + "px"; m.style.left = Math.max(8, Math.min(window.innerWidth - m.offsetWidth - 8, r.right - m.offsetWidth)) + "px";
+  m.addEventListener("click", e => { const b = e.target.closest("[data-i]"); if (!b) return; closeMenu(); items[+b.dataset.i].run(); });
+  setTimeout(() => document.addEventListener("pointerdown", outside), 0);
+  function outside(e) { if (!m.contains(e.target)) closeMenu(); }
+  m._outside = outside;
+}
+function closeMenu() { const m = $("#menu"); if (m) { document.removeEventListener("pointerdown", m._outside); m.remove(); } }
+$("#brandMenuBtn").onclick = e => {
+  const b = brand();
+  openMenu(e.currentTarget, [
+    { label: "New brand", run: () => { const nb = { ...BRAND_DEFAULTS, id: uid(), name: "New brand" }; state.brands.push(nb); state.brandId = nb.id; saveBrands(); renderBrand(); render(); renameBrand(); } },
+    { label: "Duplicate", run: () => { const nb = { ...b, id: uid(), name: b.name + " copy" }; state.brands.push(nb); state.brandId = nb.id; saveBrands(); renderBrand(); render(); } },
+    { label: "Rename…", run: renameBrand },
+    "-",
+    { label: "Export brand file…", run: () => { const blob = new Blob([JSON.stringify({ pinpointBrand: 1, ...b, id: undefined }, null, 2)], { type: "application/json" }); download(blob, `${b.name.replace(/[^\w-]+/g, "-").toLowerCase()}.pinpoint.json`); } },
+    { label: "Import brand file…", run: () => $("#brandInput").click() },
+    "-",
+    { label: "Restore built-in brands", run: () => { for (const bb of BUILTIN_BRANDS) { const i = state.brands.findIndex(x => x.id === bb.id); if (i >= 0) state.brands[i] = { ...bb }; else state.brands.push({ ...bb }); } saveBrands(); renderBrand(); render(); } },
+    { label: "Delete brand", danger: true, run: () => { if (state.brands.length < 2) return flash("Keep at least one brand."); if (!confirm(`Delete "${b.name}"?`)) return; state.brands = state.brands.filter(x => x.id !== b.id); state.brandId = state.brands[0].id; saveBrands(); renderBrand(); render(); } },
+  ]);
+};
+function renameBrand() { const n = prompt("Brand name", brand().name); if (n && n.trim()) editBrand({ name: n.trim() }); }
+$("#brandInput").onchange = async e => {
+  const f = e.target.files[0]; e.target.value = ""; if (!f) return;
+  try {
+    const j = JSON.parse(await f.text());
+    const nb = { ...BRAND_DEFAULTS }; for (const k of Object.keys(BRAND_DEFAULTS).concat("name")) if (j[k] !== undefined) nb[k] = j[k];
+    if (!STYLE_NAMES[nb.style]) nb.style = "classic";
+    nb.id = uid(); nb.name = nb.name || f.name.replace(/\..*$/, "");
+    state.brands.push(nb); state.brandId = nb.id; saveBrands(); renderBrand(); render(); loadFont();
+    flash(`Added ${nb.name}.`);
+  } catch { flash("That isn't a Pinpoint brand file."); }
+};
+
+/* Camera panel */
+function renderCamera() {
+  const ph = cur(), sec = $("#camSec");
+  sec.hidden = !ph;
+  if (!ph) return;
+  const c = ph.cam || ph.base || ph.base0, aspect = ph.w / ph.h;
+  const nA = Object.keys(ph.anchors).length;
+  $("#camSrc").textContent = nA ? `Aligned to ${nA} pin${nA > 1 ? "s" : ""}` : ph.has.gps ? "From photo data" : "Estimated";
+  const missing = [!ph.has.gps && "location", !ph.has.yaw && "heading", !ph.has.pitch && "tilt", !ph.has.h && "height"].filter(Boolean);
+  const hint = $("#camHint");
+  if (missing.length && !nA) { hint.className = "hint warn"; hint.textContent = `This photo has no ${missing.join(", ")} data. Set the sliders roughly, then drag ${ph.has.gps ? "one or two pins" : "two or three pins"} onto their real spots.`; }
+  else { hint.className = "hint"; hint.textContent = "Pins come from the drone's position and angle. Drag any pin onto its real spot and the rest follow."; }
+  const yaw = ((c.yaw + 540) % 360) - 180;
+  $("#cYaw").value = yaw; $("#cYawV").textContent = `${Math.round((yaw + 360) % 360)}°`;
+  $("#cPitch").value = c.pitch; $("#cPitchV").textContent = `${Math.round(c.pitch)}°`;
+  $("#cH").value = c.h; $("#cHV").textContent = `${Math.round(c.h)} m`;
+  const fov = fToFov(c.f, aspect); $("#cFov").value = fov; $("#cFovV").textContent = `${Math.round(fov)}°`;
+}
+function camSlider(id, key, map) {
+  $(id).addEventListener("input", e => {
+    const ph = cur(); if (!ph || !(ph.cam || ph.base)) return;
+    const v = +e.target.value, aspect = ph.w / ph.h;
+    const now = { ...(ph.cam || ph.base) };
+    const patch = map ? map(v, aspect) : { [key]: v };
+    ph.manual = { ...(ph.manual || {}), ...patch };
+    // Moving a slider starts again from what you see now, with that one value changed.
+    ph.base = { ...now, ...patch }; ph.anchors = {}; ph.solX = null; ph.cam = { ...ph.base };
+    render();
+  });
+}
+camSlider("#cYaw", "yaw"); camSlider("#cPitch", "pitch"); camSlider("#cH", "h");
+camSlider("#cFov", "f", (v, a) => ({ f: fovToF(v, a) }));
+$("#resetCam").onclick = () => { const ph = cur(); if (!ph) return; ph.manual = null; ph.anchors = {}; ph.solX = null; rebase(ph); render(); };
+
+/* ------------------------------------------------------------------ interaction on the photo */
+let drag = null;
+function toNorm(e) { const r = view.getBoundingClientRect(); return { x: (e.clientX - r.left) / r.width, y: (e.clientY - r.top) / r.height }; }
+function hitTest(n) {
+  const X = n.x * view.width, Y = n.y * view.height;
+  for (const L of lastLayout) {
+    const b = L.box, pad = 4 * L.u;
+    if (X >= b.x - pad && X <= b.x + b.w + pad && Y >= b.y - pad && Y <= b.y + b.h + pad) return L;
+    if (Math.hypot(X - L.px, Y - L.py) < 12 * L.u + 6) return L;
+  }
+  return null;
+}
+view.addEventListener("pointerdown", e => {
+  const ph = cur(); if (!ph) return;
+  const n = toNorm(e);
+  if (state.addMode) {
+    const c = { id: "c" + uid(), name: "New pin", x: n.x, y: n.y };
+    ph.custom.push(c); state.selected = c.id; setAddMode(false); render();
+    setTimeout(() => { const f = document.querySelector(`[data-name="${c.id}"]`); if (f) { f.focus(); f.select(); } }, 30);
+    return;
+  }
+  const L = hitTest(n);
+  if (!L) { if (state.selected) { state.selected = null; render(); } return; }
+  view.setPointerCapture(e.pointerId);
+  const pin = L.pin;
+  drag = { id: pin.id, kind: pin.kind, start: n, offX: n.x - pin.x, offY: n.y - pin.y, moved: false };
+  ph.frozenAuto = computePins(ph).auto;
+  state.selected = pin.id;
+  view.className = "grabbing";
+});
+view.addEventListener("pointermove", e => {
+  const ph = cur(); if (!ph) return;
+  const n = toNorm(e);
+  if (!drag) { view.className = state.addMode ? "add" : hitTest(n) ? "grab" : ""; return; }
+  if (!drag.moved && Math.hypot((n.x - drag.start.x) * view.width, (n.y - drag.start.y) * view.height) < 4) return;
+  drag.moved = true;
+  const x = clamp(n.x - drag.offX, 0, 1), y = clamp(n.y - drag.offY, 0, 1);
+  if (drag.kind === "custom") { const c = ph.custom.find(c => c.id === drag.id); if (c) { c.x = x; c.y = y; } }
+  else {
+    const g = drag.kind === "hero" ? state.address : state.places.find(p => p.id === drag.id);
+    if (g) { ph.anchors[drag.id] = { x, y, lat: g.lat, lon: g.lon }; ph.overrides[drag.id] = true; solveCamera(ph, true); }
+    ph.drag = { id: drag.id, x, y };
+  }
+  drawView();
+});
+function endDrag() {
+  const ph = cur(); if (!drag || !ph) return;
+  const moved = drag.moved;
+  drag = null; ph.drag = null;
+  if (moved) { solveCamera(ph); ph.hintShown = true; }
+  ph.frozenAuto = null;
+  view.className = "grab";
+  render();
+}
+view.addEventListener("pointerup", endDrag);
+view.addEventListener("pointercancel", endDrag);
+view.addEventListener("dblclick", e => {
+  const L = hitTest(toNorm(e)); if (!L) return;
+  const f = document.querySelector(`[data-name="${CSS.escape(L.pin.id)}"]`); if (f) { f.scrollIntoView({ block: "nearest" }); f.focus(); f.select(); }
+});
+function setAddMode(on) { state.addMode = on; $("#addPinBtn").setAttribute("aria-pressed", String(on)); view.className = on ? "add" : ""; renderHud(); }
+$("#addPinBtn").onclick = () => setAddMode(!state.addMode);
+
+document.addEventListener("keydown", e => {
+  const typing = /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement?.tagName) && document.activeElement.type !== "checkbox";
+  if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "e") { e.preventDefault(); openExport(); return; }
+  if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "o") { e.preventDefault(); $("#fileInput").click(); return; }
+  if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "f") { e.preventDefault(); $("#addr").focus(); $("#addr").select(); return; }
+  if (typing) return;
+  const ph = cur();
+  if (e.key === "Escape") { if (state.addMode) setAddMode(false); else if (state.selected) { state.selected = null; render(); } }
+  if ((e.key === "p" || e.key === "P") && ph) setAddMode(!state.addMode);
+  if ((e.key === "Backspace" || e.key === "Delete") && ph && state.selected) {
+    e.preventDefault();
+    const id = state.selected;
+    if (ph.custom.some(c => c.id === id)) ph.custom = ph.custom.filter(c => c.id !== id);
+    else { ph.overrides[id] = false; if (ph.anchors[id]) { delete ph.anchors[id]; solveCamera(ph); } }
+    state.selected = null; render();
+  }
+  if ((e.key === "ArrowRight" || e.key === "ArrowDown" || e.key === "ArrowLeft" || e.key === "ArrowUp") && state.photos.length > 1) {
+    const i = state.photos.findIndex(p => p.id === state.current), d = e.key === "ArrowRight" || e.key === "ArrowDown" ? 1 : -1;
+    state.current = state.photos[(i + d + state.photos.length) % state.photos.length].id; state.selected = null; render();
+  }
+});
+
+/* ------------------------------------------------------------------ address search */
+const addr = $("#addr"), sug = $("#suggest");
+let sugItems = [], sugIdx = 0, sugTimer = 0, sugSeq = 0;
+function showSuggest(items, msg) {
+  sugItems = items; sugIdx = 0;
+  if (!items.length && !msg) { sug.hidden = true; return; }
+  sug.innerHTML = items.length ? items.map((r, i) => `<button type="button" role="option" data-i="${i}" class="${i === 0 ? "on" : ""}"><span class="pinimg">${svgIcon("area")}</span><span style="min-width:0"><div class="s1">${esc(r.title)}</div><div class="s2">${esc(r.sub || "")}</div></span></button>`).join("") : `<div class="none">${esc(msg)}</div>`;
+  sug.hidden = false;
+}
+async function runSearch(q) {
+  const seq = ++sugSeq; $("#addrSpin").hidden = false;
+  try {
+    const bias = cur()?.base0?.lat != null ? cur().base0 : null;
+    const r = await searchAddress(q, bias);
+    if (seq !== sugSeq) return;
+    showSuggest(r, r.length ? "" : "No matches");
+    return r;
+  } catch (e) { if (seq === sugSeq) showSuggest([], "Couldn't reach the address search"); }
+  finally { if (seq === sugSeq) $("#addrSpin").hidden = true; }
+}
+addr.addEventListener("input", () => {
+  $("#addrClear").hidden = !addr.value;
+  clearTimeout(sugTimer);
+  const q = addr.value.trim();
+  if (q.length < 3) { showSuggest([]); return; }
+  sugTimer = setTimeout(() => runSearch(q), 320);
+});
+addr.addEventListener("keydown", async e => {
+  if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+    if (!sugItems.length) return; e.preventDefault();
+    sugIdx = (sugIdx + (e.key === "ArrowDown" ? 1 : -1) + sugItems.length) % sugItems.length;
+    [...sug.querySelectorAll("button")].forEach((b, i) => b.classList.toggle("on", i === sugIdx));
+  } else if (e.key === "Enter") {
+    e.preventDefault(); clearTimeout(sugTimer);
+    if (sugItems.length && !sug.hidden) pickAddress(sugItems[sugIdx]);
+    else if (addr.value.trim().length > 2) { const r = await runSearch(addr.value.trim()); if (r && r.length) pickAddress(r[0]); }
+  } else if (e.key === "Escape") { showSuggest([]); addr.blur(); }
+});
+addr.addEventListener("blur", () => setTimeout(() => showSuggest([]), 150));
+sug.addEventListener("pointerdown", e => { const b = e.target.closest("[data-i]"); if (b) { e.preventDefault(); pickAddress(sugItems[+b.dataset.i]); } });
+function pickAddress(r) {
+  state.address = { label: [r.title, r.sub].filter(Boolean).join(", "), short: r.short || r.title, lat: r.lat, lon: r.lon };
+  store.set("address", state.address);
+  addr.value = state.address.label; $("#addrClear").hidden = false;
+  showSuggest([]); addr.blur();
+  delete state.names.hero;
+  state.photos.forEach(p => { delete p.anchors.hero; if (!p.has.gps) { p.anchors = {}; p.solX = null; } rebase(p); });
+  render(); ensurePlaces();
+}
+$("#addrClear").onclick = () => {
+  addr.value = ""; $("#addrClear").hidden = true; state.address = null; store.set("address", null);
+  state.photos.forEach(p => { delete p.anchors.hero; rebase(p); });
+  render(); ensurePlaces(); addr.focus();
+};
+
+/* ------------------------------------------------------------------ export */
+function download(blob, name) {
+  const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = name;
+  document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+}
+async function renderExport(ph, maxW, type) {
+  const s = maxW ? Math.min(1, maxW / ph.w) : 1;
+  const W = Math.round(ph.w * s), H = Math.round(ph.h * s);
+  const c = document.createElement("canvas"); c.width = W; c.height = H;
+  const ctx = c.getContext("2d");
+  drawScene(ctx, W, H, ph, ph.img, { export: true });
+  return await new Promise(res => c.toBlob(res, type === "png" ? "image/png" : "image/jpeg", 0.93));
+}
+const exName = (ph, type) => ph.name.replace(/\.[^.]+$/, "") + "-pins." + (type === "png" ? "png" : "jpg");
+function segVal(id) { return document.querySelector(`${id} [aria-pressed="true"]`).dataset.v; }
+document.querySelectorAll(".sheet .seg").forEach(s => s.addEventListener("click", e => {
+  const b = e.target.closest("button"); if (!b) return;
+  s.querySelectorAll("button").forEach(x => x.setAttribute("aria-pressed", String(x === b)));
+}));
+function openExport() {
+  if (!cur()) return;
+  const n = state.photos.length;
+  $("#exAllBtn").textContent = `All ${n}`; $("#exAllBtn").disabled = n < 2;
+  if (n < 2) $("#exScope").querySelectorAll("button").forEach(x => x.setAttribute("aria-pressed", String(x.dataset.v === "one")));
+  $("#exportNote").textContent = `Pins are drawn at full resolution (${cur().w} × ${cur().h}).`;
+  $("#exportSheet").showModal();
+}
+$("#exportBtn").onclick = openExport;
+$("#exportSheet").addEventListener("close", async () => {
+  if ($("#exportSheet").returnValue !== "ok") return;
+  const scope = segVal("#exScope"), type = segVal("#exFormat"), maxW = +segVal("#exSize");
+  const list = scope === "all" ? state.photos.slice() : [cur()];
+  flash(list.length > 1 ? `Exporting ${list.length} photos…` : "Exporting…");
+  try {
+    await document.fonts?.ready;
+    if (list.length === 1) { download(await renderExport(list[0], maxW, type), exName(list[0], type)); }
+    else if (window.JSZip) {
+      const zip = new JSZip();
+      for (const ph of list) zip.file(exName(ph, type), await renderExport(ph, maxW, type));
+      download(await zip.generateAsync({ type: "blob" }), "pinpoint-export.zip");
+    } else {
+      for (const ph of list) { download(await renderExport(ph, maxW, type), exName(ph, type)); await new Promise(r => setTimeout(r, 450)); }
+    }
+    flash(list.length > 1 ? `Exported ${list.length} photos.` : "Exported.");
+  } catch (e) { console.error(e); flash("Export failed: " + (e.message || e)); }
+});
+
+/* ------------------------------------------------------------------ files in */
+const fileInput = $("#fileInput");
+$("#choose").onclick = () => fileInput.click();
+$("#addPhotos").onclick = () => fileInput.click();
+fileInput.onchange = () => { addFiles(fileInput.files); fileInput.value = ""; };
+let dragDepth = 0;
+const hasFiles = e => [...(e.dataTransfer?.types || [])].includes("Files");
+window.addEventListener("dragenter", e => { if (!hasFiles(e)) return; e.preventDefault(); dragDepth++; showVeil(true); });
+window.addEventListener("dragover", e => { if (hasFiles(e)) e.preventDefault(); });
+window.addEventListener("dragleave", e => { if (!hasFiles(e)) return; dragDepth = Math.max(0, dragDepth - 1); if (!dragDepth) showVeil(false); });
+window.addEventListener("drop", e => { if (!hasFiles(e)) return; e.preventDefault(); dragDepth = 0; showVeil(false); addFiles(e.dataTransfer.files); });
+function showVeil(on) {
+  if (!state.photos.length) { $("#empty").classList.toggle("over", on); return; }
+  let v = $("#veil");
+  if (on && !v) { v = document.createElement("div"); v.id = "veil"; v.className = "drop-veil"; v.innerHTML = "<div>Drop to add photos</div>"; document.body.appendChild(v); }
+  if (!on && v) v.remove();
+}
+document.addEventListener("paste", e => { const fs = [...(e.clipboardData?.files || [])]; if (fs.length) addFiles(fs); });
+
+/* ------------------------------------------------------------------ render */
+function render() {
+  const ph = cur();
+  $("#empty").hidden = !!ph; view.hidden = !ph;
+  $("#exportBtn").disabled = !ph; $("#addPinBtn").disabled = !ph;
+  renderPhotos(); renderPlaces(); renderCamera(); renderHud();
+  if (ph) drawView();
+}
+$("#toggleSidebar").onclick = () => { $("#app").classList.toggle("no-side"); drawView(); };
+new ResizeObserver(() => drawView()).observe($("#stage"));
+if (state.address) { addr.value = state.address.label; $("#addrClear").hidden = false; }
+renderCats(); renderSettings(); renderBrand(); render(); loadFont();
+document.fonts?.ready.then(() => { renderStyleTiles(); drawView(); });
+
+// Hooks for scripted checks.
+window.pinpoint = { state, project, basis, solveCamera, computePins, readMeta, cameraFromMeta, parsePlaces, addFiles, pickAddress, fovToF, fToFov };
+</script>
+</body>
+</html>

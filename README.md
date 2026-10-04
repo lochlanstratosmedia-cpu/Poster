@@ -17,6 +17,7 @@ AI-writing patterns instead of its own instincts.
 | `.claude/skills/cover-shot/SKILL.md` | Turns a property photo into a magazine-grade social post via Higgsfield |
 | `scripts/cover_shot.py` | Photo analysis, prompt builder, caption overlay and compare sheet for cover shots |
 | `tools/cover-editor.html` | Listing Cover Studio: edit cover text and layout by hand in the browser |
+| `tools/drone-pins.html` | Pinpoint: drop drone photos, add the address, export photos with branded pins on nearby places |
 | `assets/fonts/` | Inter and Cormorant Garamond (OFL) for captions |
 
 ## How it works
@@ -75,6 +76,39 @@ python3 scripts/cover_shot.py compare photo.jpg render.jpg
 Generation needs the Higgsfield connector, and in a cloud session the
 network has to allow `upload.higgsfield.ai`. Photos and renders in
 `covers/` are gitignored.
+
+## Drone pins
+
+Open `tools/drone-pins.html` in a browser. No install or build step.
+
+1. Drop one or more drone photos on the window.
+2. Type the property address in the search field and pick the match.
+3. Pins appear on the schools, beaches, parks, stations, shopping centres,
+   hospitals, sport grounds, landmarks and suburbs in the shot. Toggle any of
+   them in the Places list, rename them inline, or press P and click to add
+   your own.
+4. Export (Cmd+E) at full resolution, one photo or all of them as a zip.
+
+Pins are placed from the camera data DJI drones write into each JPG: GPS
+position, height above takeoff, gimbal heading and tilt, and focal length.
+Upload the original file, not one exported from Lightroom or a phone app,
+because those usually strip it. Compass heading is the value most often off
+by a few degrees. Drag the property pin (or any pin) onto its real spot and
+the camera re-solves so every other pin moves with it. Two or three dragged
+pins fix height and lens error too. Photos with no location data start from
+the address with a guessed camera, and need two or three dragged pins.
+
+Brand styles live in the Style panel: six pin designs (Classic, Glass,
+Beacon, Editorial, Bold, Tag), colours, font, size, line length, capitals,
+distances, icons and a logo for the property pin. Brands save in the browser.
+Use the ... menu to export a brand as a `.pinpoint.json` file and import it
+on another machine.
+
+Place data comes from OpenStreetMap (Overpass API) and address search from
+Photon, with Nominatim as a fallback, so the tool needs internet access.
+Places are only as good as the map: check names before posting. Ground is
+treated as flat at takeoff height, so pins on hills well above or below the
+takeoff point drift a little until you drag one.
 
 ## Checking the hook by hand
 
