@@ -79,7 +79,10 @@ network has to allow `upload.higgsfield.ai`. Photos and renders in
 
 ## Drone pins
 
-Open `tools/drone-pins.html` in a browser. No install or build step.
+Open it here: https://raw.githack.com/lochlanstratosmedia-cpu/Poster/claude/eloquent-cannon-61h5oa/tools/drone-pins.html
+
+That link always serves the latest version on this branch. You can also open
+`tools/drone-pins.html` from a download or clone. No install or build step.
 
 1. Drop one or more drone photos on the window.
 2. Type the property address in the search field and pick the match.
