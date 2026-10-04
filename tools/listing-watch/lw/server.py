@@ -266,7 +266,7 @@ def render_sheet(conn, sheet_id):
 <style>
 @page {{ size: A4 landscape; margin: 12mm; }}
 * {{ box-sizing: border-box; }}
-body {{ font: 11pt/1.35 -apple-system, "Segoe UI", Inter, Arial, sans-serif; color: #111; margin: 0; padding: 16px; background: #fff; }}
+body {{ font: 11pt/1.35 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", "Segoe UI", Arial, sans-serif; -webkit-font-smoothing: antialiased; color: #111; margin: 0; padding: 16px; background: #fff; }}
 header {{ display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 3px solid #111; padding-bottom: 8px; margin-bottom: 10px; gap: 16px; flex-wrap: wrap; }}
 h1 {{ font-size: 20pt; margin: 0; }}
 .meta {{ text-align: right; font-size: 10pt; }}
@@ -290,8 +290,8 @@ tr {{ page-break-inside: avoid; }}
 .dnc {{ background: #a00; color: #fff; font-size: 8pt; padding: 1px 4px; margin-left: 4px; }}
 tr.struck .addr, tr.struck .phone {{ text-decoration: line-through; }}
 .toolbar {{ margin-bottom: 12px; display: flex; gap: 8px; }}
-.toolbar button, .toolbar a {{ font: 600 14px/1 inherit; padding: 10px 16px; border: 1px solid #111; background: #111; color: #fff; border-radius: 6px; cursor: pointer; text-decoration: none; }}
-.toolbar a {{ background: #fff; color: #111; }}
+.toolbar button, .toolbar a {{ font: 500 14px/1 inherit; padding: 10px 18px; border: 0; background: #007aff; color: #fff; border-radius: 980px; cursor: pointer; text-decoration: none; }}
+.toolbar a {{ background: rgba(118,118,128,.12); color: #007aff; }}
 @media print {{ .toolbar {{ display: none; }} body {{ padding: 0; }} }}
 </style></head><body>
 <div class="toolbar"><button onclick="window.print()">Print this sheet</button><a href="/sheet/{s['id']}.csv">Download as spreadsheet</a><a href="/#/sheets/{s['id']}">Back to the app</a></div>
