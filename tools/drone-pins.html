@@ -83,7 +83,7 @@ svg.i { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-widt
 
 /* Window */
 .app { position: fixed; inset: 0; overflow: hidden; background: var(--bg); }
-.ambient { position: absolute; inset: -120px; background: center / cover no-repeat; filter: blur(80px) saturate(1.6); opacity: 0; transition: opacity .8s ease; pointer-events: none; }
+.ambient { position: absolute; top: -120px; left: -120px; width: calc(100% + 240px); height: calc(100% + 240px); object-fit: cover; filter: blur(80px) saturate(1.6); opacity: 0; transition: opacity .8s ease; pointer-events: none; }
 .app.has-photo .ambient { opacity: var(--ambient); }
 .lights { position: absolute; top: 27px; left: 28px; z-index: 8; display: flex; gap: 8px; }
 .lights button { width: 12px; height: 12px; border-radius: 50%; border: 0; padding: 0; display: grid; place-items: center; box-shadow: inset 0 0 0 0.5px rgba(0, 0, 0, 0.14); }
@@ -158,7 +158,7 @@ svg.i { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-widt
 .photos li:hover { background: var(--fill); }
 .photos li.on { background: var(--sel); }
 .photos li.on .pname { font-weight: 600; }
-.photos img { width: 52px; height: 38px; object-fit: cover; border-radius: 7px; display: block; box-shadow: 0 0 0 0.5px rgba(0, 0, 0, 0.12), 0 1px 3px rgba(0, 0, 0, 0.12); }
+.photos .thumb { width: 52px; height: 38px; object-fit: cover; border-radius: 7px; display: block; box-shadow: 0 0 0 0.5px rgba(0, 0, 0, 0.12), 0 1px 3px rgba(0, 0, 0, 0.12); }
 .pname { font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .pmeta { color: var(--ink2); font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; align-items: center; gap: 4px; }
 .pmeta .dot { width: 6px; height: 6px; border-radius: 50%; background: #34c759; flex: none; }
@@ -325,7 +325,7 @@ dialog.sheet::backdrop { background: rgba(0, 0, 0, 0.18); }
 </head>
 <body>
 <div class="app" id="app">
-  <div class="ambient" id="ambient"></div>
+  <canvas class="ambient" id="ambient" width="4" height="3"></canvas>
 
   <div class="lights" id="lights">
     <button id="lightClose" title="Close photo" aria-label="Close photo"><svg viewBox="0 0 10 10"><path d="M2.5 2.5l5 5M7.5 2.5l-5 5"/></svg></button>
@@ -439,7 +439,7 @@ dialog.sheet::backdrop { background: rgba(0, 0, 0, 0.18); }
         <div class="sec-h"><h3>Property</h3></div>
         <div class="group">
           <div class="row"><span class="lbl">Property pin</span><input class="switch" type="checkbox" id="bHero"></div>
-          <div class="row"><span class="lbl">Logo</span><img class="logo-thumb" id="bLogoImg" alt="" hidden><button class="btn small" id="bLogoBtn">Choose…</button><button class="btn small" id="bLogoRm" hidden>Remove</button></div>
+          <div class="row"><span class="lbl">Logo</span><canvas class="logo-thumb" id="bLogoImg" hidden></canvas><button class="btn small" id="bLogoBtn">Choose…</button><button class="btn small" id="bLogoRm" hidden>Remove</button></div>
         </div>
         <input type="file" id="logoInput" accept="image/png,image/svg+xml,image/jpeg,image/webp" hidden>
         <input type="file" id="brandInput" accept="application/json,.json" hidden>
@@ -992,9 +992,12 @@ function computePins(ph) {
 const LOGOS = new Map();
 function logoImg(src) {
   if (!src) return null;
-  let im = LOGOS.get(src);
-  if (!im) { im = new Image(); im.onload = () => render(); im.src = src; LOGOS.set(src, im); }
-  return im.complete && im.naturalWidth ? im : null;
+  let e = LOGOS.get(src);
+  if (!e) {
+    e = { img: null }; LOGOS.set(src, e);
+    decodeImage(dataUrlBlob(src)).then(im => { e.img = im; renderBrand(); render(); }).catch(err => console.warn("logo", err));
+  }
+  return e.img;
 }
 const LS = typeof CanvasRenderingContext2D !== "undefined" && "letterSpacing" in CanvasRenderingContext2D.prototype;
 const FILTER = (() => { try { const c = document.createElement("canvas").getContext("2d"); c.filter = "blur(2px)"; return c.filter === "blur(2px)"; } catch { return false; } })();
@@ -1024,15 +1027,15 @@ function measurePin(ctx, pin, b, u) {
   const padX = 12 * u * k, padY = 8 * u * k, gap = 8 * u * k;
   const m = { hero, k, fs1, fs2, track, name, sub, lh1, lh2, textW, textH, logo, padX, padY, gap };
   if (st === "editorial") {
-    m.logoH = logo ? textH * 1.4 : 0; m.logoW = logo ? m.logoH * logo.naturalWidth / logo.naturalHeight : 0;
+    m.logoH = logo ? textH * 1.4 : 0; m.logoW = logo ? m.logoH * logo.width / logo.height : 0;
     m.w = Math.max(textW, m.logoW); m.h = textH + (logo ? m.logoH + 6 * u : 0);
   } else if (st === "beacon") {
     const d = textH + padY * 2;
-    m.d = d; m.slotW = logo ? Math.min(d * 3, (d - 6 * u) * logo.naturalWidth / logo.naturalHeight) + 6 * u : d;
+    m.d = d; m.slotW = logo ? Math.min(d * 3, (d - 6 * u) * logo.width / logo.height) + 6 * u : d;
     m.w = m.slotW + gap + textW + padX; m.h = d;
   } else {
     const showIcon = (b.icons && st !== "tag") || logo;
-    m.iconW = logo ? Math.min(textH * 3, textH * logo.naturalWidth / logo.naturalHeight) : showIcon ? fs1 * 1.3 : 0;
+    m.iconW = logo ? Math.min(textH * 3, textH * logo.width / logo.height) : showIcon ? fs1 * 1.3 : 0;
     m.w = padX * 2 + m.iconW + (m.iconW ? gap : 0) + textW; m.h = textH + padY * 2;
     if (st === "tag") { m.w += 10 * u * k; }
   }
@@ -1178,15 +1181,40 @@ function drawScene(ctx, W, H, ph, src, opts = {}) {
   return layout;
 }
 
-/* ------------------------------------------------------------------ photos */
+/* ------------------------------------------------------------------ photos
+   Images are decoded straight from the file's bytes. Embedded viewers such as
+   the Claude app's panel can refuse blob: and data: image URLs, so nothing on
+   screen depends on them; the URL route is only a fallback for older Safari. */
+async function decodeImage(blob) {
+  try { return await createImageBitmap(blob); }
+  catch (first) {
+    const url = URL.createObjectURL(blob);
+    try { const im = new Image(); im.src = url; await im.decode(); return im; }
+    catch { throw first; }
+    finally { URL.revokeObjectURL(url); }
+  }
+}
+async function fileKind(file) {
+  const b = new Uint8Array(await file.slice(0, 12).arrayBuffer());
+  const ascii = String.fromCharCode(...b);
+  if (ascii.slice(4, 8) === "ftyp") return /heic|heix|mif1|hevc/.test(ascii.slice(8, 12)) ? "a HEIC photo" : "a video or HEIC file";
+  if ((b[0] === 0x49 && b[1] === 0x49 && b[2] === 0x2A) || (b[0] === 0x4D && b[1] === 0x4D && b[3] === 0x2A)) return "a RAW (DNG) photo";
+  return null;
+}
+function dataUrlBlob(u) {
+  const [head, body] = u.split(","); const bin = atob(body); const a = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) a[i] = bin.charCodeAt(i);
+  return new Blob([a], { type: head.slice(5).split(";")[0] });
+}
 async function addFiles(files) {
   const list = [...files].filter(f => /^image\/(jpeg|png|webp)$/.test(f.type) || /\.(jpe?g|png|webp)$/i.test(f.name));
   if (!list.length) { flash("Pinpoint reads JPG, PNG and WebP photos."); return; }
   for (const file of list) {
     try {
-      const url = URL.createObjectURL(file);
-      const img = new Image(); img.src = url; await img.decode();
-      const w = img.naturalWidth, h = img.naturalHeight;
+      let img;
+      try { img = await decodeImage(file); }
+      catch (e) { const kind = await fileKind(file); flash(kind ? `${file.name} is ${kind}. Use the JPG version.` : `Couldn't read ${file.name}. Try the original JPG.`); console.warn(file.name, e); continue; }
+      const w = img.naturalWidth || img.width, h = img.naturalHeight || img.height;
       const meta = await readMeta(file);
       const { cam, has } = cameraFromMeta(meta, w, h);
       const scale = Math.min(1, 2400 / Math.max(w, h));
@@ -1194,7 +1222,7 @@ async function addFiles(files) {
       pv.getContext("2d").drawImage(img, 0, 0, pv.width, pv.height);
       const th = document.createElement("canvas"); const ts = 160 / w; th.width = 160; th.height = Math.round(h * ts);
       th.getContext("2d").drawImage(pv, 0, 0, th.width, th.height);
-      const ph = { id: uid(), name: file.name, img, preview: pv, thumb: th.toDataURL("image/jpeg", 0.8), w, h, meta, has, base0: cam, base: null, cam: null, anchors: {}, overrides: {}, custom: [], solX: null, manual: null };
+      const ph = { id: uid(), name: file.name, img, preview: pv, thumb: th, w, h, meta, has, base0: cam, base: null, cam: null, anchors: {}, overrides: {}, custom: [], solX: null, manual: null };
       rebase(ph);
       state.photos.push(ph);
       if (!state.current) state.current = ph.id;
@@ -1206,7 +1234,7 @@ async function addFiles(files) {
 }
 function removePhoto(id) {
   const i = state.photos.findIndex(p => p.id === id); if (i < 0) return;
-  URL.revokeObjectURL(state.photos[i].img.src);
+  state.photos[i].img.close?.();
   state.photos.splice(i, 1);
   if (state.current === id) state.current = state.photos[Math.min(i, state.photos.length - 1)]?.id || null;
   render();
@@ -1259,8 +1287,14 @@ function renderPhotos() {
     const c = p.base0;
     const ok = p.has.gps && p.has.yaw;
     const meta = p.has.gps ? `${p.meta.exif.model || p.meta.exif.make || "Drone"} · ${Math.round(c.h)} m${p.has.yaw ? "" : " · no heading"}` : "No location data";
-    return `<li class="${p.id === state.current ? "on" : ""}" data-id="${p.id}"><img src="${p.thumb}" alt=""><div style="min-width:0"><div class="pname">${esc(p.name)}</div><div class="pmeta"><span class="dot${ok ? "" : " warn"}"></span>${esc(meta)}</div></div><button class="rm" data-rm="${p.id}" aria-label="Remove photo">${svgPath("M6 6l12 12M18 6 6 18")}</button></li>`;
+    return `<li class="${p.id === state.current ? "on" : ""}" data-id="${p.id}"><canvas class="thumb" data-thumb="${p.id}" width="104" height="76"></canvas><div style="min-width:0"><div class="pname">${esc(p.name)}</div><div class="pmeta"><span class="dot${ok ? "" : " warn"}"></span>${esc(meta)}</div></div><button class="rm" data-rm="${p.id}" aria-label="Remove photo">${svgPath("M6 6l12 12M18 6 6 18")}</button></li>`;
   }).join("");
+  ul.querySelectorAll("[data-thumb]").forEach(c => {
+    const t = state.photos.find(p => p.id === c.dataset.thumb)?.thumb; if (!t) return;
+    // Cover-crop the thumbnail into the 52 x 38 tile.
+    const s = Math.max(c.width / t.width, c.height / t.height), w = t.width * s, h = t.height * s;
+    c.getContext("2d").drawImage(t, (c.width - w) / 2, (c.height - h) / 2, w, h);
+  });
   $("#sideEmpty").hidden = state.photos.length > 0;
 }
 $("#photoList").addEventListener("click", e => {
@@ -1348,7 +1382,9 @@ function renderBrand() {
   $("#bFont").innerHTML = Object.entries(FONTS).map(([k, f]) => `<option value="${k}" ${k === b.font ? "selected" : ""}>${f.label}</option>`).join("");
   $("#bSize").value = b.size; $("#bStem").value = b.stem; $("#bRadius").value = b.radius;
   $("#bDistance").checked = b.distance; $("#bIcons").checked = b.icons; $("#bCatColors").checked = b.catColors; $("#bUpper").checked = b.upper; $("#bHero").checked = b.heroOn;
-  $("#bLogoImg").hidden = !b.logo; if (b.logo) $("#bLogoImg").src = b.logo;
+  const lc = $("#bLogoImg"), li = logoImg(b.logo);
+  lc.hidden = !li;
+  if (li) { lc.height = 48; lc.width = Math.round(48 * li.width / li.height); lc.style.width = lc.width / 2 + "px"; lc.style.height = "24px"; lc.getContext("2d").drawImage(li, 0, 0, lc.width, lc.height); }
   $("#bLogoRm").hidden = !b.logo; $("#bLogoBtn").textContent = b.logo ? "Change…" : "Choose…";
   renderStyleTiles();
 }
@@ -1401,11 +1437,12 @@ $("#bLogoBtn").onclick = () => $("#logoInput").click();
 $("#bLogoRm").onclick = () => editBrand({ logo: null });
 $("#logoInput").onchange = async e => {
   const f = e.target.files[0]; e.target.value = ""; if (!f) return;
-  const url = URL.createObjectURL(f); const im = new Image(); im.src = url;
-  try { await im.decode(); } catch { flash("That logo file didn't open."); return; }
-  const s = Math.min(1, 600 / Math.max(im.naturalWidth || 600, im.naturalHeight || 600));
-  const c = document.createElement("canvas"); c.width = Math.round((im.naturalWidth || 600) * s); c.height = Math.round((im.naturalHeight || 300) * s);
-  c.getContext("2d").drawImage(im, 0, 0, c.width, c.height); URL.revokeObjectURL(url);
+  let im;
+  try { im = await decodeImage(f); } catch { flash("That logo file didn't open. Try a PNG."); return; }
+  const iw = im.naturalWidth || im.width || 600, ih = im.naturalHeight || im.height || 300;
+  const s = Math.min(1, 600 / Math.max(iw, ih));
+  const c = document.createElement("canvas"); c.width = Math.round(iw * s); c.height = Math.round(ih * s);
+  c.getContext("2d").drawImage(im, 0, 0, c.width, c.height);
   editBrand({ logo: c.toDataURL("image/png") });
 };
 async function loadFont() {
@@ -1700,7 +1737,7 @@ document.addEventListener("paste", e => { const fs = [...(e.clipboardData?.files
 function render() {
   const ph = cur(), app = $("#app");
   app.classList.toggle("has-photo", !!ph);
-  if (ph && ambientFor !== ph.id) { ambientFor = ph.id; $("#ambient").style.backgroundImage = `url(${ph.thumb})`; }
+  if (ph && ambientFor !== ph.id) { ambientFor = ph.id; const a = $("#ambient"); a.width = ph.thumb.width; a.height = ph.thumb.height; a.getContext("2d").drawImage(ph.thumb, 0, 0); }
   const n = state.photos.length, i = state.photos.indexOf(ph);
   $("#subtitle").textContent = ph ? (n > 1 ? `${ph.name} · ${i + 1} of ${n}` : ph.name) : "Drone photo pins";
   $("#sideCount").textContent = n ? `${n} photo${n === 1 ? "" : "s"}` : "No photos";
