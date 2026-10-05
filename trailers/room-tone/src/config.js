@@ -64,7 +64,7 @@ const T = (RT.T = {
   wake: 26.0, clickSound: 27.2, clickTrack: 28.4, clickLight: 30.25, lightFade: 1.3,
   // 34-40 title sheet, export, PDF
   clickFirst: 33.8, clickAuthor: 34.75, typeAuthor: 34.95, clickPdf: 36.3, clickExport: 36.9,
-  pdfIn: 37.05, pdfZoom: 38.0, pdfHold: 38.95, pdfBack: 39.7,
+  pdfIn: 37.05, pdfZoom: 37.9, pdfHold: 38.8, pdfBack: 39.45,
   // 40-45 return and close
   morph: 40.35, morphDur: 1.15, endDim: 42.35, endWord: 42.85, endLine: 43.45,
 });
