@@ -365,8 +365,7 @@ dialog.sheet::backdrop { background: rgba(0, 0, 0, 0.18); }
     <div class="cap glass viewcap">
       <div class="seg seg-tb" id="viewSeg" role="tablist" aria-label="View">
         <button data-view="photo" aria-pressed="true" title="Photo with pins">Photo</button>
-        <button data-view="map" aria-pressed="false" title="Top-down street map: turn the camera and see what is in view (M)">Map</button>
-        <button data-view="satellite" aria-pressed="false" title="Top-down aerial imagery (M)">Satellite</button>
+        <button data-view="satellite" aria-pressed="false" title="Top-down aerial view: turn the camera and see what is in view (M)">Satellite</button>
       </div>
     </div>
     <div class="search glass" id="search">
@@ -446,6 +445,7 @@ dialog.sheet::backdrop { background: rgba(0, 0, 0, 0.18); }
           <div class="row"><span class="lbl">Size</span><input type="range" id="bSize" min="0.5" max="2.2" step="0.05"></div>
           <div class="row"><span class="lbl">Line length</span><input type="range" id="bStem" min="0" max="10" step="0.05"></div>
           <div class="row"><span class="lbl">Corners</span><input type="range" id="bRadius" min="0" max="1" step="0.05"></div>
+          <div class="row"><span class="lbl">Shadow</span><input type="range" id="bShadow" min="0" max="3" step="0.05"><span class="val" id="bShadowV"></span></div>
         </div>
         <div class="sec-h"><h3>Labels</h3></div>
         <div class="group">
@@ -573,7 +573,7 @@ const FONTS = {
   cormorant: { label: "Cormorant", stack: '"Cormorant Garamond", serif', load: "Cormorant Garamond" },
 };
 const STYLE_NAMES = { classic: "Classic", glass: "Glass", liquid: "Liquid", beacon: "Beacon", editorial: "Editorial", bold: "Bold", tag: "Tag" };
-const BRAND_DEFAULTS = { style: "classic", accent: "#007aff", labelBg: "#ffffff", text: "#1d1d1f", font: "system", weight: 600, upper: false, distance: true, icons: true, catColors: true, size: 1, stem: 1, radius: 0.6, heroOn: true, logo: null, logoOnly: false };
+const BRAND_DEFAULTS = { style: "classic", accent: "#007aff", labelBg: "#ffffff", text: "#1d1d1f", font: "system", weight: 600, upper: false, distance: true, icons: true, catColors: true, size: 1, stem: 1, radius: 0.6, shadow: 1, heroOn: true, logo: null, logoOnly: false };
 const BUILTIN_BRANDS = [
   { id: "classic", name: "Classic", style: "classic" },
   { id: "glass", name: "Glass", style: "glass", labelBg: "#1c1c1e", text: "#ffffff", radius: 0.7 },
@@ -772,21 +772,28 @@ async function searchAddress(q, bias) {
 // Places come from Photon (komoot's OpenStreetMap search), one request per
 // category so dense ones like suburbs don't crowd out beaches and stations.
 // Overpass is the fallback; its volunteer servers are often slow or down.
+// Stations, ferry terminals and airports are few and often visible from far
+// off in a wide drone shot, so they are always looked up to FAR_RANGE metres
+// whatever the Range setting is.
+const FAR_RANGE = 10000;
+const farCat = p => p.cat === "transport";
+const reachOf = (p, radius) => farCat(p) ? Math.max(radius, FAR_RANGE) : radius;
 const PHOTON_GROUPS = [
-  ["amenity:school", "amenity:university", "amenity:college"],
-  ["amenity:hospital"],
-  ["natural:beach", "natural:bay"],
-  ["leisure:park", "leisure:nature_reserve", "boundary:national_park"],
-  ["leisure:stadium", "leisure:golf_course", "leisure:marina"],
-  ["railway:station", "railway:halt", "amenity:ferry_terminal", "amenity:bus_station", "aeroway:aerodrome"],
-  ["shop:mall", "shop:department_store", "shop:supermarket"],
-  ["tourism:attraction", "tourism:museum", "tourism:zoo", "tourism:theme_park", "natural:peak"],
-  ["place:suburb", "place:town", "place:city", "place:village", "place:quarter"],
+  { tags: ["amenity:school", "amenity:university", "amenity:college"] },
+  { tags: ["amenity:hospital"] },
+  { tags: ["natural:beach", "natural:bay"] },
+  { tags: ["leisure:park", "leisure:nature_reserve", "boundary:national_park"] },
+  { tags: ["leisure:stadium", "leisure:golf_course", "leisure:marina"] },
+  { tags: ["railway:station", "railway:halt", "amenity:ferry_terminal", "aeroway:aerodrome"], far: true },
+  { tags: ["amenity:bus_station"] },
+  { tags: ["shop:mall", "shop:department_store", "shop:supermarket"] },
+  { tags: ["tourism:attraction", "tourism:museum", "tourism:zoo", "tourism:theme_park", "natural:peak"] },
+  { tags: ["place:suburb", "place:town", "place:city", "place:village", "place:quarter"] },
 ];
 const OSM_TYPE = { N: "node", W: "way", R: "relation" };
 async function fetchPhoton(center, radius) {
-  const base = `https://photon.komoot.io/reverse?lat=${center.lat.toFixed(6)}&lon=${center.lon.toFixed(6)}&radius=${(radius / 1000).toFixed(1)}&limit=50`;
-  const results = await Promise.allSettled(PHOTON_GROUPS.map(g => getJSON(base + g.map(t => "&osm_tag=" + encodeURIComponent(t)).join(""), {}, 15000)));
+  const base = `https://photon.komoot.io/reverse?lat=${center.lat.toFixed(6)}&lon=${center.lon.toFixed(6)}&limit=50`;
+  const results = await Promise.allSettled(PHOTON_GROUPS.map(g => getJSON(`${base}&radius=${((g.far ? Math.max(radius, FAR_RANGE) : radius) / 1000).toFixed(1)}` + g.tags.map(t => "&osm_tag=" + encodeURIComponent(t)).join(""), {}, 15000)));
   const ok = results.filter(r => r.status === "fulfilled");
   if (!ok.length) throw new Error("photon: " + (results[0].reason?.name === "AbortError" ? "timed out" : results[0].reason?.message || "no answer"));
   // Reshape to the Overpass element format so one parser handles both.
@@ -799,18 +806,19 @@ const OVERPASS = ["https://overpass-api.de/api/interpreter", "https://overpass.k
 // A bounding box is much cheaper for Overpass than around:, so search the
 // square around the circle and trim the corners afterwards.
 function overpassQuery(lat, lon, r) {
-  const dLat = r / (R_EARTH * D), dLon = r / (R_EARTH * D * Math.cos(lat * D));
-  const box = [lat - dLat, lon - dLon, lat + dLat, lon + dLon].map(v => v.toFixed(5)).join(",");
-  return `[out:json][timeout:30][bbox:${box}];(
-nwr["amenity"~"^(school|university|college|hospital|ferry_terminal|bus_station)$"]["name"];
-nwr["leisure"~"^(park|nature_reserve|stadium|golf_course|marina)$"]["name"];
-nwr["natural"~"^(beach|bay|peak)$"]["name"];
-nwr["railway"~"^(station|halt)$"]["name"];
-nwr["aeroway"="aerodrome"]["name"];
-nwr["shop"~"^(mall|department_store|supermarket)$"]["name"];
-nwr["tourism"~"^(attraction|museum|zoo|theme_park)$"]["name"];
-nwr["boundary"="national_park"]["name"];
-node["place"~"^(city|town|suburb|village|quarter)$"]["name"];
+  const bbox = rr => { const dLat = rr / (R_EARTH * D), dLon = rr / (R_EARTH * D * Math.cos(lat * D)); return [lat - dLat, lon - dLon, lat + dLat, lon + dLon].map(v => v.toFixed(5)).join(","); };
+  const box = bbox(r), far = bbox(Math.max(r, FAR_RANGE));
+  return `[out:json][timeout:30];(
+nwr["amenity"~"^(school|university|college|hospital|bus_station)$"]["name"](${box});
+nwr["leisure"~"^(park|nature_reserve|stadium|golf_course|marina)$"]["name"](${box});
+nwr["natural"~"^(beach|bay|peak)$"]["name"](${box});
+nwr["railway"~"^(station|halt)$"]["name"](${far});
+nwr["amenity"="ferry_terminal"]["name"](${far});
+nwr["aeroway"="aerodrome"]["name"](${far});
+nwr["shop"~"^(mall|department_store|supermarket)$"]["name"](${box});
+nwr["tourism"~"^(attraction|museum|zoo|theme_park)$"]["name"](${box});
+nwr["boundary"="national_park"]["name"](${box});
+node["place"~"^(city|town|suburb|village|quarter)$"]["name"](${box});
 );out center tags;`;
 }
 function classify(t) {
@@ -836,16 +844,17 @@ function classify(t) {
 // Places are cached on this computer, so a second job in the same suburb is instant.
 const PLACE_TTL = 14 * 864e5;
 function cachedPlaces(center, radius) {
-  const cache = store.get("placeCache", []);
-  const hit = cache.find(c => Date.now() - c.t < PLACE_TTL && c.r >= radius && haversine(c, center) + radius <= c.r * 1.02);
-  return hit ? hit.places.filter(p => haversine(center, p) <= radius) : null;
+  const cache = store.get("placeCache2", []);
+  // The cached area must cover both the Range and the far reach for stations.
+  const hit = cache.find(c => Date.now() - c.t < PLACE_TTL && c.r >= radius && haversine(c, center) + Math.max(radius, FAR_RANGE) <= Math.max(c.r, FAR_RANGE) * 1.02 && haversine(c, center) + radius <= c.r * 1.02);
+  return hit ? hit.places.filter(p => haversine(center, p) <= reachOf(p, radius)) : null;
 }
 function cachePlaces(center, radius, places) {
-  const cache = store.get("placeCache", []).filter(c => Date.now() - c.t < PLACE_TTL);
+  const cache = store.get("placeCache2", []).filter(c => Date.now() - c.t < PLACE_TTL);
   cache.unshift({ lat: center.lat, lon: center.lon, r: radius, t: Date.now(), places });
   // Browser storage holds about 5 MB; keep the newest areas that fit.
   for (let n = Math.min(cache.length, 30); n > 0; n--) {
-    try { localStorage.setItem("pinpoint.placeCache", JSON.stringify(cache.slice(0, n))); return; } catch {}
+    try { localStorage.setItem("pinpoint.placeCache2", JSON.stringify(cache.slice(0, n))); return; } catch {}
   }
 }
 // Ask every Overpass server at once and take the first good answer.
@@ -854,7 +863,7 @@ async function fetchPlaces(center, radius) {
   if (hit) return hit;
   let photonErr;
   try {
-    const places = parsePlaces(await fetchPhoton(center, radius)).filter(p => haversine(center, p) <= radius);
+    const places = parsePlaces(await fetchPhoton(center, radius)).filter(p => haversine(center, p) <= reachOf(p, radius));
     cachePlaces(center, radius, places);
     return places;
   } catch (e) { photonErr = e.message; console.warn("Photon failed, trying Overpass", e); }
@@ -870,7 +879,7 @@ async function fetchPlaces(center, radius) {
       ctrls.forEach((c, k) => { if (k !== i) c.abort(); });
       return j;
     }));
-    const places = parsePlaces(j.elements || []).filter(p => haversine(center, p) <= radius);
+    const places = parsePlaces(j.elements || []).filter(p => haversine(center, p) <= reachOf(p, radius));
     cachePlaces(center, radius, places);
     return places;
   } catch (e) {
@@ -1077,12 +1086,18 @@ function brightnessBehind(src, W, H, x, y, w, h) {
 }
 function drawPin(ctx, L, b, src, W, H, selected) {
   const { pin, m, box, px, py, u } = L, st = b.style, hero = m.hero;
+  // Shadow slider: 0 is none, 1 the standard look, 3 a heavy, wide shadow for busy or bright photos.
+  const sk = b.shadow ?? 1;
+  const shade = (alpha, blur, dy) => {
+    ctx.shadowColor = `rgba(0,0,0,${Math.min(0.92, alpha * sk).toFixed(3)})`;
+    ctx.shadowBlur = blur * u * (0.5 + 0.5 * sk); ctx.shadowOffsetY = dy * u * Math.min(sk, 2);
+  };
   const r = (st === "tag" || st === "liquid" ? m.h / 2 : 14 * u * m.k * b.radius);
   const stemTop = box.up ? box.y + box.h : box.y;
   const stemColor = st === "beacon" || st === "bold" ? b.accent : st === "editorial" ? b.text : "#ffffff";
   // stem
   ctx.save();
-  ctx.shadowColor = "rgba(0,0,0,0.35)"; ctx.shadowBlur = 4 * u;
+  shade(0.35, 4, 0);
   ctx.strokeStyle = st === "liquid" ? "rgba(255,255,255,0.9)" : stemColor; ctx.lineWidth = (st === "editorial" || st === "liquid" ? 1.5 : 2) * u * m.k; ctx.lineCap = "round";
   ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(px, stemTop); ctx.stroke();
   // dot
@@ -1105,19 +1120,19 @@ function drawPin(ctx, L, b, src, W, H, selected) {
   // label
   const { x, y, w, h } = box;
   ctx.save();
-  if (st !== "editorial") { ctx.shadowColor = "rgba(0,0,0,0.28)"; ctx.shadowBlur = 16 * u; ctx.shadowOffsetY = 4 * u; }
+  if (st !== "editorial") shade(0.28, 16, 4);
   let ink = b.text, sub = withAlpha(b.text, 0.62), fill = b.labelBg;
   if (st === "classic" || st === "tag") {
     if (hero && !m.logoOnly) { fill = b.accent; ink = onColor(b.accent); sub = withAlpha(ink, 0.75); }
     rrect(ctx, x, y, w, h, r); ctx.fillStyle = fill; ctx.fill();
   } else if (st === "glass") {
-    rrect(ctx, x, y, w, h, r); ctx.fillStyle = "rgba(0,0,0,0.001)"; ctx.fill();
-    ctx.shadowColor = "transparent";
+    rrect(ctx, x, y, w, h, r); ctx.fillStyle = "#7f7f7f"; ctx.fill();   // casts the shadow; covered below
+    ctx.shadowColor = "transparent"; ctx.shadowBlur = 0; ctx.shadowOffsetY = 0;
     ctx.save(); rrect(ctx, x, y, w, h, r); ctx.clip();
-    if (src && FILTER) {
+    if (src) {
       const pad = 30 * u, sx = src.width / W, sy = src.height / H;
       const rx = Math.max(0, x - pad), ry = Math.max(0, y - pad), rw = Math.min(W, x + w + pad) - rx, rh = Math.min(H, y + h + pad) - ry;
-      ctx.filter = `blur(${(14 * u).toFixed(1)}px) saturate(1.6)`;
+      if (FILTER) ctx.filter = `blur(${(14 * u).toFixed(1)}px) saturate(1.6)`;
       ctx.drawImage(src, rx * sx, ry * sy, rw * sx, rh * sy, rx, ry, rw, rh);
       ctx.filter = "none";
     }
@@ -1128,7 +1143,7 @@ function drawPin(ctx, L, b, src, W, H, selected) {
   } else if (st === "liquid") {
     // Liquid glass: the photo shows through almost clearly, slightly magnified
     // like a lens, under a sheen and a rim that catches the light.
-    ctx.shadowColor = "rgba(0,0,0,0.22)"; ctx.shadowBlur = 18 * u; ctx.shadowOffsetY = 5 * u;
+    shade(0.22, 18, 5);
     rrect(ctx, x, y, w, h, r); ctx.fillStyle = "#7f7f7f"; ctx.fill();   // casts the shadow; covered below
     ctx.shadowColor = "transparent"; ctx.shadowBlur = 0; ctx.shadowOffsetY = 0;
     ctx.save(); rrect(ctx, x, y, w, h, r); ctx.clip();
@@ -1169,11 +1184,11 @@ function drawPin(ctx, L, b, src, W, H, selected) {
     else { ctx.moveTo(tx - t, y + 0.5); ctx.lineTo(tx, y - t); ctx.lineTo(tx + t, y + 0.5); }
     ctx.fill();
   } else if (st === "editorial") {
-    ctx.shadowColor = "rgba(0,0,0,0.55)"; ctx.shadowBlur = 10 * u; ctx.shadowOffsetY = 1 * u;
+    shade(0.55, 10, 1);
   }
   if (st !== "editorial") { ctx.shadowColor = "transparent"; ctx.shadowBlur = 0; ctx.shadowOffsetY = 0; }
   // Clear glass needs a soft shadow under the text to read over any photo.
-  if (st === "liquid") { ctx.shadowColor = "rgba(0,0,0,0.45)"; ctx.shadowBlur = 6 * u; ctx.shadowOffsetY = 1 * u; }
+  if (st === "liquid") shade(0.45, 6, 1);
 
   // contents
   if (m.logoOnly) {
@@ -1427,6 +1442,7 @@ function renderBrand() {
   $("#bAccent").value = b.accent; $("#bLabel").value = b.labelBg; $("#bText").value = b.text;
   $("#bFont").innerHTML = Object.entries(FONTS).map(([k, f]) => `<option value="${k}" ${k === b.font ? "selected" : ""}>${f.label}</option>`).join("");
   $("#bSize").value = b.size; $("#bStem").value = b.stem; $("#bRadius").value = b.radius;
+  $("#bShadow").value = b.shadow; $("#bShadowV").textContent = b.shadow ? `${Math.round(b.shadow * 100)}%` : "Off";
   $("#bDistance").checked = b.distance; $("#bIcons").checked = b.icons; $("#bCatColors").checked = b.catColors; $("#bUpper").checked = b.upper; $("#bHero").checked = b.heroOn;
   $("#bLogoOnly").checked = !!b.logoOnly && !!b.logo; $("#bLogoOnly").disabled = !b.logo;
   const lc = $("#bLogoImg"), li = logoImg(b.logo);
@@ -1475,6 +1491,7 @@ $("#bFont").onchange = e => { editBrand({ font: e.target.value }); loadFont(); }
 $("#bSize").oninput = e => editBrand({ size: +e.target.value });
 $("#bStem").oninput = e => editBrand({ stem: +e.target.value });
 $("#bRadius").oninput = e => editBrand({ radius: +e.target.value });
+$("#bShadow").oninput = e => editBrand({ shadow: +e.target.value });
 $("#bDistance").onchange = e => editBrand({ distance: e.target.checked });
 $("#bIcons").onchange = e => editBrand({ icons: e.target.checked });
 $("#bCatColors").onchange = e => editBrand({ catColors: e.target.checked });
@@ -1635,7 +1652,7 @@ document.addEventListener("keydown", e => {
   const ph = cur();
   if (e.key === "Escape") { if (state.addMode) setAddMode(false); else if (state.selected) { state.selected = null; render(); } }
   if ((e.key === "p" || e.key === "P") && ph && state.view === "photo") setAddMode(!state.addMode);
-  if ((e.key === "m" || e.key === "M") && ph) setView(state.view === "photo" ? "map" : state.view === "map" ? "satellite" : "photo");
+  if ((e.key === "m" || e.key === "M") && ph) setView(state.view === "photo" ? "satellite" : "photo");
   if ((e.key === "Backspace" || e.key === "Delete") && ph && state.selected) {
     e.preventDefault();
     const id = state.selected;
@@ -1659,14 +1676,9 @@ const TILE = 256;
 const mapState = { zoom: 0, tiles: new Map(), dots: [], hold: null, drag: null, hintSeen: false };
 const lon2x = (lon, z) => (lon + 180) / 360 * TILE * 2 ** z;
 const lat2y = (lat, z) => { const s = Math.sin(clamp(lat, -85, 85) * D); return (0.5 - Math.log((1 + s) / (1 - s)) / (4 * Math.PI)) * TILE * 2 ** z; };
-// Tile sources. OpenStreetMap's own tile server refuses apps that can't send a
-// website address (the Claude panel can't), so streets come from CARTO, which
-// is built on the same OpenStreetMap data, and aerial imagery from Esri.
+// Aerial imagery from Esri. (OpenStreetMap's own tile server refuses apps that
+// can't send a website address, which the Claude panel can't.)
 const MAP_SOURCES = {
-  map: {
-    url: (z, x, y, dark, hi) => `https://${"abcd"[(x + y) % 4]}.basemaps.cartocdn.com/${dark ? "dark_all" : "light_all"}/${z}/${x}/${y}${hi ? "@2x" : ""}.png`,
-    credit: "© OpenStreetMap contributors © CARTO",
-  },
   satellite: {
     url: (z, x, y) => `https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/${z}/${y}/${x}`,
     credit: "Imagery © Esri, Maxar, Earthstar Geographics",
@@ -1768,7 +1780,7 @@ function paintMap() {
   const n = 2 ** F.z, size = TILE * F.scale;
   const x0 = Math.floor((F.cx - W / 2 / F.scale) / TILE), x1 = Math.floor((F.cx + W / 2 / F.scale) / TILE);
   const y0 = Math.max(0, Math.floor((F.cy - H / 2 / F.scale) / TILE)), y1 = Math.min(n - 1, Math.floor((F.cy + H / 2 / F.scale) / TILE));
-  const src = MAP_SOURCES[state.view] || MAP_SOURCES.map;
+  const src = MAP_SOURCES.satellite;
   let loaded = 0, failed = 0;
   for (let ty = y0; ty <= y1; ty++) for (let tx = x0; tx <= x1; tx++) {
     const t = mapTile(F.z, ((tx % n) + n) % n, ty, src, dark, k > 1);
@@ -1776,7 +1788,7 @@ function paintMap() {
     else if (t.failed) failed++;
   }
   // Soften aerial imagery a touch so the overlays stay readable.
-  if (state.view === "satellite" && loaded) { ctx.fillStyle = dark ? "rgba(0,0,0,0.25)" : "rgba(255,255,255,0.12)"; ctx.fillRect(0, 0, W, H); }
+  if (loaded) { ctx.fillStyle = dark ? "rgba(0,0,0,0.25)" : "rgba(255,255,255,0.12)"; ctx.fillRect(0, 0, W, H); }
 
   const cam = ph.cam || ph.base;
   const [dx, dy] = F.toPx(cam.lat, cam.lon);
@@ -1869,7 +1881,7 @@ function paintMap() {
   ctx.restore();
   pill(ctx, `Drone · ${Math.round(cam.h)} m`, dx, dy + 24 * k, k, dark);
 
-  if (failed && !loaded) pill(ctx, state.view === "satellite" ? "Aerial imagery couldn't load here" : "Street map couldn't load here", W / 2, 24 * k, k, dark);
+  if (failed && !loaded) pill(ctx, "Aerial imagery couldn't load here", W / 2, 24 * k, k, dark);
 
   // North arrow and the credit the tile licence asks for.
   const nx = W - 30 * k, ny = 30 * k;

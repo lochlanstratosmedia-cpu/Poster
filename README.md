@@ -97,8 +97,8 @@ Pins are placed from the camera data DJI drones write into each JPG: GPS
 position, height above takeoff, gimbal heading and tilt, and focal length.
 Upload the original file, not one exported from Lightroom or a phone app,
 because those usually strip it. Compass heading is the value most often off
-by a few degrees. Switch to Map or Satellite (M cycles through) for a top-down view with
-distance rings and the patch of ground the camera can see. Drag on the map
+by a few degrees. Switch to Satellite (or press M) for a top-down aerial view with
+distance rings and the patch of ground the camera can see. Drag on it
 to turn the camera, drag the drone to move it, and click a place to show or
 hide it. The Camera tab has sliders for heading, tilt, height and lens.
 Photos with no location data start from the address with a guessed camera;
@@ -106,7 +106,8 @@ place the drone on the map first.
 
 Brand styles live in the Style tab: seven pin designs (Classic, Glass,
 Liquid, Beacon, Editorial, Bold, Tag), colours, font, size, line length, capitals,
-distances, icons and a logo for the property pin. Turn on Logo only to show
+distances, icons, a Shadow slider (off to heavy, for bright or busy photos)
+and a logo for the property pin. Turn on Logo only to show
 just the logo on the property pin; it sits on the brand's Label colour, so
 pick a light Label for a dark logo and a dark one for a white logo. Brands save in the browser.
 Use the ... menu to export a brand as a `.pinpoint.json` file and import it
@@ -115,11 +116,11 @@ on another machine.
 Place data and address search come from OpenStreetMap through Photon
 (photon.komoot.io). The public Overpass servers are the fallback for places,
 and Nominatim for addresses, so the tool needs internet access. Results are
-cached in the browser for 14 days per area. The street map comes from CARTO
-(built on OpenStreetMap) and the aerial view from Esri World Imagery;
-OpenStreetMap's own tile server refuses requests from embedded viewers like
-the Claude panel. Both are free tiers meant for light or non-commercial use,
-so heavy commercial use needs a key from CARTO, Esri or another provider.
+cached in the browser for 14 days per area. Train stations, ferry terminals
+and airports are always looked up to 10 km whatever the Range, because they
+are often visible from far off in a wide shot. The aerial view comes from
+Esri World Imagery, a free tier meant for light use; heavy commercial use
+needs an Esri key.
 Places are only as good as the map: check names before posting. Ground is
 treated as flat at takeoff height, so pins on hills well above or below the
 takeoff point drift a little until you drag one.
