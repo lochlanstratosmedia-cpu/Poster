@@ -813,7 +813,33 @@ async function searchAddress(q, bias) {
     return { title: street || parts[0], sub: [a.suburb, a.city || a.town, a.state, a.postcode].filter(Boolean).join(", ") || parts.slice(1, 4).join(", "), short: street || parts[0], lat: +r.lat, lon: +r.lon };
   });
 }
-const OVERPASS = ["https://overpass-api.de/api/interpreter", "https://overpass.kumi.systems/api/interpreter", "https://overpass.private.coffee/api/interpreter"];
+// Places come from Photon (komoot's OpenStreetMap search), one request per
+// category so dense ones like suburbs don't crowd out beaches and stations.
+// Overpass is the fallback; its volunteer servers are often slow or down.
+const PHOTON_GROUPS = [
+  ["amenity:school", "amenity:university", "amenity:college"],
+  ["amenity:hospital"],
+  ["natural:beach", "natural:bay"],
+  ["leisure:park", "leisure:nature_reserve", "boundary:national_park"],
+  ["leisure:stadium", "leisure:golf_course", "leisure:marina"],
+  ["railway:station", "railway:halt", "amenity:ferry_terminal", "amenity:bus_station", "aeroway:aerodrome"],
+  ["shop:mall", "shop:department_store", "shop:supermarket"],
+  ["tourism:attraction", "tourism:museum", "tourism:zoo", "tourism:theme_park", "natural:peak"],
+  ["place:suburb", "place:town", "place:city", "place:village", "place:quarter"],
+];
+const OSM_TYPE = { N: "node", W: "way", R: "relation" };
+async function fetchPhoton(center, radius) {
+  const base = `https://photon.komoot.io/reverse?lat=${center.lat.toFixed(6)}&lon=${center.lon.toFixed(6)}&radius=${(radius / 1000).toFixed(1)}&limit=50`;
+  const results = await Promise.allSettled(PHOTON_GROUPS.map(g => getJSON(base + g.map(t => "&osm_tag=" + encodeURIComponent(t)).join(""), {}, 15000)));
+  const ok = results.filter(r => r.status === "fulfilled");
+  if (!ok.length) throw new Error("photon: " + (results[0].reason?.name === "AbortError" ? "timed out" : results[0].reason?.message || "no answer"));
+  // Reshape to the Overpass element format so one parser handles both.
+  return ok.flatMap(r => (r.value.features || []).map(f => {
+    const p = f.properties || {};
+    return { type: OSM_TYPE[p.osm_type] || "node", id: p.osm_id, lat: f.geometry.coordinates[1], lon: f.geometry.coordinates[0], tags: { name: p.name, [p.osm_key]: p.osm_value } };
+  }));
+}
+const OVERPASS = ["https://overpass-api.de/api/interpreter", "https://overpass.kumi.systems/api/interpreter"];
 // A bounding box is much cheaper for Overpass than around:, so search the
 // square around the circle and trim the corners afterwards.
 function overpassQuery(lat, lon, r) {
@@ -838,7 +864,7 @@ function classify(t) {
   if (t.natural === "beach") return ["beach", "beach", 8];
   if (t.natural === "bay") return ["beach", "beach", 6];
   if (t.natural === "peak") return ["landmark", "landmark", 4];
-  if (t.aeroway === "aerodrome") return t.iata || t.aerodrome === "international" ? ["transport", "plane", 8] : ["transport", "plane", 3];
+  if (t.aeroway === "aerodrome") return t.iata || t.aerodrome === "international" ? ["transport", "plane", 8] : ["transport", "plane", 5];
   if (t.railway === "station" || t.railway === "halt") return ["transport", "train", t.railway === "station" ? 7.5 : 6];
   if (t.amenity === "ferry_terminal") return ["transport", "ferry", 6.5];
   if (t.amenity === "bus_station") return ["transport", "train", 4];
@@ -870,6 +896,12 @@ function cachePlaces(center, radius, places) {
 async function fetchPlaces(center, radius) {
   const hit = cachedPlaces(center, radius);
   if (hit) return hit;
+  let photonErr;
+  try {
+    const places = parsePlaces(await fetchPhoton(center, radius)).filter(p => haversine(center, p) <= radius);
+    cachePlaces(center, radius, places);
+    return places;
+  } catch (e) { photonErr = e.message; console.warn("Photon failed, trying Overpass", e); }
   const body = "data=" + encodeURIComponent(overpassQuery(center.lat, center.lon, radius));
   const ctrls = OVERPASS.map(() => new AbortController());
   const timer = setTimeout(() => ctrls.forEach(c => c.abort()), 40000);
@@ -888,7 +920,7 @@ async function fetchPlaces(center, radius) {
   } catch (e) {
     // Keep each server's reason so the message on screen says what went wrong.
     const why = e instanceof AggregateError ? e.errors.map((x, i) => `${new URL(OVERPASS[i]).hostname.split(".").slice(-2, -1)[0]}: ${x.name === "AbortError" ? "timed out" : x.message}`).join(" · ") : e.message;
-    throw new Error(why);
+    throw new Error(`${photonErr} · ${why}`);
   } finally { clearTimeout(timer); }
 }
 function parsePlaces(elements) {
@@ -905,7 +937,7 @@ function parsePlaces(elements) {
   raw.sort((a, b) => b.score - a.score);
   const out = [];
   for (const p of raw) {
-    const dupe = out.find(o => o.name.toLowerCase() === p.name.toLowerCase() && haversine(o, p) < 1500);
+    const dupe = out.find(o => o.cat === p.cat && o.name.toLowerCase() === p.name.toLowerCase() && haversine(o, p) < 1500);
     if (!dupe) out.push(p);
   }
   return out;

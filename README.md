@@ -107,8 +107,10 @@ distances, icons and a logo for the property pin. Brands save in the browser.
 Use the ... menu to export a brand as a `.pinpoint.json` file and import it
 on another machine.
 
-Place data comes from OpenStreetMap (Overpass API) and address search from
-Photon, with Nominatim as a fallback, so the tool needs internet access.
+Place data and address search come from OpenStreetMap through Photon
+(photon.komoot.io). The public Overpass servers are the fallback for places,
+and Nominatim for addresses, so the tool needs internet access. Results are
+cached in the browser for 14 days per area.
 Places are only as good as the map: check names before posting. Ground is
 treated as flat at takeoff height, so pins on hills well above or below the
 takeoff point drift a little until you drag one.
