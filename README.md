@@ -86,11 +86,17 @@ That link always serves the latest version on this branch. You can also open
 
 1. Drop one or more drone photos on the window.
 2. Type the property address in the search field and pick the match.
-3. Every school, beach, park, station, shopping centre, hospital, sport
-   ground, landmark and suburb in the shot gets a pin. Switch off the ones
-   you don't want in the Places tab (Hide all, then switch a few back on, is
-   quickest), rename them inline, or press P and click to add your own.
-   Drag any pin to move just that one; Reset in the list puts it back.
+3. Pinpoint switches on the key places for the address: the nearest public
+   primary and high school (catchments go by government schools), the
+   nearest childcare, the nearest train station, the closest shops and the
+   area's major shopping centre (ranked by its department stores), the
+   nearest park and the nearest beach. Each says why it was picked. Every
+   other place in the shot is listed under More in this shot, switched off,
+   and key places that fall outside the shot are listed too. Start with:
+   Everything switches all of them on instead. Rename pins inline, press P
+   and click to add your own, and drag any pin to move just that one; Reset
+   in the list puts it back. The nearest public school is a guide to the
+   catchment, not the official boundary.
 4. Export (Cmd+E) at full resolution, one photo or all of them as a zip.
 
 Pins are placed from the camera data DJI drones write into each JPG: GPS

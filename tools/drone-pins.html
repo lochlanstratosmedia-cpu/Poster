@@ -270,6 +270,10 @@ input[type="range"]::-moz-range-progress { height: 4px; border-radius: 2px; back
 .place .sub .anch svg { width: 10px; height: 10px; stroke-width: 2.6; }
 .place .del { border: 0; background: transparent; color: var(--ink3); padding: 4px; border-radius: 999px; }
 .place .del:hover { color: var(--danger); background: var(--fill); }
+.list-sub { font-size: 11px; font-weight: 600; color: var(--ink2); padding: 10px 0 4px; border-bottom: 0.5px solid var(--sep); }
+.list-sub:first-child { padding-top: 8px; }
+.place.off-shot { opacity: 0.7; grid-template-columns: 30px minmax(0, 1fr); }
+.place .nm.static { padding: 1px 0; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .more { border: 0; background: transparent; color: var(--accent); padding: 10px 0 9px; font-weight: 500; width: 100%; text-align: left; }
 .list-empty { color: var(--ink2); padding: 14px 0; font-size: 12px; line-height: 1.45; }
 
@@ -419,6 +423,9 @@ dialog.sheet::backdrop { background: rgba(0, 0, 0, 0.18); }
         <div class="group">
           <div class="row"><span class="lbl">Range</span>
             <div class="seg" id="rangeSeg"><button data-v="1000">1 km</button><button data-v="3000">3 km</button><button data-v="8000">8 km</button></div>
+          </div>
+          <div class="row"><span class="lbl">Start with</span>
+            <div class="seg" id="pickSeg"><button data-v="smart">Key places</button><button data-v="all">Everything</button></div>
           </div>
           <div class="row"><span class="lbl">Places in shot</span>
             <button class="btn small" id="showAll">Show all</button><button class="btn small" id="hideAll">Hide all</button>
@@ -590,7 +597,7 @@ const state = {
   address: store.get("address", null),
   places: [], placesKey: "", placesStatus: "idle", placesError: "",
   names: {}, selected: null, addMode: false,
-  settings: Object.assign({ range: 3000, cats: Object.fromEntries(Object.keys(CATS).map(k => [k, true])) }, store.get("settings", {})),
+  settings: Object.assign({ range: 3000, pick: "smart", cats: Object.fromEntries(Object.keys(CATS).map(k => [k, true])) }, store.get("settings", {})),
   brands: store.get("brands", null) || BUILTIN_BRANDS.map(b => ({ ...b })),
   brandId: store.get("brandId", "classic"),
   view: "photo",
@@ -772,21 +779,24 @@ async function searchAddress(q, bias) {
 // Places come from Photon (komoot's OpenStreetMap search), one request per
 // category so dense ones like suburbs don't crowd out beaches and stations.
 // Overpass is the fallback; its volunteer servers are often slow or down.
-// Stations, ferry terminals and airports are few and often visible from far
-// off in a wide drone shot, so they are always looked up to FAR_RANGE metres
+// Stations, ferry terminals, airports, beaches and shopping centres are few and
+// often visible from far off in a wide drone shot (and a major centre matters
+// even when it is not close), so they are always looked up to FAR_RANGE metres
 // whatever the Range setting is.
 const FAR_RANGE = 10000;
-const farCat = p => p.cat === "transport";
+const farCat = p => p.cat === "transport" || p.cat === "beach" || p.kind === "mall" || p.kind === "dept";
 const reachOf = (p, radius) => farCat(p) ? Math.max(radius, FAR_RANGE) : radius;
 const PHOTON_GROUPS = [
   { tags: ["amenity:school", "amenity:university", "amenity:college"] },
   { tags: ["amenity:hospital"] },
-  { tags: ["natural:beach", "natural:bay"] },
+  { tags: ["natural:beach", "natural:bay"], far: true },
+  { tags: ["amenity:kindergarten", "amenity:childcare"] },
   { tags: ["leisure:park", "leisure:nature_reserve", "boundary:national_park"] },
   { tags: ["leisure:stadium", "leisure:golf_course", "leisure:marina"] },
   { tags: ["railway:station", "railway:halt", "amenity:ferry_terminal", "aeroway:aerodrome"], far: true },
   { tags: ["amenity:bus_station"] },
-  { tags: ["shop:mall", "shop:department_store", "shop:supermarket"] },
+  { tags: ["shop:mall", "shop:department_store"], far: true },
+  { tags: ["shop:supermarket"] },
   { tags: ["tourism:attraction", "tourism:museum", "tourism:zoo", "tourism:theme_park", "natural:peak"] },
   { tags: ["place:suburb", "place:town", "place:city", "place:village", "place:quarter"] },
 ];
@@ -809,52 +819,58 @@ function overpassQuery(lat, lon, r) {
   const bbox = rr => { const dLat = rr / (R_EARTH * D), dLon = rr / (R_EARTH * D * Math.cos(lat * D)); return [lat - dLat, lon - dLon, lat + dLat, lon + dLon].map(v => v.toFixed(5)).join(","); };
   const box = bbox(r), far = bbox(Math.max(r, FAR_RANGE));
   return `[out:json][timeout:30];(
-nwr["amenity"~"^(school|university|college|hospital|bus_station)$"]["name"](${box});
+nwr["amenity"~"^(school|university|college|hospital|bus_station|kindergarten|childcare)$"]["name"](${box});
 nwr["leisure"~"^(park|nature_reserve|stadium|golf_course|marina)$"]["name"](${box});
-nwr["natural"~"^(beach|bay|peak)$"]["name"](${box});
+nwr["natural"~"^(beach|bay)$"]["name"](${far});
+nwr["natural"="peak"]["name"](${box});
 nwr["railway"~"^(station|halt)$"]["name"](${far});
 nwr["amenity"="ferry_terminal"]["name"](${far});
 nwr["aeroway"="aerodrome"]["name"](${far});
-nwr["shop"~"^(mall|department_store|supermarket)$"]["name"](${box});
+nwr["shop"~"^(mall|department_store)$"]["name"](${far});
+nwr["shop"="supermarket"]["name"](${box});
 nwr["tourism"~"^(attraction|museum|zoo|theme_park)$"]["name"](${box});
 nwr["boundary"="national_park"]["name"](${box});
 node["place"~"^(city|town|suburb|village|quarter)$"]["name"](${box});
 );out center tags;`;
 }
+// [category, icon, base score, kind]. The kind feeds the smart picks.
 function classify(t) {
-  if (t.amenity === "school") return ["school", "school", 7];
-  if (t.amenity === "university" || t.amenity === "college") return ["school", "school", 8];
-  if (t.amenity === "hospital") return ["health", "health", 6];
-  if (t.natural === "beach") return ["beach", "beach", 8];
-  if (t.natural === "bay") return ["beach", "beach", 6];
-  if (t.natural === "peak") return ["landmark", "landmark", 4];
-  if (t.aeroway === "aerodrome") return t.iata || t.aerodrome === "international" ? ["transport", "plane", 8] : ["transport", "plane", 5];
-  if (t.railway === "station" || t.railway === "halt") return ["transport", "train", t.railway === "station" ? 7.5 : 6];
-  if (t.amenity === "ferry_terminal") return ["transport", "ferry", 6.5];
-  if (t.amenity === "bus_station") return ["transport", "train", 4];
-  if (t.shop === "mall" || t.shop === "department_store") return ["shopping", "shopping", 7];
-  if (t.shop === "supermarket") return ["shopping", "shopping", 4];
-  if (t.leisure === "park" || t.leisure === "nature_reserve" || t.boundary === "national_park") return ["park", "park", t.boundary === "national_park" ? 7 : 4.5];
-  if (t.leisure === "stadium") return ["sport", "sport", 7];
-  if (t.leisure === "golf_course" || t.leisure === "marina") return ["sport", "sport", 5];
-  if (t.tourism) return ["landmark", "landmark", 5.5];
-  if (t.place) return ["area", "area", { city: 8, town: 6.5, suburb: 5.5, village: 5, quarter: 4 }[t.place] || 4];
+  if (t.amenity === "school") return ["school", "school", 7, "school"];
+  if (t.amenity === "university" || t.amenity === "college") return ["school", "school", 8, "uni"];
+  if (t.amenity === "kindergarten" || t.amenity === "childcare") return ["school", "school", 4, "early"];
+  if (t.amenity === "hospital") return ["health", "health", 6, "hospital"];
+  if (t.natural === "beach") return ["beach", "beach", 8, "beach"];
+  if (t.natural === "bay") return ["beach", "beach", 6, "bay"];
+  if (t.natural === "peak") return ["landmark", "landmark", 4, "peak"];
+  if (t.aeroway === "aerodrome") return ["transport", "plane", t.iata || t.aerodrome === "international" ? 8 : 5, "airport"];
+  if (t.railway === "station" || t.railway === "halt") return ["transport", "train", t.railway === "station" ? 7.5 : 6, "station"];
+  if (t.amenity === "ferry_terminal") return ["transport", "ferry", 6.5, "ferry"];
+  if (t.amenity === "bus_station") return ["transport", "train", 4, "bus"];
+  if (t.shop === "mall") return ["shopping", "shopping", 7, "mall"];
+  if (t.shop === "department_store") return ["shopping", "shopping", 5, "dept"];
+  if (t.shop === "supermarket") return ["shopping", "shopping", 4, "supermarket"];
+  if (t.leisure === "park") return ["park", "park", 4.5, "park"];
+  if (t.leisure === "nature_reserve" || t.boundary === "national_park") return ["park", "park", t.boundary === "national_park" ? 7 : 5, "reserve"];
+  if (t.leisure === "stadium") return ["sport", "sport", 7, "stadium"];
+  if (t.leisure === "golf_course" || t.leisure === "marina") return ["sport", "sport", 5, t.leisure === "marina" ? "marina" : "golf"];
+  if (t.tourism) return ["landmark", "landmark", 5.5, "landmark"];
+  if (t.place) return ["area", "area", { city: 8, town: 6.5, suburb: 5.5, village: 5, quarter: 4 }[t.place] || 4, "place"];
   return null;
 }
 // Places are cached on this computer, so a second job in the same suburb is instant.
 const PLACE_TTL = 14 * 864e5;
 function cachedPlaces(center, radius) {
-  const cache = store.get("placeCache2", []);
+  const cache = store.get("placeCache3", []);
   // The cached area must cover both the Range and the far reach for stations.
   const hit = cache.find(c => Date.now() - c.t < PLACE_TTL && c.r >= radius && haversine(c, center) + Math.max(radius, FAR_RANGE) <= Math.max(c.r, FAR_RANGE) * 1.02 && haversine(c, center) + radius <= c.r * 1.02);
   return hit ? hit.places.filter(p => haversine(center, p) <= reachOf(p, radius)) : null;
 }
 function cachePlaces(center, radius, places) {
-  const cache = store.get("placeCache2", []).filter(c => Date.now() - c.t < PLACE_TTL);
+  const cache = store.get("placeCache3", []).filter(c => Date.now() - c.t < PLACE_TTL);
   cache.unshift({ lat: center.lat, lon: center.lon, r: radius, t: Date.now(), places });
   // Browser storage holds about 5 MB; keep the newest areas that fit.
   for (let n = Math.min(cache.length, 30); n > 0; n--) {
-    try { localStorage.setItem("pinpoint.placeCache2", JSON.stringify(cache.slice(0, n))); return; } catch {}
+    try { localStorage.setItem("pinpoint.placeCache3", JSON.stringify(cache.slice(0, n))); return; } catch {}
   }
 }
 // Ask every Overpass server at once and take the first good answer.
@@ -891,12 +907,14 @@ async function fetchPlaces(center, radius) {
 function parsePlaces(elements) {
   const raw = [];
   for (const el of elements) {
-    const t = el.tags || {}; const name = t["name:en"] || t.name; if (!name) continue;
+    const t = el.tags || {}; let name = t["name:en"] || t.name; if (!name) continue;
     const lat = el.lat ?? el.center?.lat, lon = el.lon ?? el.center?.lon; if (lat == null) continue;
     const c = classify(t); if (!c) continue;
+    // OpenStreetMap names stations after the suburb ("Teralba"); say what it is.
+    if (c[3] === "station" && !/station|interchange|halt|platform/i.test(name)) name += " Station";
     let score = c[2] + (t.wikidata || t.wikipedia ? 1.5 : 0);
     if (/\b(public school|primary|high school|grammar|college|university)\b/i.test(name)) score += 0.3;
-    raw.push({ id: `${el.type[0]}${el.id}`, name, cat: c[0], icon: c[1], lat, lon, score });
+    raw.push({ id: `${el.type[0]}${el.id}`, name, cat: c[0], icon: c[1], kind: c[3], lat, lon, score });
   }
   // One pin per name: stations, malls and parks are often mapped several times.
   raw.sort((a, b) => b.score - a.score);
@@ -905,8 +923,72 @@ function parsePlaces(elements) {
     const dupe = out.find(o => o.cat === p.cat && o.name.toLowerCase() === p.name.toLowerCase() && haversine(o, p) < 1500);
     if (!dupe) out.push(p);
   }
-  return out;
+  // Department stores inside a shopping centre fold into it. Their count is the
+  // centre's size: Westfield Kotara has four, a neighbourhood centre none.
+  const malls = out.filter(p => p.kind === "mall");
+  for (const m of malls) m.anchors = 0;
+  return out.filter(p => {
+    if (p.kind !== "dept") return true;
+    const m = malls.find(m => haversine(m, p) < 450);
+    if (m) { m.anchors++; return false; }
+    return true;
+  });
 }
+
+/* ------------------------------------------------------------------ smart picks
+   What matters for this address, switched on by default: the nearest public
+   primary and high school (catchments go by government schools), the nearest
+   childcare, the nearest train station, the nearest shops plus the area's major
+   shopping centre, the nearest park and the nearest beach. Everything else in
+   the shot is listed but starts switched off. */
+// Names that mark a non-government school. Catholic schools are often named
+// for a saint or feast without saying "Catholic" (Holy Family, Our Lady...).
+const RELIGIOUS = /\b(st\.?|saint|catholic|christian|anglican|adventist|lutheran|islamic|jewish|grammar|marist|mercy|steiner|montessori|independent|private|baptist|uniting|holy|our lady|sacred heart|mary|mater|christ|shepherd|rosary|trinity|immaculate|corpus|lumen|emmanuel|covenant|calvary|nazareth|carmel|assumption|mackillop|marcellin|edmund rice|la salle|lasalle|john paul|aquinas|good samaritan)\b/i;
+function schoolLevel(p) {
+  if (p.kind === "early") return "early";
+  if (p.kind === "uni") return "uni";
+  if (p.kind !== "school") return null;
+  const n = p.name.toLowerCase();
+  if (/early learning|child ?care|pre-?school|kindergarten|kindy|day ?care|nursery/.test(n)) return "early";
+  if (/high school|secondary|senior college|\bhigh\b/.test(n)) return "high";
+  if (/primary|public school|infants|junior school|state school/.test(n)) return "primary";
+  if (/grammar|central school|k-12|community school|anglican school|christian school/.test(n)) return "k12";
+  if (/college/.test(n) && RELIGIOUS.test(n)) return "high";
+  return null;
+}
+const isGovSchool = p => !RELIGIOUS.test(p.name) && /(public|state|primary|high) school|secondary college|technology high|sports high/i.test(p.name);
+let picksMemo = { key: "", map: new Map() };
+function smartPicks(ref) {
+  if (!ref) return new Map();
+  const cats = Object.keys(CATS).filter(k => state.settings.cats[k]).join();
+  const key = `${state.places.length}|${state.places[0]?.id}|${ref.lat.toFixed(5)},${ref.lon.toFixed(5)}|${cats}`;
+  if (picksMemo.key === key) return picksMemo.map;
+  const picks = new Map();
+  const pool = state.places.filter(p => state.settings.cats[p.cat]).map(p => ({ p, d: haversine(ref, p) }));
+  const nearest = (test, max = Infinity) => pool.filter(o => o.d <= max && test(o.p)).sort((a, b) => a.d - b.d)[0];
+  const pick = (o, why) => { if (o && !picks.has(o.p.id)) picks.set(o.p.id, why); };
+  // Schools: the public one is the catchment school; fall back to any school of that level.
+  for (const [lvl, label] of [["primary", "primary"], ["high", "high school"]]) {
+    const gov = nearest(p => schoolLevel(p) === lvl && isGovSchool(p), 8000);
+    pick(gov || nearest(p => schoolLevel(p) === lvl || schoolLevel(p) === "k12", 8000), gov ? `Nearest public ${label}` : `Nearest ${label}`);
+  }
+  pick(nearest(p => schoolLevel(p) === "early", 2500), "Nearest childcare");
+  pick(nearest(p => p.kind === "station"), "Nearest train station");
+  pick(nearest(p => p.kind === "ferry", 3000), "Nearest ferry");
+  // Shops: the closest centre or supermarket, and the area's major centre,
+  // ranked by its department stores and then distance.
+  const major = pool.filter(o => o.p.kind === "mall" && o.d <= FAR_RANGE)
+    .map(o => ({ ...o, s: (o.p.anchors || 0) * 1.5 + (/westfield|stockland|square|plaza/i.test(o.p.name) ? 1 : 0) - o.d / 3000 }))
+    .sort((a, b) => b.s - a.s)[0];
+  const isMajor = major && ((major.p.anchors || 0) > 0 || /westfield|stockland/i.test(major.p.name));
+  if (isMajor) pick(major, "Major shopping centre");
+  pick(nearest(p => (p.kind === "mall" || p.kind === "supermarket") && !(isMajor && p.id === major.p.id), 3000), "Closest shops");
+  pick(nearest(p => p.kind === "park", 1500), "Nearest park");
+  pick(nearest(p => p.kind === "beach", 6000), "Nearest beach");
+  picksMemo = { key, map: picks };
+  return picks;
+}
+
 async function ensurePlaces() {
   // Centre on the drone when a photo has GPS, so adding the address later doesn't start the search again.
   const gps = state.photos.find(p => p.has?.gps);
@@ -950,9 +1032,15 @@ function computePins(ph) {
     const d = ref ? haversine(ref, pl) : pr?.dist || 0;
     res.inView.push({ pl, x: mv ? mv.x : pr.x, y: mv ? mv.y : pr.y, d, moved: !!mv, rank: pl.score - Math.min(3, d / 1500) });
   }
+  // Key places for the address start switched on; the rest start off (unless "Everything").
+  const picks = smartPicks(ref);
+  res.picks = picks;
   res.inView.sort((a, b) => b.rank - a.rank);
+  const inIds = new Set(res.inView.map(c => c.pl.id));
+  res.keyOut = state.places.filter(p => picks.has(p.id) && !inIds.has(p.id)).map(p => ({ pl: p, why: picks.get(p.id), d: ref ? haversine(ref, p) : 0 }));
   for (const c of res.inView) {
-    c.on = ph.overrides[c.pl.id] ?? true;
+    c.why = picks.get(c.pl.id) || null;
+    c.on = ph.overrides[c.pl.id] ?? (state.settings.pick === "all" || !!c.why);
     if (c.on) res.pins.push({ id: c.pl.id, kind: "place", cat: c.pl.cat, icon: c.pl.icon, name: placeName(c.pl), sub: ref ? fmtDist(c.d) : "", x: c.x, y: c.y, moved: c.moved });
   }
   if (state.address) {
@@ -1325,8 +1413,8 @@ function renderHud() {
   else if (state.placesStatus === "loading") html = `<span class="spinner"></span><span>Finding nearby places…</span>`;
   else if (state.placesStatus === "error") html = `<span>Couldn't load places (${esc(state.placesError || "no answer")})</span><button data-act="retry">Try again</button>`;
   else if (state.placesStatus === "ready" && !ph.hintShown) {
-    const n = computePins(ph).inView.length;
-    html = n ? `<span>${n} place${n === 1 ? "" : "s"} in view. Drag a pin to move it, and switch off the ones you don't want.</span><button data-act="okHint">OK</button>` : `<span>No mapped places in this view. Try a wider range, or turn the camera on the map.</span><button data-act="okHint">OK</button>`;
+    const r = computePins(ph), n = r.inView.length, k = r.inView.filter(c => c.why).length;
+    html = n ? `<span>${k} key place${k === 1 ? "" : "s"} pinned, ${n - k} more in view to switch on in the list. Drag a pin to move it.</span><button data-act="okHint">OK</button>` : `<span>No mapped places in this view. Try a wider range, or turn the camera on the map.</span><button data-act="okHint">OK</button>`;
   }
   hud.innerHTML = html; hud.hidden = !html; hud.classList.toggle("solo", !html.includes("<button"));
 }
@@ -1382,8 +1470,13 @@ function renderPlaces() {
   const rows = [];
   if (res.hero) rows.push(placeRow({ id: "hero", kind: "hero", name: heroName(), sub: res.hero.offscreen ? "Property · not found in frame, drag onto the house" : "Property", icon: "home", color: brand().accent, on: brand().heroOn && ph.overrides.hero !== false, moved: res.hero.moved }));
   const list = res.inView;
-  for (const c of list) rows.push(placeRow({ id: c.pl.id, kind: "place", name: placeName(c.pl), sub: `${CATS[c.pl.cat].one} · ${fmtDist(c.d)}`, icon: c.pl.icon, color: CATS[c.pl.cat].color, on: c.on, moved: c.moved }));
+  const row = c => placeRow({ id: c.pl.id, kind: "place", name: placeName(c.pl), sub: `${c.why || CATS[c.pl.cat].one} · ${fmtDist(c.d)}`, icon: c.pl.icon, color: CATS[c.pl.cat].color, on: c.on, moved: c.moved });
+  const key = list.filter(c => c.why), more = list.filter(c => !c.why);
+  if (key.length) rows.push(`<div class="list-sub">Key places for this address</div>`, ...key.map(row));
+  if (more.length) rows.push(`<div class="list-sub">More in this shot</div>`, ...more.map(row));
   for (const c of ph.custom) rows.push(placeRow({ id: c.id, kind: "custom", name: c.name, sub: "Your pin", icon: "custom", color: "#636366", on: true }));
+  if (res.keyOut?.length) rows.push(`<div class="list-sub">Key places not in this shot</div>`, ...res.keyOut.sort((a, b) => a.d - b.d).map(o =>
+    `<div class="place off-shot"><span class="tile" style="background:${CATS[o.pl.cat].color}">${svgIcon(o.pl.icon)}</span><div style="min-width:0"><div class="nm static">${esc(placeName(o.pl))}</div><div class="sub">${esc(o.why)} · ${fmtDist(o.d)}</div></div></div>`));
   let html = rows.join("");
   if (!state.address && rows.length) html = `<div class="list-empty">Add the property address above to get the home pin.</div>` + html;
   if (!rows.length) html = `<div class="list-empty">${state.placesStatus === "loading" ? "Finding nearby places…" : state.placesStatus === "error" ? "Couldn't load places." : "No mapped places in view. Try a wider range or more categories."}</div>`;
@@ -1391,7 +1484,7 @@ function renderPlaces() {
   el.innerHTML = html;
   if (focused) { const f = el.querySelector(`[data-name="${CSS.escape(focused)}"]`); if (f) { f.focus(); const v = f.value.length; f.setSelectionRange(v, v); } }
   const shown = res.pins.length;
-  $("#placeCount").textContent = state.placesStatus === "ready" ? `${shown} shown · ${res.inView.length} in view` : "";
+  $("#placeCount").textContent = state.placesStatus === "ready" ? `${shown} on · ${res.inView.length} in view` : "";
 }
 $("#placeList").addEventListener("change", e => {
   const ph = cur(); if (!ph) return;
@@ -1421,7 +1514,12 @@ $("#placeList").addEventListener("click", e => {
 
 function renderSettings() {
   document.querySelectorAll("#rangeSeg button").forEach(b => b.setAttribute("aria-pressed", String(+b.dataset.v === state.settings.range)));
+  document.querySelectorAll("#pickSeg button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.v === state.settings.pick)));
 }
+$("#pickSeg").addEventListener("click", e => {
+  const b = e.target.closest("button"); if (!b) return;
+  state.settings.pick = b.dataset.v; saveSettings(); renderSettings(); render();
+});
 $("#rangeSeg").addEventListener("click", e => {
   const b = e.target.closest("button"); if (!b) return;
   state.settings.range = +b.dataset.v; saveSettings(); renderSettings(); ensurePlaces();
@@ -2105,7 +2203,7 @@ renderCats(); renderSettings(); renderBrand(); render(); loadFont();
 document.fonts?.ready.then(() => { renderStyleTiles(); drawView(); });
 
 // Hooks for scripted checks.
-window.pinpoint = { state, project, basis, setCam, setView, footprint, computePins, readMeta, cameraFromMeta, parsePlaces, addFiles, pickAddress, fovToF, fToFov };
+window.pinpoint = { state, project, basis, setCam, setView, footprint, computePins, smartPicks, schoolLevel, readMeta, cameraFromMeta, parsePlaces, addFiles, pickAddress, fovToF, fToFov };
 </script>
 </body>
 </html>
