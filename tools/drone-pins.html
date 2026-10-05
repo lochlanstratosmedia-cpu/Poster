@@ -444,7 +444,7 @@ dialog.sheet::backdrop { background: rgba(0, 0, 0, 0.18); }
         <div class="sec-h"><h3>Shape</h3></div>
         <div class="group">
           <div class="row"><span class="lbl">Size</span><input type="range" id="bSize" min="0.5" max="2.2" step="0.05"></div>
-          <div class="row"><span class="lbl">Line length</span><input type="range" id="bStem" min="0" max="3" step="0.05"></div>
+          <div class="row"><span class="lbl">Line length</span><input type="range" id="bStem" min="0" max="10" step="0.05"></div>
           <div class="row"><span class="lbl">Corners</span><input type="range" id="bRadius" min="0" max="1" step="0.05"></div>
         </div>
         <div class="sec-h"><h3>Labels</h3></div>
@@ -947,12 +947,16 @@ function computePins(ph) {
     if (c.on) res.pins.push({ id: c.pl.id, kind: "place", cat: c.pl.cat, icon: c.pl.icon, name: placeName(c.pl), sub: ref ? fmtDist(c.d) : "", x: c.x, y: c.y, moved: c.moved });
   }
   if (state.address) {
+    // The property always gets a pin. If the maths puts it outside the frame
+    // (an address point set back from the house, GPS or compass error), it
+    // starts in the middle of the photo, ready to be dragged onto the house.
     const pr = project(cam, aspect, state.address.lat, state.address.lon, B);
     const mv = ph.moved.hero;
-    const vis = mv || (pr && pr.x > -0.05 && pr.x < 1.05 && pr.y > -0.05 && pr.y < 1.05);
-    res.hero = { visible: !!vis, moved: !!mv };
-    if (vis && brand().heroOn && ph.overrides.hero !== false) {
-      res.pins.unshift({ id: "hero", kind: "hero", cat: "home", icon: "home", name: heroName(), sub: "", x: mv ? mv.x : pr.x, y: mv ? mv.y : pr.y, moved: !!mv });
+    const inFrame = !!pr && pr.x > -0.02 && pr.x < 1.02 && pr.y > -0.02 && pr.y < 1.02;
+    const pos = mv || (inFrame ? { x: clamp(pr.x, 0.02, 0.98), y: clamp(pr.y, 0.04, 0.98) } : { x: 0.5, y: 0.62 });
+    res.hero = { visible: true, moved: !!mv, offscreen: !mv && !inFrame };
+    if (brand().heroOn && ph.overrides.hero !== false) {
+      res.pins.unshift({ id: "hero", kind: "hero", cat: "home", icon: "home", name: heroName(), sub: "", x: pos.x, y: pos.y, moved: !!mv });
     }
   }
   for (const c of ph.custom) res.pins.push({ id: c.id, kind: "custom", cat: "custom", icon: "custom", name: c.name, sub: "", x: c.x, y: c.y });
@@ -1036,8 +1040,10 @@ function layoutPins(ctx, pins, b, W, H) {
     // Try heights above the point, then below; if every spot collides, take the one that overlaps least.
     let box = null, best = null;
     const area = r => placed.reduce((a, o) => a + Math.max(0, Math.min(r.x + r.w, o.x + o.w) - Math.max(r.x, o.x)) * Math.max(0, Math.min(r.y + r.h, o.y + o.h) - Math.max(r.y, o.y)), 0);
-    const tries = [1, 1.7, 2.4, 3.1, 3.8, 0.55].map(f => ({ x: left, y: py - L * f - m.h, w: m.w, h: m.h, up: true }))
-      .concat([1, 1.7, 2.4].map(f => ({ x: left, y: py + L * f, w: m.w, h: m.h, up: false })));
+    const tries = [1, 1.7, 2.4, 3.1, 3.8, 0.55].map(f => ({ x: left, y: py - L * f - m.h, w: m.w, h: m.h, up: true }));
+    // A long line with no room above: keep the label up top on a shorter line rather than flipping it below.
+    if (py - L - m.h < margin) for (let ty = margin; ty + m.h < py - 12 * u; ty += m.h + 6 * u) tries.push({ x: left, y: ty, w: m.w, h: m.h, up: true });
+    tries.push(...[1, 1.7, 2.4].map(f => ({ x: left, y: py + L * f, w: m.w, h: m.h, up: false })));
     for (const r of tries) {
       if (r.y < margin || r.y + r.h > H - margin) continue;
       if (!hits(r)) { box = r; break; }
@@ -1359,11 +1365,12 @@ function renderPlaces() {
   if (!ph.base) { el.innerHTML = `<div class="list-empty">This photo has no GPS. Add the property address and Pinpoint will start from there.</div>`; $("#placeCount").textContent = ""; return; }
   const res = computePins(ph);
   const rows = [];
-  if (state.address && res.hero?.visible) rows.push(placeRow({ id: "hero", kind: "hero", name: heroName(), sub: "Property", icon: "home", color: brand().accent, on: brand().heroOn && ph.overrides.hero !== false, moved: res.hero.moved }));
+  if (res.hero) rows.push(placeRow({ id: "hero", kind: "hero", name: heroName(), sub: res.hero.offscreen ? "Property · not found in frame, drag onto the house" : "Property", icon: "home", color: brand().accent, on: brand().heroOn && ph.overrides.hero !== false, moved: res.hero.moved }));
   const list = res.inView;
   for (const c of list) rows.push(placeRow({ id: c.pl.id, kind: "place", name: placeName(c.pl), sub: `${CATS[c.pl.cat].one} · ${fmtDist(c.d)}`, icon: c.pl.icon, color: CATS[c.pl.cat].color, on: c.on, moved: c.moved }));
   for (const c of ph.custom) rows.push(placeRow({ id: c.id, kind: "custom", name: c.name, sub: "Your pin", icon: "custom", color: "#636366", on: true }));
   let html = rows.join("");
+  if (!state.address && rows.length) html = `<div class="list-empty">Add the property address above to get the home pin.</div>` + html;
   if (!rows.length) html = `<div class="list-empty">${state.placesStatus === "loading" ? "Finding nearby places…" : state.placesStatus === "error" ? "Couldn't load places." : "No mapped places in view. Try a wider range or more categories."}</div>`;
   const focused = document.activeElement?.dataset?.name;
   el.innerHTML = html;
@@ -1376,6 +1383,8 @@ $("#placeList").addEventListener("change", e => {
   const t = e.target;
   if (t.dataset.toggle) {
     ph.overrides[t.dataset.toggle] = t.checked;
+    // Switching the home pin on here also turns it on for the brand if it was off there.
+    if (t.dataset.toggle === "hero" && t.checked && !brand().heroOn) { editBrand({ heroOn: true }); return; }
     render();
   }
 });
