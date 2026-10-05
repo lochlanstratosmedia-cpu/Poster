@@ -1,0 +1,1170 @@
+<title>Meta Lead Tracker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: one working column. Header and tabs, summary tiles, then the lead table; a right-hand drawer holds one lead. */
+:root {
+  --bg: #f2f4f2;
+  --surface: #ffffff;
+  --surface-2: #eaeeeb;
+  --ink: #13201b;
+  --ink-2: #4b5953;
+  --muted: #76837d;
+  --line: #d8dfdb;
+  --accent: #1c5b4e;
+  --accent-ink: #ffffff;
+  --accent-soft: #dcebe6;
+  --scrim: rgba(10, 20, 16, 0.32);
+  --shadow: 0 10px 40px rgba(10, 30, 22, 0.16);
+  /* series: deal types */
+  --s1: #2a78d6;
+  --s2: #eb6834;
+  --s3: #1baf7a;
+  /* funnel ramp */
+  --r1: #86b6ef; --r2: #5598e7; --r3: #2a78d6; --r4: #1c5cab; --r5: #104281;
+  /* status */
+  --good: #0ca30c; --warn: #fab219; --serious: #ec835a; --critical: #d03b3b;
+  --good-ink: #006300; --warn-ink: #855600; --serious-ink: #a4431c; --critical-ink: #b02a2a;
+  --hot: #c2410c; --warm: #a16207; --cold: #476b8f;
+  --f-display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --f-body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0e1311; --surface: #151c19; --surface-2: #1c2521; --ink: #e6ece9; --ink-2: #b3bfba; --muted: #84918b;
+    --line: #29332f; --accent: #7cc9b4; --accent-ink: #0e1311; --accent-soft: #1d332c; --scrim: rgba(0,0,0,0.55); --shadow: 0 10px 40px rgba(0,0,0,0.5);
+    --s1: #3987e5; --s2: #d95926; --s3: #199e70;
+    --r1: #184f95; --r2: #1c5cab; --r3: #2a78d6; --r4: #5598e7; --r5: #86b6ef;
+    --good-ink: #3fc23f; --warn-ink: #fab219; --serious-ink: #ef9370; --critical-ink: #f07070;
+    --hot: #fb8a4c; --warm: #e0b04a; --cold: #8db3da;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0e1311; --surface: #151c19; --surface-2: #1c2521; --ink: #e6ece9; --ink-2: #b3bfba; --muted: #84918b;
+  --line: #29332f; --accent: #7cc9b4; --accent-ink: #0e1311; --accent-soft: #1d332c; --scrim: rgba(0,0,0,0.55); --shadow: 0 10px 40px rgba(0,0,0,0.5);
+  --s1: #3987e5; --s2: #d95926; --s3: #199e70;
+  --r1: #184f95; --r2: #1c5cab; --r3: #2a78d6; --r4: #5598e7; --r5: #86b6ef;
+  --good-ink: #3fc23f; --warn-ink: #fab219; --serious-ink: #ef9370; --critical-ink: #f07070;
+  --hot: #fb8a4c; --warm: #e0b04a; --cold: #8db3da;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font: 14px/1.45 var(--f-body); }
+.wrap { max-width: 1380px; margin: 0 auto; padding-inline: clamp(16px, 3vw, 32px); padding-block: 22px 72px; }
+h1, h2, h3 { font-family: var(--f-display); text-wrap: balance; margin: 0; letter-spacing: -0.01em; }
+h1 { font-size: clamp(24px, 3.4vw, 32px); font-weight: 700; }
+h2 { font-size: 19px; font-weight: 700; }
+h3 { font-size: 15px; font-weight: 700; }
+.eyebrow { font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); font-weight: 600; }
+.muted { color: var(--muted); }
+.ink2 { color: var(--ink-2); }
+.mono { font-family: var(--f-mono); font-size: 12.5px; }
+.num { font-variant-numeric: tabular-nums; }
+
+header.top { display: flex; flex-wrap: wrap; gap: 14px 24px; align-items: flex-end; justify-content: space-between; }
+header.top .sub { color: var(--ink-2); margin-top: 4px; }
+.row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+
+button { font: inherit; cursor: pointer; }
+.btn { display: inline-flex; align-items: center; gap: 6px; padding: 7px 13px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); font-weight: 500; }
+.btn:hover { background: var(--surface-2); }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.btn.primary:hover { filter: brightness(1.08); }
+.btn.ghost { background: none; border-color: transparent; color: var(--ink-2); }
+.btn.small { padding: 4px 9px; font-size: 12.5px; }
+.btn:disabled { opacity: 0.5; cursor: default; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+input, select, textarea { font: inherit; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 7px 10px; min-width: 0; }
+textarea { resize: vertical; width: 100%; }
+label.field { display: grid; gap: 4px; font-size: 12.5px; color: var(--ink-2); font-weight: 500; }
+label.field > input, label.field > select { width: 100%; }
+
+.tabs { display: flex; gap: 2px; border-bottom: 1px solid var(--line); margin-block: 20px 18px; position: sticky; top: env(safe-area-inset-top, 0px); background: var(--bg); z-index: 6; overflow-x: auto; }
+.tab { padding: 10px 14px; border: 0; background: none; color: var(--ink-2); font-weight: 600; border-bottom: 2px solid transparent; margin-bottom: -1px; white-space: nowrap; }
+.tab[aria-selected="true"] { color: var(--ink); border-color: var(--accent); }
+.tab .count { font-family: var(--f-mono); font-size: 11.5px; color: var(--muted); margin-left: 4px; font-weight: 400; }
+
+.notice { display: flex; gap: 12px; align-items: flex-start; justify-content: space-between; background: var(--accent-soft); border-radius: 10px; padding: 12px 14px; margin-bottom: 16px; }
+.notice p { margin: 0; max-width: 92ch; }
+
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; margin-bottom: 16px; }
+.kpi { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; display: grid; gap: 2px; text-align: left; color: inherit; }
+button.kpi:hover { border-color: var(--accent); }
+.kpi .v { font-family: var(--f-display); font-size: 30px; font-weight: 700; line-height: 1.1; }
+.kpi .l { font-size: 12.5px; color: var(--ink-2); font-weight: 500; }
+.kpi .s { font-size: 12px; color: var(--muted); }
+
+.stages { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 6px; margin-bottom: 12px; }
+.stage-btn { flex: 1 0 104px; display: grid; gap: 2px; text-align: left; padding: 9px 11px; border-radius: 9px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); }
+.stage-btn .n { font-family: var(--f-display); font-size: 20px; font-weight: 700; line-height: 1.1; }
+.stage-btn .t { display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--ink-2); white-space: nowrap; }
+.stage-btn[aria-pressed="true"] { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); background: var(--accent-soft); }
+.stage-btn.sep { margin-left: 10px; }
+
+.filters { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 12px; }
+.filters input[type="search"] { flex: 1 1 220px; }
+.filters select { flex: 0 1 auto; }
+.toggle { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--ink-2); padding: 6px 4px; }
+.bulk { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 8px 12px; background: var(--accent-soft); border-radius: 10px; margin-bottom: 10px; }
+
+.table-wrap { overflow-x: auto; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; }
+table { border-collapse: collapse; width: 100%; }
+#leadTable { min-width: 1080px; }
+th, td { padding: 10px 12px; text-align: left; border-bottom: 1px solid var(--line); vertical-align: top; }
+tbody tr:last-child td { border-bottom: 0; }
+th { font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); font-weight: 600; white-space: nowrap; background: var(--surface); }
+th button { background: none; border: 0; padding: 0; color: inherit; font: inherit; letter-spacing: inherit; text-transform: inherit; }
+th button[data-dir]::after { content: attr(data-dir); margin-left: 4px; }
+#leadTable tbody tr { cursor: pointer; }
+#leadTable tbody tr:hover, #leadTable tbody tr.sel { background: var(--surface-2); }
+td .name { font-weight: 600; }
+td .meta { font-size: 12.5px; color: var(--muted); }
+.cb { width: 34px; padding-right: 0; }
+.cb input { width: 16px; height: 16px; }
+
+.pill { display: inline-flex; align-items: center; gap: 6px; padding: 2px 9px 2px 8px; border-radius: 999px; background: var(--surface-2); font-size: 12.5px; white-space: nowrap; color: var(--ink); }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--dot, var(--muted)); flex: none; }
+.intent { font-size: 12px; font-weight: 600; white-space: nowrap; }
+.intent::before { content: ""; display: inline-block; width: 7px; height: 7px; margin-right: 5px; border-radius: 2px; background: currentColor; vertical-align: 1px; }
+.intent.hot { color: var(--hot); } .intent.warm { color: var(--warm); } .intent.cold { color: var(--cold); }
+.flags { display: flex; flex-wrap: wrap; gap: 4px; }
+.flag { display: inline-flex; gap: 5px; align-items: center; font-size: 12px; padding: 1px 7px; border-radius: 6px; white-space: nowrap; font-weight: 500; }
+.flag::before { font-size: 10px; }
+.flag.critical { background: color-mix(in srgb, var(--critical) 14%, transparent); color: var(--critical-ink); }
+.flag.critical::before { content: "\25CF"; }
+.flag.serious { background: color-mix(in srgb, var(--serious) 18%, transparent); color: var(--serious-ink); }
+.flag.serious::before { content: "\25C6"; }
+.flag.warning { background: color-mix(in srgb, var(--warn) 20%, transparent); color: var(--warn-ink); }
+.flag.warning::before { content: "\25B2"; }
+.flag.good { background: color-mix(in srgb, var(--good) 15%, transparent); color: var(--good-ink); }
+.flag.good::before { content: "\2713"; }
+.deal { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.swatch { width: 10px; height: 10px; border-radius: 3px; background: var(--c); flex: none; }
+
+.empty { padding: 40px 20px; text-align: center; color: var(--ink-2); }
+.empty h3 { margin-bottom: 6px; color: var(--ink); }
+
+/* drawer */
+.scrim { position: fixed; inset: 0; background: var(--scrim); z-index: 30; }
+.drawer { position: fixed; top: 0; right: 0; bottom: 0; width: min(560px, 100%); background: var(--bg); border-left: 1px solid var(--line); box-shadow: var(--shadow); z-index: 31; overflow-y: auto; padding: calc(env(safe-area-inset-top, 0px) + 18px) 20px calc(env(safe-area-inset-bottom, 0px) + 40px); display: grid; gap: 14px; align-content: start; }
+.drawer .head { display: flex; justify-content: space-between; gap: 12px; align-items: flex-start; }
+.drawer h2 { font-size: 24px; }
+.box { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 14px; display: grid; gap: 10px; }
+.kv { display: grid; grid-template-columns: minmax(90px, 30%) 1fr; gap: 6px 12px; font-size: 13.5px; }
+.kv dt { color: var(--muted); }
+.kv dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
+.form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr)); gap: 10px; }
+.history { list-style: none; margin: 0; padding: 0; display: grid; gap: 0; }
+.history li { display: grid; grid-template-columns: 16px 1fr; gap: 10px; padding: 8px 0; border-top: 1px solid var(--line); }
+.history li:first-child { border-top: 0; }
+.history .k { width: 10px; height: 10px; border-radius: 50%; margin-top: 5px; background: var(--muted); }
+.history .k.stage { background: var(--accent); }
+.history .k.call, .history .k.text, .history .k.email, .history .k.meeting { background: var(--s1); }
+.history .when { font-size: 12px; color: var(--muted); }
+.history .txt { white-space: pre-wrap; overflow-wrap: anywhere; }
+.copy { border: 0; background: none; color: var(--accent); font-size: 12px; font-weight: 600; padding: 0 4px; }
+
+/* team + insights */
+.section { display: grid; gap: 12px; margin-bottom: 26px; }
+.section > header { display: flex; flex-wrap: wrap; gap: 6px 16px; align-items: baseline; justify-content: space-between; }
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 400px), 1fr)); gap: 14px; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 16px; display: grid; gap: 12px; align-content: start; min-width: 0; }
+.card .note { font-size: 12.5px; color: var(--muted); margin: 0; }
+td.z { color: var(--muted); }
+td.bad { color: var(--critical-ink); font-weight: 600; }
+td.warnc { color: var(--warn-ink); font-weight: 600; }
+.facts { margin: 0; padding-left: 18px; display: grid; gap: 6px; max-width: 80ch; }
+.hbars { display: grid; gap: 7px; }
+.hbar { display: grid; grid-template-columns: minmax(110px, 38%) 1fr 64px; gap: 10px; align-items: center; font-size: 13px; }
+.hbar .lab { overflow-wrap: anywhere; color: var(--ink-2); }
+.hbar .track { height: 14px; position: relative; }
+.hbar .fill { position: absolute; inset: 0 auto 0 0; background: var(--c, var(--s1)); border-radius: 0 4px 4px 0; min-width: 2px; }
+.hbar .val { text-align: right; font-variant-numeric: tabular-nums; color: var(--ink); }
+.hbar .val small { color: var(--muted); margin-left: 4px; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 12.5px; color: var(--ink-2); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+
+.cols { position: relative; height: 190px; margin-left: 30px; margin-bottom: 26px; }
+.cols .grid { position: absolute; left: 0; right: 0; border-top: 1px solid var(--line); }
+.cols .grid span { position: absolute; left: -30px; top: -8px; width: 24px; text-align: right; font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.cols .base { position: absolute; left: 0; right: 0; bottom: 0; border-top: 1px solid var(--muted); }
+.cols .bars { position: absolute; inset: 0; display: flex; align-items: flex-end; gap: 3px; }
+.cols .col { flex: 1; height: 100%; display: flex; flex-direction: column-reverse; gap: 2px; position: relative; min-width: 0; }
+.cols .col:hover { background: color-mix(in srgb, var(--ink) 5%, transparent); }
+.cols .seg { background: var(--c); }
+.cols .col .seg:last-child { border-radius: 4px 4px 0 0; }
+.cols .xl { position: absolute; bottom: -20px; left: 50%; transform: translateX(-50%); font-size: 11px; color: var(--muted); white-space: nowrap; }
+
+.tip { position: fixed; z-index: 50; pointer-events: none; background: var(--ink); color: var(--bg); font-size: 12.5px; padding: 6px 9px; border-radius: 6px; max-width: 260px; white-space: pre-line; }
+
+.modal { position: fixed; inset: 0; display: grid; place-items: center; z-index: 40; padding: 16px; }
+.modal .panel { background: var(--surface); border-radius: 14px; padding: 20px; width: min(440px, 100%); display: grid; gap: 14px; box-shadow: var(--shadow); max-height: 90vh; overflow-y: auto; }
+.team-list { list-style: none; padding: 0; margin: 0; display: grid; gap: 6px; }
+.team-list li { display: flex; justify-content: space-between; align-items: center; padding: 6px 10px; background: var(--surface-2); border-radius: 8px; }
+
+.toast { position: fixed; left: 50%; bottom: calc(env(safe-area-inset-bottom, 0px) + 20px); transform: translateX(-50%); background: var(--ink); color: var(--bg); padding: 10px 16px; border-radius: 10px; z-index: 60; max-width: min(520px, calc(100% - 32px)); box-shadow: var(--shadow); }
+.chip-ro { font-size: 12px; padding: 3px 9px; border-radius: 999px; background: var(--surface-2); color: var(--ink-2); }
+
+@media (max-width: 640px) {
+  .hbar { grid-template-columns: minmax(90px, 40%) 1fr 54px; }
+  .stage-btn.sep { margin-left: 0; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .drawer { animation: slide 0.18s ease-out; }
+  @keyframes slide { from { transform: translateX(24px); opacity: 0.6; } to { transform: none; opacity: 1; } }
+}
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div>
+      <div class="eyebrow">Meta lead forms</div>
+      <h1>Meta Lead Tracker</h1>
+      <div class="sub" id="subline">Connecting to the lead list…</div>
+    </div>
+    <div class="row">
+      <span class="chip-ro" id="roChip" hidden>View only</span>
+      <button class="btn" id="teamBtn" type="button">Team</button>
+      <button class="btn" id="exportBtn" type="button" hidden>Export CSV</button>
+      <button class="btn primary" id="importBtn" type="button">Import Meta CSV</button>
+      <input type="file" id="fileIn" accept=".csv,text/csv" multiple hidden>
+    </div>
+  </header>
+
+  <nav class="tabs" role="tablist">
+    <button class="tab" role="tab" id="tab-pipeline" data-tab="pipeline" aria-selected="true" type="button">Pipeline <span class="count" id="cntAll"></span></button>
+    <button class="tab" role="tab" id="tab-team" data-tab="team" aria-selected="false" type="button">Accountability <span class="count" id="cntAttn"></span></button>
+    <button class="tab" role="tab" id="tab-insights" data-tab="insights" aria-selected="false" type="button">Insights</button>
+  </nav>
+
+  <section id="view-pipeline">
+    <div class="notice" id="notice" hidden>
+      <p><strong>Every imported lead starts at New.</strong> Meta's export only says the form was filled in, so the real stage of each lead isn't known yet. Move each lead to where it actually is, or send Claude a list of names and stages to load in one go.</p>
+      <button class="btn ghost small" id="noticeX" type="button">Hide</button>
+    </div>
+    <div class="kpis" id="kpis"></div>
+    <div class="stages" id="stages"></div>
+    <div class="filters">
+      <input type="search" id="q" placeholder="Search name, phone, email, address, suburb" aria-label="Search leads">
+      <select id="fDeal" aria-label="Deal type"></select>
+      <select id="fOwner" aria-label="Owner"></select>
+      <select id="fIntent" aria-label="Intent">
+        <option value="">Any intent</option><option value="hot">Hot</option><option value="warm">Warm</option><option value="cold">Cold</option>
+      </select>
+      <select id="fForm" aria-label="Form"></select>
+      <label class="toggle"><input type="checkbox" id="fAttn"> Needs attention</label>
+      <button class="btn ghost small" id="clearF" type="button">Clear filters</button>
+    </div>
+    <div class="bulk" id="bulk" hidden>
+      <strong id="bulkN"></strong>
+      <select id="bulkOwner" aria-label="Assign selected to"></select>
+      <select id="bulkStage" aria-label="Move selected to stage"></select>
+      <button class="btn small" id="bulkClear" type="button">Clear selection</button>
+    </div>
+    <div class="table-wrap">
+      <table id="leadTable">
+        <thead><tr>
+          <th class="cb"><input type="checkbox" id="selAll" aria-label="Select all shown"></th>
+          <th><button data-sort="name" type="button">Lead</button></th>
+          <th><button data-sort="dealType" type="button">Deal</button></th>
+          <th><button data-sort="intent" type="button">Intent</button></th>
+          <th><button data-sort="suburb" type="button">Suburb</button></th>
+          <th><button data-sort="createdTime" type="button">Came in</button></th>
+          <th><button data-sort="stage" type="button">Stage</button></th>
+          <th><button data-sort="owner" type="button">Owner</button></th>
+          <th><button data-sort="nextDue" type="button">Next step</button></th>
+          <th>Flags</th>
+        </tr></thead>
+        <tbody id="rows"></tbody>
+      </table>
+      <div id="tableEmpty" class="empty" hidden></div>
+    </div>
+    <p class="muted" id="shownLine" style="margin-top:10px"></p>
+  </section>
+
+  <section id="view-team" hidden></section>
+  <section id="view-insights" hidden></section>
+</div>
+
+<div class="scrim" id="scrim" hidden></div>
+<aside class="drawer" id="drawer" hidden aria-label="Lead details"></aside>
+<div class="modal" id="teamModal" hidden>
+  <div class="panel" role="dialog" aria-modal="true" aria-labelledby="teamTitle">
+    <div class="row" style="justify-content:space-between"><h2 id="teamTitle">Team</h2><button class="btn ghost small" id="teamClose" type="button">Close</button></div>
+    <p class="ink2" style="margin:0">The people leads can be assigned to. Removing someone keeps their name on leads they already own.</p>
+    <ul class="team-list" id="teamList"></ul>
+    <form class="row" id="teamForm">
+      <input id="teamName" placeholder="Name" aria-label="Team member name" style="flex:1">
+      <button class="btn primary" type="submit">Add</button>
+    </form>
+  </div>
+</div>
+<div class="tip" id="tip" hidden></div>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+(() => {
+"use strict";
+const $ = (s, r = document) => r.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const DAY = 864e5;
+
+const STAGES = [
+  { id: "new", label: "New", hint: "Not contacted yet", step: 0, dot: "var(--r1)" },
+  { id: "contacting", label: "Contacting", hint: "Tried, no answer yet", step: 1, dot: "var(--r2)" },
+  { id: "active", label: "Active", hint: "In conversation", step: 2, dot: "var(--r3)" },
+  { id: "appraisal_booked", label: "Appraisal booked", hint: "Appraisal or site visit booked", step: 3, dot: "var(--r4)" },
+  { id: "appraised", label: "Appraised", hint: "Appraisal done", step: 4, dot: "var(--r5)" },
+  { id: "started", label: "Started", hint: "Signed on or work under way", step: 5, dot: "var(--good)" },
+  { id: "nurture", label: "Nurture", hint: "Not yet, keep in touch", dot: "var(--warm)" },
+  { id: "inactive", label: "Inactive", hint: "Gone quiet, no response", dot: "var(--muted)" },
+  { id: "lost", label: "Lost", hint: "Not going ahead", dot: "var(--critical)" },
+];
+const STAGE = Object.fromEntries(STAGES.map((s, i) => [s.id, { ...s, i }]));
+const WORKING = new Set(["contacting", "active", "appraisal_booked", "appraised"]);
+const DEAL_COLOR = { "Selling": "var(--s1)", "Granny flat": "var(--s2)", "Other": "var(--s3)" };
+const DEALS = ["Selling", "Granny flat", "Other"];
+const ACT_KINDS = { call: "Call", text: "Text", email: "Email", meeting: "Meeting", note: "Note" };
+
+const store = (() => { try { return window.localStorage; } catch { return null; } })();
+const remember = (k, v) => { try { store && store.setItem("mlt." + k, JSON.stringify(v)); } catch {} };
+const recall = (k, d) => { try { const v = store && store.getItem("mlt." + k); return v ? JSON.parse(v) : d; } catch { return d; } };
+
+const S = {
+  leads: new Map(), team: [], me: null, canWrite: true, db: null, user: null, downloads: null,
+  status: "connecting",
+  filter: Object.assign({ q: "", deal: "", stage: "", owner: "", intent: "", form: "", attention: false }, recall("filter", {})),
+  sort: recall("sort", { key: "createdTime", dir: -1 }),
+  selected: new Set(), open: null, tab: recall("tab", "pipeline"), drawerDirty: false,
+};
+
+/* ---------- helpers ---------- */
+const nowISO = () => new Date().toISOString();
+const ymd = d => d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+const todayStr = () => ymd(new Date());
+const plural = (n, w, p) => n + " " + (n === 1 ? w : (p || w + "s"));
+function ago(iso) {
+  if (!iso) return "";
+  const ms = Date.now() - Date.parse(iso);
+  if (ms < 60e3) return "just now";
+  if (ms < 3600e3) return Math.floor(ms / 60e3) + "m ago";
+  if (ms < DAY) return Math.floor(ms / 3600e3) + "h ago";
+  const d = Math.floor(ms / DAY);
+  return d < 60 ? d + "d ago" : Math.floor(d / 30) + "mo ago";
+}
+const fmtDate = (iso, opts) => iso ? new Date(iso).toLocaleDateString(undefined, opts || { day: "numeric", month: "short" }) : "";
+const fmtDateTime = iso => iso ? new Date(iso).toLocaleString(undefined, { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" }) : "";
+const fmtDay = s => s ? new Date(s + "T00:00:00").toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" }) : "";
+function hoursText(h) { if (h < 1) return Math.round(h * 60) + " min"; if (h < 48) return (Math.round(h * 10) / 10) + " h"; return Math.round(h / 24) + " d"; }
+function median(a) { if (!a.length) return null; const s = [...a].sort((x, y) => x - y); const m = s.length >> 1; return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2; }
+const pct = (n, d) => d ? Math.round((n / d) * 100) + "%" : "0%";
+
+function phoneLocal(p) {
+  let d = String(p || "").replace(/\D/g, "");
+  if (d.startsWith("610") && d.length === 12) d = "0" + d.slice(3);
+  else if (d.startsWith("61") && d.length === 11) d = "0" + d.slice(2);
+  return d;
+}
+const phoneValid = p => /^0\d{9}$/.test(phoneLocal(p));
+function phoneFmt(p) {
+  const d = phoneLocal(p);
+  if (/^04\d{8}$/.test(d)) return d.replace(/(\d{4})(\d{3})(\d{3})/, "$1 $2 $3");
+  if (/^0\d{9}$/.test(d)) return d.replace(/(\d{2})(\d{4})(\d{4})/, "$1 $2 $3");
+  return String(p || "");
+}
+
+const STREET = new Set("st street rd road ave av avenue cres crs crescent cl close ct crt court cct circuit dr drive pde parade pl place ln lane blvd boulevard gr grove tce terrace way hwy highway".split(" "));
+const titleCase = s => s.toLowerCase().replace(/(^|[\s-])([a-z])/g, (m, a, b) => a + b.toUpperCase());
+function suburbGuess(address) {
+  let a = String(address || "").replace(/\b(nsw|new south wales)\b/gi, " ").replace(/\b\d{4}\b/g, " ").trim();
+  if (!a) return "";
+  const parts = a.split(",").map(s => s.trim()).filter(s => s.replace(/[^a-z]/gi, "").length > 2);
+  let cand = "";
+  if (parts.length > 1) cand = parts[parts.length - 1];
+  else {
+    const words = a.split(/\s+/);
+    let idx = -1;
+    words.forEach((w, i) => { if (STREET.has(w.toLowerCase().replace(/[.,]/g, ""))) idx = i; });
+    if (idx >= 0) cand = words.slice(idx + 1).join(" ");
+    else if (!/\d/.test(a)) cand = a;
+  }
+  cand = cand.replace(/[^A-Za-z' -]/g, " ").replace(/\s+/g, " ").trim();
+  return cand ? titleCase(cand) : "";
+}
+const suburbOf = l => l.suburb || l._suburb || "";
+
+const HOT = ["1 to 3 months", "asap", "immediately", "yes, definitely", "thinking selling", "already considering"];
+const COLD = ["just researching", "just exploring", "still deciding", "maybe"];
+function autoIntent(l) {
+  const t = (l.answers || []).map(a => a.a).join(" | ").toLowerCase();
+  if (HOT.some(k => t.includes(k))) return "hot";
+  if (COLD.some(k => t.includes(k))) return "cold";
+  return "warm";
+}
+const intentOf = l => l.intent || autoIntent(l);
+
+function flagsOf(l) {
+  const out = [], t = Date.now(), today = todayStr();
+  const closed = l.stage === "lost" || l.stage === "started";
+  if (l.stage === "new" && !l.firstContactAt) {
+    const d = Math.floor((t - Date.parse(l.createdTime)) / DAY);
+    if (d >= 1) out.push({ lv: "critical", k: "uncontacted", text: "Not contacted · " + d + "d" });
+  }
+  if (!closed && l.nextDue && l.nextDue < today) out.push({ lv: "serious", k: "overdue", text: "Follow-up overdue" });
+  if (WORKING.has(l.stage) && !l.nextDue) out.push({ lv: "warning", k: "nonext", text: "No next step" });
+  if (WORKING.has(l.stage)) {
+    const last = Date.parse(l.lastTouchAt || l.stageChangedAt || l.createdTime);
+    if (t - last > 14 * DAY) out.push({ lv: "warning", k: "stale", text: "No contact in 14d+" });
+  }
+  if (!l.owner && l.stage !== "lost") out.push({ lv: "warning", k: "unassigned", text: "No owner" });
+  return out;
+}
+
+function hydrate(id, data) {
+  const l = JSON.parse(JSON.stringify(data || {}));
+  l.id = id;
+  l.stage = STAGE[l.stage] ? l.stage : "new";
+  l.answers = Array.isArray(l.answers) ? l.answers : [];
+  l.log = Array.isArray(l.log) ? l.log : [];
+  l.createdTime = l.createdTime || l.importedAt || nowISO();
+  l._suburb = suburbGuess(l.address);
+  return l;
+}
+
+/* ---------- toast + tooltip ---------- */
+let toastT;
+function toast(msg, ms = 3600) { const t = $("#toast"); t.textContent = msg; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => (t.hidden = true), ms); }
+const tip = $("#tip");
+function showTip(el, x, y) { tip.textContent = el.dataset.tip; tip.hidden = false; const r = tip.getBoundingClientRect(); let L = x + 14, T = y + 14; if (L + r.width > innerWidth - 8) L = x - r.width - 14; if (T + r.height > innerHeight - 8) T = y - r.height - 14; tip.style.left = Math.max(8, L) + "px"; tip.style.top = Math.max(8, T) + "px"; }
+document.addEventListener("mousemove", e => { const el = e.target.closest && e.target.closest("[data-tip]"); if (el) showTip(el, e.clientX, e.clientY); else tip.hidden = true; });
+document.addEventListener("focusin", e => { const el = e.target.closest && e.target.closest("[data-tip]"); if (el) { const r = el.getBoundingClientRect(); showTip(el, r.right, r.top); } });
+document.addEventListener("focusout", () => (tip.hidden = true));
+
+/* ---------- writes ---------- */
+const queues = new Map();
+function enqueue(id, fn) { const p = (queues.get(id) || Promise.resolve()).then(() => fn()); queues.set(id, p.catch(() => {})); return p; }
+function writeErr(e) {
+  const code = e && e.code;
+  if (code === "invalid_argument") { S.canWrite = false; render(); toast("This change wasn't saved. Your access to this tracker is view only; ask the owner for Contributor access."); }
+  else if (code === "quota_exceeded") toast("The lead list is full. Delete old leads before adding more.");
+  else if (code === "revoked") toast("Access to this tracker changed. Reload the page.");
+  else toast("That change didn't save. Check your connection and try again.");
+}
+function writeLead(id, patch, entry) {
+  return enqueue(id, async () => {
+    const l = S.leads.get(id);
+    if (!l || !S.db) return;
+    const at = nowISO();
+    const body = { ...patch, updatedAt: at, updatedBy: S.me };
+    if (entry) body.log = [...(l.log || []), { at, by: S.me, ...entry }].slice(-200);
+    try { await S.db.doc("leads/" + id).update(body); Object.assign(l, body); scheduleRender(); }
+    catch (e) { writeErr(e); throw e; }
+  });
+}
+function stagePatch(l, stage) {
+  const at = nowISO();
+  const p = { stage, stageChangedAt: at, lastTouchAt: at, maxStep: Math.max(l.maxStep || 0, STAGE[stage].step ?? 0) };
+  if (stage !== "new" && !l.firstContactAt) p.firstContactAt = at;
+  return p;
+}
+function setStage(id, stage) {
+  const l = S.leads.get(id);
+  if (!l || l.stage === stage) return Promise.resolve();
+  return writeLead(id, stagePatch(l, stage), { kind: "stage", from: l.stage, to: stage, text: "Moved from " + STAGE[l.stage].label + " to " + STAGE[stage].label });
+}
+function setOwner(id, owner) {
+  const l = S.leads.get(id);
+  if (!l || (l.owner || "") === owner) return Promise.resolve();
+  return writeLead(id, { owner }, { kind: "owner", text: owner ? "Assigned to " + owner : "Owner removed" });
+}
+function addActivity(id, kind, text) {
+  const l = S.leads.get(id);
+  if (!l) return Promise.resolve();
+  const at = nowISO();
+  let patch = {};
+  let line = ACT_KINDS[kind] + (text ? ": " + text : "");
+  if (kind !== "note") {
+    patch.lastTouchAt = at;
+    if (!l.firstContactAt) patch.firstContactAt = at;
+    if (l.stage === "new") { patch = { ...stagePatch(l, "contacting"), ...patch }; line += " (moved to Contacting)"; }
+  }
+  return writeLead(id, patch, { kind, text: line });
+}
+async function runPool(items, n, fn) { let i = 0; const workers = Array.from({ length: Math.min(n, items.length) }, async () => { while (i < items.length) { const it = items[i++]; await fn(it); } }); await Promise.all(workers); }
+
+/* ---------- filtering ---------- */
+function matches(l, skipStage) {
+  const f = S.filter, q = f.q.trim().toLowerCase();
+  if (f.deal && l.dealType !== f.deal) return false;
+  if (!skipStage && f.stage && l.stage !== f.stage) return false;
+  if (f.owner) { if (f.owner === "__none") { if (l.owner) return false; } else if (l.owner !== f.owner) return false; }
+  if (f.intent && intentOf(l) !== f.intent) return false;
+  if (f.form && l.form !== f.form) return false;
+  if (f.attention && !flagsOf(l).length) return false;
+  if (q) {
+    const hay = [l.name, l.phone, phoneLocal(l.phone), l.email, l.address, suburbOf(l), l.owner, l.nextAction, l.form, l.campaign].join(" ").toLowerCase();
+    if (!hay.includes(q)) return false;
+  }
+  return true;
+}
+const INTENT_ORDER = { hot: 0, warm: 1, cold: 2 };
+function sortVal(l, k) {
+  switch (k) {
+    case "name": return (l.name || "").toLowerCase();
+    case "stage": return STAGE[l.stage].i;
+    case "intent": return INTENT_ORDER[intentOf(l)];
+    case "suburb": return suburbOf(l).toLowerCase() || "\uffff";
+    case "owner": return (l.owner || "\uffff").toLowerCase();
+    case "nextDue": return l.nextDue || "\uffff";
+    case "dealType": return l.dealType || "";
+    default: return l.createdTime || "";
+  }
+}
+function visible() {
+  const { key, dir } = S.sort;
+  return [...S.leads.values()].filter(l => matches(l)).sort((a, b) => {
+    const x = sortVal(a, key), y = sortVal(b, key);
+    if (x < y) return -dir; if (x > y) return dir;
+    return (b.createdTime || "").localeCompare(a.createdTime || "");
+  });
+}
+
+/* ---------- render ---------- */
+let raf = 0;
+function scheduleRender() { if (!raf) raf = requestAnimationFrame(() => { raf = 0; render(); }); }
+function render() {
+  const all = [...S.leads.values()];
+  const attn = all.filter(l => flagsOf(l).length).length;
+  $("#cntAll").textContent = all.length || "";
+  $("#cntAttn").textContent = attn || "";
+  $("#roChip").hidden = S.canWrite;
+  $("#importBtn").hidden = !S.canWrite || !S.db;
+  $("#exportBtn").hidden = !S.downloads || !all.length;
+  $("#teamBtn").hidden = !S.db;
+  if (S.status === "connecting") $("#subline").textContent = "Connecting to the lead list…";
+  else if (S.status === "nodb") $("#subline").textContent = "Open this page in claude.ai while signed in to see the lead list.";
+  else {
+    const newest = all.reduce((m, l) => (l.createdTime > m ? l.createdTime : m), "");
+    const wk = all.filter(l => Date.now() - Date.parse(l.createdTime) < 7 * DAY).length;
+    $("#subline").textContent = all.length ? plural(all.length, "lead") + " · " + wk + " in the last 7 days · newest " + ago(newest) : "No leads yet";
+  }
+  for (const t of document.querySelectorAll(".tab")) t.setAttribute("aria-selected", String(t.dataset.tab === S.tab));
+  $("#view-pipeline").hidden = S.tab !== "pipeline";
+  $("#view-team").hidden = S.tab !== "team";
+  $("#view-insights").hidden = S.tab !== "insights";
+  $("#notice").hidden = recall("noticeHidden", false) || !all.length || !all.every(l => !l.log || !l.log.some(e => e.by)) ;
+  renderSelectOptions();
+  if (S.tab === "pipeline") renderPipeline();
+  if (S.tab === "team") renderTeam();
+  if (S.tab === "insights") renderInsights();
+  if (S.open) renderDrawer(false);
+}
+
+function optionList(sel, opts, keep) {
+  const cur = keep !== undefined ? keep : sel.value;
+  const html = opts.map(([v, t]) => `<option value="${esc(v)}">${esc(t)}</option>`).join("");
+  if (sel.dataset.h !== html) { sel.innerHTML = html; sel.dataset.h = html; }
+  sel.value = opts.some(([v]) => v === cur) ? cur : opts[0][0];
+}
+function ownersAll() {
+  const set = new Set(S.team);
+  for (const l of S.leads.values()) if (l.owner) set.add(l.owner);
+  return [...set].sort((a, b) => a.localeCompare(b));
+}
+function renderSelectOptions() {
+  const all = [...S.leads.values()];
+  const deals = DEALS.filter(d => all.some(l => l.dealType === d));
+  optionList($("#fDeal"), [["", "All deal types"], ...deals.map(d => [d, d])], S.filter.deal);
+  optionList($("#fOwner"), [["", "Any owner"], ["__none", "No owner"], ...ownersAll().map(o => [o, o])], S.filter.owner);
+  const forms = [...new Set(all.map(l => l.form).filter(Boolean))].sort();
+  optionList($("#fForm"), [["", "All forms"], ...forms.map(f => [f, f])], S.filter.form);
+  $("#fIntent").value = S.filter.intent;
+  $("#fAttn").checked = S.filter.attention;
+  if (document.activeElement !== $("#q")) $("#q").value = S.filter.q;
+  optionList($("#bulkOwner"), [["", "Assign to…"], ...S.team.map(o => [o, o]), ["__none", "No owner"]], "");
+  optionList($("#bulkStage"), [["", "Move to stage…"], ...STAGES.map(s => [s.id, s.label])], "");
+}
+
+const stagePill = id => { const s = STAGE[id]; return `<span class="pill"><i class="dot" style="--dot:${s.dot}"></i>${esc(s.label)}</span>`; };
+const intentTag = l => { const i = intentOf(l); return `<span class="intent ${i}" data-tip="${esc(l.intent ? "Set by hand" : "Read from the form answers")}">${i[0].toUpperCase() + i.slice(1)}</span>`; };
+const dealTag = l => `<span class="deal"><i class="swatch" style="--c:${DEAL_COLOR[l.dealType] || "var(--muted)"}"></i>${esc(l.dealType || "Other")}</span>`;
+const flagTags = l => flagsOf(l).map(f => `<span class="flag ${f.lv}">${esc(f.text)}</span>`).join("");
+
+function renderPipeline() {
+  const all = [...S.leads.values()];
+  const base = all.filter(l => matches(l, true));
+  const k = {
+    total: all.length,
+    uncontacted: all.filter(l => l.stage === "new" && !l.firstContactAt).length,
+    attn: all.filter(l => flagsOf(l).length).length,
+    overdue: all.filter(l => flagsOf(l).some(f => f.k === "overdue")).length,
+    appr: all.filter(l => (l.maxStep || 0) >= 3).length,
+    started: all.filter(l => l.stage === "started").length,
+    hotNew: all.filter(l => l.stage === "new" && intentOf(l) === "hot").length,
+  };
+  $("#kpis").innerHTML = S.status !== "ready" ? "" : [
+    ["", "Leads", k.total, plural(all.filter(l => Date.now() - Date.parse(l.createdTime) < 30 * DAY).length, "lead") + " in 30 days"],
+    ["uncontacted", "Not contacted yet", k.uncontacted, k.hotNew ? k.hotNew + " of them hot" : "Stage is still New"],
+    ["attention", "Need attention", k.attn, k.overdue ? k.overdue + " follow-ups overdue" : "Any flag raised"],
+    ["", "Reached appraisal", k.appr, pct(k.appr, k.total) + " of all leads"],
+    ["", "Started", k.started, pct(k.started, k.total) + " of all leads"],
+  ].map(([act, l, v, s]) => act
+    ? `<button class="kpi" type="button" data-kpi="${act}"><span class="l">${l}</span><span class="v num">${v}</span><span class="s">${esc(s)}</span></button>`
+    : `<div class="kpi"><span class="l">${l}</span><span class="v num">${v}</span><span class="s">${esc(s)}</span></div>`).join("");
+
+  $("#stages").innerHTML = S.status !== "ready" ? "" :
+    `<button class="stage-btn" type="button" data-stage="" aria-pressed="${!S.filter.stage}"><span class="t">All stages</span><span class="n num">${base.length}</span></button>` +
+    STAGES.map(s => `<button class="stage-btn${s.id === "nurture" ? " sep" : ""}" type="button" data-stage="${s.id}" aria-pressed="${S.filter.stage === s.id}" data-tip="${esc(s.hint)}"><span class="t"><i class="dot" style="--dot:${s.dot}"></i>${esc(s.label)}</span><span class="n num">${base.filter(l => l.stage === s.id).length}</span></button>`).join("");
+
+  for (const b of document.querySelectorAll("th button[data-sort]")) {
+    if (b.dataset.sort === S.sort.key) b.dataset.dir = S.sort.dir > 0 ? "\u2191" : "\u2193"; else delete b.dataset.dir;
+  }
+
+  const rows = visible();
+  for (const id of [...S.selected]) if (!S.leads.has(id)) S.selected.delete(id);
+  $("#rows").innerHTML = rows.map(l => {
+    const sub = [phoneFmt(l.phone), l.email].filter(Boolean)[0] || "";
+    const due = l.nextDue ? `<div class="meta">${l.nextDue < todayStr() ? "Was due " : "Due "}${esc(fmtDay(l.nextDue))}</div>` : "";
+    return `<tr data-id="${esc(l.id)}" class="${S.open === l.id ? "sel" : ""}">
+      <td class="cb"><input type="checkbox" data-sel="${esc(l.id)}" aria-label="Select ${esc(l.name)}" ${S.selected.has(l.id) ? "checked" : ""} ${S.canWrite ? "" : "disabled"}></td>
+      <td><div class="name">${esc(l.name || "No name")}</div><div class="meta mono">${esc(sub)}</div></td>
+      <td>${dealTag(l)}<div class="meta">${esc(l.form)}</div></td>
+      <td>${intentTag(l)}</td>
+      <td>${esc(suburbOf(l)) || '<span class="muted">Unknown</span>'}</td>
+      <td class="num"><span data-tip="${esc(fmtDateTime(l.createdTime))}">${esc(ago(l.createdTime))}</span><div class="meta">${esc(fmtDate(l.createdTime))} · ${esc(l.platform === "ig" ? "Instagram" : l.platform === "fb" ? "Facebook" : l.platform || "Meta")}</div></td>
+      <td>${stagePill(l.stage)}<div class="meta">${l.stageChangedAt && l.log.length ? "since " + esc(ago(l.stageChangedAt)) : ""}</div></td>
+      <td>${l.owner ? esc(l.owner) : '<span class="muted">None</span>'}</td>
+      <td>${l.nextAction ? esc(l.nextAction) : '<span class="muted">None set</span>'}${due}</td>
+      <td><div class="flags">${flagTags(l)}</div></td>
+    </tr>`;
+  }).join("");
+  const empty = $("#tableEmpty");
+  if (S.status === "nodb") { empty.hidden = false; empty.innerHTML = "<h3>The lead list isn't available here</h3><p>Open this tracker in claude.ai while signed in. The leads live in the tracker's shared store, not in the page.</p>"; }
+  else if (S.status === "connecting") { empty.hidden = false; empty.innerHTML = "<h3>Loading leads…</h3><p>Leads, stages and owners load from the shared store.</p>"; }
+  else if (!all.length) { empty.hidden = false; empty.innerHTML = `<h3>No leads yet</h3><p>Download your leads from Meta's Leads Center as CSV and use <strong>Import Meta CSV</strong>. Each form keeps its own questions.</p>`; }
+  else if (!rows.length) { empty.hidden = false; empty.innerHTML = `<h3>No leads match these filters</h3><p><button class="btn small" type="button" data-clear>Clear filters</button></p>`; }
+  else empty.hidden = true;
+  $("#shownLine").textContent = all.length ? "Showing " + rows.length + " of " + plural(all.length, "lead") + ". Click a row to update it." : "";
+  $("#selAll").checked = rows.length > 0 && rows.every(l => S.selected.has(l.id));
+  $("#selAll").disabled = !S.canWrite;
+  $("#bulk").hidden = !S.selected.size;
+  $("#bulkN").textContent = plural(S.selected.size, "lead") + " selected";
+}
+
+/* ---------- drawer ---------- */
+function openLead(id) { S.open = id; S.drawerDirty = false; $("#drawer").hidden = false; $("#scrim").hidden = false; renderDrawer(true); render(); $("#drawer").focus(); }
+function closeLead() { S.open = null; $("#drawer").hidden = true; $("#scrim").hidden = true; render(); }
+
+function renderDrawer(full) {
+  const l = S.leads.get(S.open);
+  const d = $("#drawer");
+  if (!l) { closeLead(); return; }
+  if (!full && d.dataset.id === l.id) {
+    $("#dHead").innerHTML = drawerHead(l);
+    $("#dHist").innerHTML = historyHtml(l);
+    resolveNames(d);
+    const st = $("#dStage"), ow = $("#dOwner");
+    if (document.activeElement !== st) st.value = l.stage;
+    if (document.activeElement !== ow) { fillOwnerSelect(ow, l.owner || ""); }
+    if (!S.drawerDirty) fillDetails(l);
+    return;
+  }
+  d.dataset.id = l.id;
+  d.tabIndex = -1;
+  const ro = S.canWrite ? "" : "disabled";
+  const ph = phoneFmt(l.phone);
+  d.innerHTML = `
+    <div class="head"><div id="dHead">${drawerHead(l)}</div><button class="btn ghost small" type="button" data-close>Close</button></div>
+    <div class="box">
+      <dl class="kv">
+        <dt>Phone</dt><dd><span class="mono">${esc(ph || "None")}</span> ${ph ? `<button class="copy" type="button" data-copy="${esc(phoneLocal(l.phone))}">Copy</button><a class="copy" href="tel:${esc(phoneLocal(l.phone))}">Call</a>` : ""}${l.phone && !phoneValid(l.phone) ? ' <span class="flag warning">Number looks wrong</span>' : ""}</dd>
+        <dt>Email</dt><dd><span class="mono">${esc(l.email || "None")}</span> ${l.email ? `<button class="copy" type="button" data-copy="${esc(l.email)}">Copy</button>` : ""}</dd>
+        <dt>Address</dt><dd>${esc(l.address || "None given")} ${l.address ? `<a class="copy" href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(l.address + ", NSW, Australia")}" target="_blank" rel="noopener">Map</a>` : ""}</dd>
+      </dl>
+    </div>
+    <div class="box">
+      <h3>Where it's at</h3>
+      <div class="form-grid">
+        <label class="field">Stage<select id="dStage" ${ro}>${STAGES.map(s => `<option value="${s.id}">${esc(s.label)}</option>`).join("")}</select></label>
+        <label class="field">Owner<select id="dOwner" ${ro}></select></label>
+      </div>
+      <div class="form-grid" id="dDetails">
+        <label class="field" style="grid-column:1/-1">Next step<input id="dNext" placeholder="e.g. Call back about appraisal time" ${ro}></label>
+        <label class="field">Next step due<input type="date" id="dDue" ${ro}></label>
+        <label class="field">Appraisal date<input type="date" id="dAppr" ${ro}></label>
+        <label class="field">Deal type<select id="dDeal" ${ro}>${DEALS.map(x => `<option>${x}</option>`).join("")}</select></label>
+        <label class="field">Intent<select id="dIntent" ${ro}><option value="">From answers</option><option value="hot">Hot</option><option value="warm">Warm</option><option value="cold">Cold</option></select></label>
+        <label class="field" style="grid-column:1/-1">Suburb<input id="dSuburb" ${ro}></label>
+      </div>
+      <div class="row" ${S.canWrite ? "" : "hidden"}><button class="btn primary" type="button" id="dSave" disabled>Save details</button><span class="muted" id="dSaveNote"></span></div>
+    </div>
+    <div class="box" ${S.canWrite ? "" : "hidden"}>
+      <h3>Log contact</h3>
+      <div class="row">${Object.entries(ACT_KINDS).map(([k, v], i) => `<label class="toggle"><input type="radio" name="actKind" value="${k}" ${i === 0 ? "checked" : ""}> ${v}</label>`).join("")}</div>
+      <textarea id="dAct" rows="2" placeholder="What happened? e.g. No answer, left voicemail"></textarea>
+      <div class="row"><button class="btn" type="button" id="dActBtn">Add to history</button><span class="muted" style="font-size:12.5px">Logging a call, text, email or meeting on a New lead moves it to Contacting.</span></div>
+    </div>
+    <div class="box">
+      <h3>What they told us</h3>
+      <dl class="kv">${l.answers.map(a => `<dt>${esc(a.q)}</dt><dd>${esc(a.a) || '<span class="muted">No answer</span>'}</dd>`).join("") || "<dt>Answers</dt><dd>None</dd>"}
+        <dt>Form</dt><dd>${esc(l.form)}</dd>
+        <dt>Campaign</dt><dd>${esc(l.campaign)}</dd>
+        <dt>Ad</dt><dd>${esc(l.ad)}${l.adset ? ' <span class="muted">(' + esc(l.adset) + ")</span>" : ""}</dd>
+        <dt>Came in</dt><dd>${esc(fmtDateTime(l.createdTime))} on ${esc(l.platform === "ig" ? "Instagram" : l.platform === "fb" ? "Facebook" : l.platform || "Meta")}</dd>
+        <dt>Meta lead id</dt><dd class="mono">${esc(l.metaId || l.id)}</dd>
+      </dl>
+    </div>
+    <div class="box">
+      <h3>History</h3>
+      <ul class="history" id="dHist">${historyHtml(l)}</ul>
+    </div>`;
+  $("#dStage").value = l.stage;
+  fillOwnerSelect($("#dOwner"), l.owner || "");
+  fillDetails(l);
+  resolveNames(d);
+}
+function fillOwnerSelect(sel, cur) {
+  const names = [...new Set([...S.team, ...(cur ? [cur] : [])])];
+  sel.innerHTML = `<option value="">No owner</option>` + names.map(n => `<option value="${esc(n)}">${esc(n)}${S.team.includes(n) ? "" : " (not on team)"}</option>`).join("");
+  sel.value = cur;
+}
+function fillDetails(l) {
+  $("#dNext").value = l.nextAction || "";
+  $("#dDue").value = l.nextDue || "";
+  $("#dAppr").value = l.appraisalDate || "";
+  $("#dDeal").value = DEALS.includes(l.dealType) ? l.dealType : "Other";
+  $("#dIntent").value = l.intent || "";
+  $("#dSuburb").value = suburbOf(l);
+  $("#dSave").disabled = true;
+  $("#dSaveNote").textContent = "";
+}
+function drawerHead(l) {
+  return `<div class="eyebrow">${esc(l.dealType || "Other")} lead</div><h2>${esc(l.name || "No name")}</h2>
+    <div class="row" style="margin-top:6px">${stagePill(l.stage)} ${intentTag(l)} <span class="muted">${esc(suburbOf(l))}</span></div>
+    <div class="flags" style="margin-top:8px">${flagTags(l)}</div>`;
+}
+function historyHtml(l) {
+  const items = [...(l.log || [])].reverse().map(e => `<li><i class="k ${esc(e.kind)}"></i><div><div class="txt">${esc(e.text)}</div><div class="when">${esc(fmtDateTime(e.at))} · ${e.by ? `<span data-uid="${esc(e.by)}">…</span>` : "Claude"}</div></div></li>`);
+  items.push(`<li><i class="k"></i><div><div class="txt">Came in through the ${esc(l.form)} form</div><div class="when">${esc(fmtDateTime(l.createdTime))} · Meta</div></div></li>`);
+  return items.join("");
+}
+async function resolveNames(root) {
+  const els = [...root.querySelectorAll("[data-uid]")];
+  if (!els.length) return;
+  const ids = [...new Set(els.map(e => e.dataset.uid))];
+  let ps = {};
+  if (S.user) { try { ps = await S.user.profiles(ids); } catch {} }
+  for (const e of els) { const p = ps[e.dataset.uid]; e.textContent = p ? (p.isMe ? "You" : p.name || "Someone") : "Someone"; }
+}
+
+/* ---------- accountability ---------- */
+function renderTeam() {
+  const v = $("#view-team");
+  const all = [...S.leads.values()];
+  if (S.status !== "ready") { v.innerHTML = `<div class="empty"><h3>Loading…</h3></div>`; return; }
+  const today = todayStr();
+  const names = [...ownersAll(), ""];
+  const rows = names.map(o => {
+    const ls = all.filter(l => (l.owner || "") === o);
+    const live = ls.filter(l => l.stage !== "lost");
+    const fh = ls.filter(l => l.firstContactAt).map(l => (Date.parse(l.firstContactAt) - Date.parse(l.createdTime)) / 36e5).filter(h => h >= 0);
+    const last = ls.reduce((m, l) => (l.lastTouchAt && l.lastTouchAt > m ? l.lastTouchAt : m), "");
+    return {
+      o, n: ls.length, live: live.length,
+      unc: ls.filter(l => l.stage === "new" && !l.firstContactAt).length,
+      overdue: ls.filter(l => l.nextDue && l.nextDue < today && !["lost", "started"].includes(l.stage)).length,
+      stale: ls.filter(l => flagsOf(l).some(f => f.k === "stale" || f.k === "nonext")).length,
+      contacted: ls.filter(l => l.firstContactAt).length,
+      med: median(fh), appr: ls.filter(l => (l.maxStep || 0) >= 3).length, started: ls.filter(l => l.stage === "started").length, last,
+    };
+  }).filter(r => r.n || r.o);
+  const cell = (n, cls) => `<td class="num ${n ? cls : "z"}">${n}</td>`;
+  const ownerTable = `<div class="table-wrap"><table style="min-width:900px"><thead><tr>
+      <th>Owner</th><th>Leads</th><th data-tip="Stage is New with no contact logged">Not contacted</th><th>Overdue</th><th data-tip="Working leads with no next step, or no contact in 14 days">Slipping</th><th>Contacted</th><th data-tip="Median time from the form coming in to first contact">Speed to first contact</th><th>Reached appraisal</th><th>Started</th><th>Last contact</th></tr></thead><tbody>
+      ${rows.map(r => `<tr><td><button class="copy" style="padding:0;font-size:13.5px" type="button" data-owner="${esc(r.o || "__none")}">${esc(r.o || "No owner")}</button></td><td class="num">${r.n}</td>${cell(r.unc, "bad")}${cell(r.overdue, "bad")}${cell(r.stale, "warnc")}<td class="num">${r.contacted} <span class="muted">${r.n ? "(" + pct(r.contacted, r.n) + ")" : ""}</span></td><td class="num">${r.med == null ? '<span class="muted">No data</span>' : hoursText(r.med)}</td><td class="num">${r.appr}</td><td class="num">${r.started}</td><td>${r.last ? esc(ago(r.last)) : '<span class="muted">Never</span>'}</td></tr>`).join("")}
+    </tbody></table></div>`;
+
+  const weekAgo = Date.now() - 7 * DAY;
+  const byPerson = new Map();
+  for (const l of all) for (const e of l.log || []) {
+    if (!e.by || Date.parse(e.at) < weekAgo) continue;
+    const r = byPerson.get(e.by) || { contacts: 0, stages: 0, other: 0, leads: new Set() };
+    if (["call", "text", "email", "meeting"].includes(e.kind)) r.contacts++; else if (e.kind === "stage") r.stages++; else r.other++;
+    r.leads.add(l.id); byPerson.set(e.by, r);
+  }
+  const activity = byPerson.size ? `<div class="table-wrap"><table><thead><tr><th>Person</th><th>Leads touched</th><th>Calls, texts, emails, meetings</th><th>Stage moves</th><th>Other updates</th></tr></thead><tbody>
+      ${[...byPerson.entries()].sort((a, b) => b[1].leads.size - a[1].leads.size).map(([id, r]) => `<tr><td><span data-uid="${esc(id)}">…</span></td><td class="num">${r.leads.size}</td><td class="num">${r.contacts}</td><td class="num">${r.stages}</td><td class="num">${r.other}</td></tr>`).join("")}
+    </tbody></table></div>` : `<div class="card"><p class="note">Nobody has logged anything in the last 7 days. Changes made on this page are recorded here against the person who made them.</p></div>`;
+
+  const flagged = all.filter(l => flagsOf(l).length).sort((a, b) => {
+    const w = l => Math.min(...flagsOf(l).map(f => ({ critical: 0, serious: 1, warning: 2 }[f.lv])));
+    return w(a) - w(b) || (INTENT_ORDER[intentOf(a)] - INTENT_ORDER[intentOf(b)]) || b.createdTime.localeCompare(a.createdTime);
+  });
+  const groups = new Map();
+  for (const l of flagged) { const k = l.owner || ""; if (!groups.has(k)) groups.set(k, []); groups.get(k).push(l); }
+  const attn = flagged.length ? [...groups.entries()].sort((a, b) => (a[0] === "" ? 1 : b[0] === "" ? -1 : a[0].localeCompare(b[0]))).map(([o, ls]) => `
+      <div class="card"><div class="row" style="justify-content:space-between"><h3>${esc(o || "No owner")}</h3><span class="muted">${plural(ls.length, "lead")}</span></div>
+      <div class="table-wrap" style="border:0"><table><tbody>${ls.slice(0, 40).map(l => `<tr data-open="${esc(l.id)}" style="cursor:pointer"><td><div class="name">${esc(l.name || "No name")}</div><div class="meta">${esc(l.dealType)} · ${esc(suburbOf(l) || "Unknown suburb")}</div></td><td>${intentTag(l)}</td><td>${stagePill(l.stage)}</td><td><div class="flags">${flagTags(l)}</div></td></tr>`).join("")}</tbody></table></div>
+      ${ls.length > 40 ? `<p class="note">Plus ${ls.length - 40} more. Filter the pipeline by owner to see them all.</p>` : ""}</div>`).join("") : `<div class="card"><p class="note">Nothing needs attention. Every lead has an owner, a next step, and recent contact.</p></div>`;
+
+  const hot = all.filter(l => l.stage === "new" && intentOf(l) === "hot").sort((a, b) => b.createdTime.localeCompare(a.createdTime));
+  v.innerHTML = `
+    <div class="section"><header><h2>By owner</h2><span class="muted">Counts update as leads move. Click an owner to see their leads.</span></header>${ownerTable}</div>
+    <div class="section"><header><h2>Call these first</h2><span class="muted">Hot leads still at New</span></header>
+      ${hot.length ? `<div class="table-wrap"><table><tbody>${hot.map(l => `<tr data-open="${esc(l.id)}" style="cursor:pointer"><td><div class="name">${esc(l.name)}</div><div class="meta mono">${esc(phoneFmt(l.phone))}</div></td><td>${dealTag(l)}</td><td class="ink2">${esc(l.answers.map(a => a.a).filter(Boolean).join(" · "))}</td><td>${esc(l.owner || "No owner")}</td><td class="num">${esc(ago(l.createdTime))}</td></tr>`).join("")}</tbody></table></div>` : `<div class="card"><p class="note">No hot leads are waiting at New.</p></div>`}
+    </div>
+    <div class="section"><header><h2>Who has been working leads</h2><span class="muted">Last 7 days, from changes made on this page</span></header>${activity}</div>
+    <div class="section"><header><h2>Needs attention</h2><span class="muted">${plural(flagged.length, "lead")}, worst first</span></header><div class="cards">${attn}</div></div>`;
+  resolveNames(v);
+}
+
+/* ---------- insights ---------- */
+function hbars(items, opts = {}) {
+  const max = Math.max(1, ...items.map(i => i.v));
+  const total = opts.total;
+  return `<div class="hbars">${items.map(i => `<div class="hbar" data-tip="${esc(i.l + ": " + i.v + (total ? " of " + total + " (" + pct(i.v, total) + ")" : ""))}"><span class="lab">${esc(i.l)}</span><span class="track"><span class="fill" style="width:${(i.v / max) * 100}%;--c:${i.c || opts.c || "var(--s1)"}"></span></span><span class="val">${i.v}${total ? `<small>${pct(i.v, total)}</small>` : ""}</span></div>`).join("")}</div>`;
+}
+function countBy(arr, fn) { const m = new Map(); for (const x of arr) { const k = fn(x); if (k == null || k === "") continue; m.set(k, (m.get(k) || 0) + 1); } return [...m.entries()].sort((a, b) => b[1] - a[1]); }
+function niceMax(v) { if (v <= 5) return 5; const p = Math.pow(10, Math.floor(Math.log10(v))); for (const m of [1, 2, 2.5, 5, 10]) if (m * p >= v) return m * p; return 10 * p; }
+function weekStart(t) { const x = new Date(t); x.setHours(0, 0, 0, 0); x.setDate(x.getDate() - ((x.getDay() + 6) % 7)); return x; }
+
+function weeklyChart(all, deals) {
+  if (!all.length) return "";
+  const first = weekStart(Math.min(...all.map(l => Date.parse(l.createdTime))));
+  const last = weekStart(Date.now());
+  const weeks = [];
+  for (let d = new Date(first); d <= last; d.setDate(d.getDate() + 7)) weeks.push(new Date(d));
+  const data = weeks.map(w => { const end = w.getTime() + 7 * DAY; const ls = all.filter(l => { const t = Date.parse(l.createdTime); return t >= w.getTime() && t < end; }); return { w, ls, by: deals.map(d => ls.filter(l => l.dealType === d).length) }; });
+  const max = niceMax(Math.max(1, ...data.map(d => d.ls.length)));
+  const ticks = [0, max / 2, max];
+  const every = Math.ceil(weeks.length / 8);
+  return `<div class="legend">${deals.map(d => `<span><i class="swatch" style="--c:${DEAL_COLOR[d]}"></i>${esc(d)}</span>`).join("")}</div>
+    <div class="cols" role="img" aria-label="Leads per week by deal type">
+      ${ticks.slice(1).map(t => `<div class="grid" style="bottom:${(t / max) * 100}%"><span>${t}</span></div>`).join("")}
+      <div class="base"><span style="position:absolute;left:-30px;top:-8px;width:24px;text-align:right;font-size:11px;color:var(--muted)">0</span></div>
+      <div class="bars">${data.map((d, i) => `<div class="col" tabindex="0" data-tip="${esc("Week of " + d.w.toLocaleDateString(undefined, { day: "numeric", month: "short" }) + ": " + plural(d.ls.length, "lead") + (d.ls.length ? "\n" + deals.map((x, j) => x + " " + d.by[j]).join(" · ") : ""))}">
+        ${deals.map((x, j) => d.by[j] ? `<div class="seg" style="height:calc(${(d.by[j] / max) * 100}% - 2px);--c:${DEAL_COLOR[x]}"></div>` : "").join("")}
+        ${i % every === 0 ? `<span class="xl">${esc(d.w.toLocaleDateString(undefined, { day: "numeric", month: "short" }))}</span>` : ""}</div>`).join("")}</div>
+    </div>`;
+}
+
+function renderInsights() {
+  const v = $("#view-insights");
+  const all = [...S.leads.values()];
+  if (S.status !== "ready") { v.innerHTML = `<div class="empty"><h3>Loading…</h3></div>`; return; }
+  if (!all.length) { v.innerHTML = `<div class="empty"><h3>No leads to analyse yet</h3><p>Import a Meta CSV to see patterns across your leads.</p></div>`; return; }
+  const T = all.length;
+  const deals = DEALS.filter(d => all.some(l => l.dealType === d));
+
+  // facts
+  const facts = [];
+  const dealCounts = countBy(all, l => l.dealType);
+  facts.push(dealCounts.map(([d, n]) => `${pct(n, T)} are ${d.toLowerCase()} enquiries (${n} of ${T})`).join(", ") + ".");
+  const plat = countBy(all, l => l.platform === "ig" ? "Instagram" : l.platform === "fb" ? "Facebook" : l.platform ? l.platform : null);
+  if (plat.length) facts.push(plat.map(([p, n]) => `${n} came from ${p}`).join(", ") + (plat.reduce((s, x) => s + x[1], 0) < T ? `, the rest have no platform recorded` : "") + ".");
+  const intents = countBy(all, intentOf);
+  facts.push(`By their answers, ${intents.map(([i, n]) => `${n} read as ${i}`).join(", ")}.`);
+  const qGroups = new Map();
+  for (const l of all) for (const a of l.answers) { if (!a.a) continue; const k = a.q; if (!qGroups.has(k)) qGroups.set(k, []); qGroups.get(k).push(a.a); }
+  for (const [q, vals] of qGroups) {
+    const c = countBy(vals, x => x);
+    if (vals.length < 3 || c.length > 10 || c.length === vals.length) continue;
+    facts.push(`"${q}" most common answer: "${c[0][0]}" (${c[0][1]} of ${vals.length}).`);
+  }
+  const subs = countBy(all, l => suburbOf(l));
+  if (subs.length) facts.push(`Most common suburbs: ${subs.slice(0, 4).map(([s, n]) => `${s} (${n})`).join(", ")}. ${subs.filter(s => s[1] === 1).length} suburbs appear only once.`);
+  const DOW = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+  const dow = countBy(all, l => DOW[new Date(l.createdTime).getDay()]);
+  const bands = [["Midnight to 6am", 0, 6], ["6am to 9am", 6, 9], ["9am to noon", 9, 12], ["Noon to 3pm", 12, 15], ["3pm to 6pm", 15, 18], ["6pm to 9pm", 18, 21], ["9pm to midnight", 21, 24]];
+  const band = l => { const h = new Date(l.createdTime).getHours(); return bands.find(b => h >= b[1] && h < b[2])[0]; };
+  const bandCounts = countBy(all, band);
+  facts.push(`Forms come in most on ${dow[0][0]}s (${dow[0][1]}) and most often between ${bandCounts[0][0].toLowerCase()} (${bandCounts[0][1]}), in your local time.`);
+
+  // funnel
+  const prog = STAGES.filter(s => s.step != null);
+  const funnel = prog.map((s, i) => ({ l: s.label, v: all.filter(l => (l.maxStep || 0) >= s.step || (s.step === 0)).length, c: s.dot }));
+  const parked = STAGES.filter(s => s.step == null).map(s => ({ l: s.label, v: all.filter(l => l.stage === s.id).length, c: s.dot }));
+
+  // by deal type conversion
+  const conv = deals.map(d => { const ls = all.filter(l => l.dealType === d); return { d, n: ls.length, c: ls.filter(l => l.firstContactAt).length, a: ls.filter(l => (l.maxStep || 0) >= 3).length, s: ls.filter(l => l.stage === "started").length, lost: ls.filter(l => l.stage === "lost").length }; });
+
+  // campaigns
+  const camps = countBy(all, l => l.campaign).map(([c]) => { const ls = all.filter(l => l.campaign === c); return { c, form: [...new Set(ls.map(l => l.form))].join(", "), n: ls.length, hot: ls.filter(l => intentOf(l) === "hot").length, con: ls.filter(l => l.firstContactAt).length, a: ls.filter(l => (l.maxStep || 0) >= 3).length, s: ls.filter(l => l.stage === "started").length, last: ls.reduce((m, l) => l.createdTime > m ? l.createdTime : m, "") }; });
+
+  // answers by form
+  const forms = countBy(all, l => l.form).map(([f]) => f);
+  const answerCards = forms.map(f => {
+    const ls = all.filter(l => l.form === f);
+    const qs = [];
+    for (const l of ls) for (const a of l.answers) if (!qs.includes(a.q)) qs.push(a.q);
+    const blocks = qs.map(q => {
+      const vals = ls.map(l => (l.answers.find(a => a.q === q) || {}).a).filter(Boolean);
+      const c = countBy(vals, x => x);
+      if (!vals.length || c.length > 10 || (c.length === vals.length && vals.length > 3)) return "";
+      return `<div><div class="eyebrow" style="margin-bottom:6px">${esc(q)}</div>${hbars(c.map(([l, n]) => ({ l, v: n })), { total: vals.length, c: DEAL_COLOR[ls[0].dealType] })}</div>`;
+    }).join("");
+    return blocks ? `<div class="card"><div class="row" style="justify-content:space-between"><h3>${esc(f)}</h3><span class="muted">${plural(ls.length, "lead")}</span></div>${blocks}</div>` : "";
+  }).join("");
+
+  // data issues
+  const issues = [];
+  const seenPhone = new Map(), seenEmail = new Map();
+  for (const l of [...all].sort((a, b) => a.createdTime.localeCompare(b.createdTime))) {
+    const p = phoneLocal(l.phone), e = (l.email || "").toLowerCase();
+    if (l.phone && !phoneValid(l.phone)) issues.push([l, `Phone "${l.phone}" isn't a valid Australian number`]);
+    if (!l.phone) issues.push([l, "No phone number"]);
+    if (/no calls|don'?t call|do not call/i.test(l.name || "")) issues.push([l, "Name says no calls"]);
+    if (l.address && !/\d/.test(l.address)) issues.push([l, `Address is partial: "${l.address}"`]);
+    if (!l.address) issues.push([l, "No address"]);
+    if (l.name && !/\s/.test(l.name.trim())) issues.push([l, "First name only"]);
+    if (p && phoneValid(l.phone) && seenPhone.has(p)) issues.push([l, `Same phone as ${seenPhone.get(p).name}`]);
+    else if (e && seenEmail.has(e)) issues.push([l, `Same email as ${seenEmail.get(e).name}, possible duplicate`]);
+    if (p) seenPhone.set(p, l); if (e) seenEmail.set(e, l);
+  }
+
+  v.innerHTML = `
+    <div class="section"><header><h2>What these leads have in common</h2><span class="muted">Worked out from ${plural(T, "lead")} and their form answers</span></header>
+      <div class="card"><ul class="facts">${facts.map(f => `<li>${esc(f)}</li>`).join("")}</ul>
+      <p class="note">Intent is a rule of thumb. Hot means an answer like "1 to 3 months", "Yes, definitely" or "Already considering it". Cold means "Just researching", "Just exploring", "Still deciding" or "Maybe". Everything else is warm. You can override it on any lead.</p></div>
+    </div>
+    <div class="cards section">
+      <div class="card"><h3>Leads per week</h3>${weeklyChart(all, deals)}</div>
+      <div class="card"><h3>How far leads have got</h3>${hbars(funnel, { total: T })}
+        <div class="eyebrow">Parked or closed now</div>${hbars(parked, { total: T })}
+        <p class="note">Each bar counts leads that have ever reached that stage, so a lead that was appraised and then went quiet still counts as appraised.</p></div>
+    </div>
+    <div class="section"><header><h2>Deal types</h2></header>
+      <div class="table-wrap"><table><thead><tr><th>Deal type</th><th>Leads</th><th>Contacted</th><th>Reached appraisal</th><th>Started</th><th>Lost</th></tr></thead><tbody>
+      ${conv.map(r => `<tr><td>${dealTag({ dealType: r.d })}</td><td class="num">${r.n}</td><td class="num">${r.c} <span class="muted">${pct(r.c, r.n)}</span></td><td class="num">${r.a} <span class="muted">${pct(r.a, r.n)}</span></td><td class="num">${r.s} <span class="muted">${pct(r.s, r.n)}</span></td><td class="num">${r.lost}</td></tr>`).join("")}
+      </tbody></table></div></div>
+    <div class="section"><header><h2>Campaigns</h2><span class="muted">Which ads bring leads that go somewhere</span></header>
+      <div class="table-wrap"><table style="min-width:820px"><thead><tr><th>Campaign</th><th>Form</th><th>Leads</th><th>Hot</th><th>Contacted</th><th>Reached appraisal</th><th>Started</th><th>Latest lead</th></tr></thead><tbody>
+      ${camps.map(r => `<tr><td>${esc(r.c)}</td><td class="ink2">${esc(r.form)}</td><td class="num">${r.n}</td><td class="num">${r.hot} <span class="muted">${pct(r.hot, r.n)}</span></td><td class="num">${r.con}</td><td class="num">${r.a}</td><td class="num">${r.s}</td><td>${esc(fmtDate(r.last))}</td></tr>`).join("")}
+      </tbody></table></div></div>
+    <div class="section"><header><h2>Form answers</h2><span class="muted">One card per form, since each asks different questions</span></header><div class="cards">${answerCards}</div></div>
+    <div class="cards section">
+      <div class="card"><h3>Top suburbs</h3>${hbars(subs.slice(0, 12).map(([l, n]) => ({ l, v: n })), { c: "var(--accent)" })}<p class="note">Suburb is read from the address as typed, so spelling mistakes show as their own suburb. Fix one on the lead to correct it here. ${all.filter(l => !suburbOf(l)).length} leads have no suburb we could read.</p></div>
+      <div class="card"><h3>When forms come in</h3>
+        <div class="eyebrow">Day of week</div>${hbars(DOW.map(d => ({ l: d, v: all.filter(l => DOW[new Date(l.createdTime).getDay()] === d).length })), { c: "var(--accent)" })}
+        <div class="eyebrow">Time of day</div>${hbars(bands.map(b => ({ l: b[0], v: all.filter(l => band(l) === b[0]).length })), { c: "var(--accent)" })}</div>
+    </div>
+    <div class="section"><header><h2>Data to check</h2><span class="muted">${plural(issues.length, "issue")}</span></header>
+      ${issues.length ? `<div class="table-wrap"><table><tbody>${issues.map(([l, t]) => `<tr data-open="${esc(l.id)}" style="cursor:pointer"><td class="name">${esc(l.name || "No name")}</td><td>${esc(t)}</td><td class="muted">${esc(l.form)}</td></tr>`).join("")}</tbody></table></div>` : `<div class="card"><p class="note">No problems found in names, phones, addresses or duplicates.</p></div>`}
+    </div>`;
+}
+
+/* ---------- import / export ---------- */
+function parseCSV(text, delim) {
+  const rows = []; let row = [], f = "", q = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (q) { if (c === '"') { if (text[i + 1] === '"') { f += '"'; i++; } else q = false; } else f += c; }
+    else if (c === '"') q = true;
+    else if (c === delim) { row.push(f); f = ""; }
+    else if (c === "\n") { row.push(f); rows.push(row); row = []; f = ""; }
+    else if (c !== "\r") f += c;
+  }
+  if (f !== "" || row.length) { row.push(f); rows.push(row); }
+  return rows.filter(r => r.some(x => x.trim() !== ""));
+}
+async function readText(file) {
+  const buf = await file.arrayBuffer(); const b = new Uint8Array(buf);
+  if (b[0] === 0xff && b[1] === 0xfe) return new TextDecoder("utf-16le").decode(buf);
+  if (b[0] === 0xfe && b[1] === 0xff) return new TextDecoder("utf-16be").decode(buf);
+  return new TextDecoder("utf-8").decode(buf).replace(/^\uFEFF/, "");
+}
+const META_COLS = new Set(["id", "created_time", "ad_id", "ad_name", "adset_id", "adset_name", "campaign_id", "campaign_name", "form_id", "form_name", "is_organic", "platform", "lead_status"]);
+const qLabel = c => { const s = c.replace(/_/g, " ").trim(); return s.charAt(0).toUpperCase() + s.slice(1); };
+const dealFromForm = f => /granny/i.test(f) ? "Granny flat" : /sell|market|strat|apprais|hold|valu/i.test(f) ? "Selling" : "Other";
+function rowToLead(h, r, file, at) {
+  const doc = { answers: [], name: "", phone: "", email: "", address: "" };
+  const get = k => { const i = h.indexOf(k); return i < 0 ? "" : String(r[i] ?? "").trim(); };
+  h.forEach((col, i) => {
+    const v = String(r[i] ?? "").trim();
+    if (META_COLS.has(col)) return;
+    if (col === "full_name" || col === "name") doc.name = v;
+    else if (col === "phone" || col === "phone_number") doc.phone = v.replace(/^p:/, "");
+    else if (col === "email") doc.email = v;
+    else if (col.includes("address")) doc.address = v;
+    else if (col) doc.answers.push({ q: qLabel(col), a: v });
+  });
+  const metaId = get("id").replace(/^l:/, "");
+  const created = Date.parse(get("created_time"));
+  const form = get("form_name");
+  return Object.assign(doc, {
+    metaId, createdTime: isNaN(created) ? at : new Date(created).toISOString(), form,
+    campaign: get("campaign_name"), adset: get("adset_name"), ad: get("ad_name"), platform: get("platform"),
+    dealType: dealFromForm(form), stage: "new", owner: "", nextAction: "", nextDue: "", appraisalDate: "",
+    firstContactAt: null, lastTouchAt: null, stageChangedAt: at, importedAt: at, updatedAt: at,
+    log: [{ at, by: S.me, kind: "import", text: "Imported from " + file }],
+  });
+}
+async function importFiles(files) {
+  if (!S.db || !S.canWrite) return;
+  const at = nowISO();
+  const fresh = new Map(); let skipped = 0, bad = 0;
+  for (const file of files) {
+    const text = await readText(file);
+    const first = text.split("\n", 1)[0];
+    const delim = (first.match(/\t/g) || []).length > (first.match(/,/g) || []).length ? "\t" : ",";
+    const rows = parseCSV(text, delim);
+    if (!rows.length) continue;
+    const h = rows[0].map(c => c.trim().toLowerCase());
+    if (!h.includes("id") || !h.includes("created_time")) { toast(file.name + " doesn't look like a Meta lead export (no id or created_time column)."); continue; }
+    for (const r of rows.slice(1)) {
+      const doc = rowToLead(h, r, file.name, at);
+      const id = doc.metaId.replace(/[^A-Za-z0-9_\-.~:@+]/g, "_");
+      if (!id) { bad++; continue; }
+      if (S.leads.has(id) || fresh.has(id)) { skipped++; continue; }
+      fresh.set(id, doc);
+    }
+  }
+  if (!fresh.size) { toast(skipped ? `No new leads. All ${skipped} are already in the tracker.` : "No leads found in that file."); return; }
+  toast(`Adding ${plural(fresh.size, "lead")}…`, 60000);
+  let ok = 0, failed = 0;
+  await runPool([...fresh.entries()], 4, async ([id, doc]) => { try { await S.db.doc("leads/" + id).set(doc); ok++; } catch (e) { failed++; if (failed === 1) writeErr(e); } });
+  toast(`Added ${plural(ok, "new lead")}` + (skipped ? `, skipped ${skipped} already here` : "") + (failed ? `, ${failed} failed` : "") + (bad ? `, ${bad} rows had no id` : "") + ".", 6000);
+}
+function csvCell(v) { const s = String(v ?? ""); return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; }
+async function exportCSV() {
+  const cols = ["Name", "Phone", "Email", "Address", "Suburb", "Deal type", "Form", "Campaign", "Came in", "Stage", "Owner", "Next step", "Next step due", "Appraisal date", "First contact", "Last contact", "Intent", "Flags", "Meta lead id"];
+  const rows = visible().map(l => [l.name, phoneFmt(l.phone), l.email, l.address, suburbOf(l), l.dealType, l.form, l.campaign, fmtDateTime(l.createdTime), STAGE[l.stage].label, l.owner, l.nextAction, l.nextDue, l.appraisalDate, fmtDateTime(l.firstContactAt), fmtDateTime(l.lastTouchAt), intentOf(l), flagsOf(l).map(f => f.text).join("; "), l.metaId || l.id]);
+  const data = [cols, ...rows].map(r => r.map(csvCell).join(",")).join("\n");
+  try { await S.downloads.save({ filename: "leads-" + todayStr() + ".csv", data }); }
+  catch (e) { if (e && e.code !== "declined") toast("The export couldn't be saved here."); }
+}
+
+/* ---------- events ---------- */
+document.addEventListener("click", async e => {
+  const t = e.target;
+  const tab = t.closest(".tab");
+  if (tab) { S.tab = tab.dataset.tab; remember("tab", S.tab); render(); return; }
+  if (t.closest("[data-close]") || t === $("#scrim")) { closeLead(); return; }
+  const cp = t.closest("[data-copy]");
+  if (cp) { const v = cp.dataset.copy; try { await navigator.clipboard.writeText(v); toast("Copied " + v); } catch { toast(v); } return; }
+  if (t.closest("[data-clear]") || t.closest("#clearF")) { S.filter = { q: "", deal: "", stage: "", owner: "", intent: "", form: "", attention: false }; remember("filter", S.filter); render(); return; }
+  const kp = t.closest("[data-kpi]");
+  if (kp) { const k = kp.dataset.kpi; S.filter = { ...S.filter, stage: k === "uncontacted" ? "new" : "", attention: k === "attention" }; remember("filter", S.filter); render(); return; }
+  const sb = t.closest("[data-stage]");
+  if (sb && sb.classList.contains("stage-btn")) { S.filter.stage = S.filter.stage === sb.dataset.stage ? "" : sb.dataset.stage; remember("filter", S.filter); render(); return; }
+  const so = t.closest("th button[data-sort]");
+  if (so) { const k = so.dataset.sort; S.sort = S.sort.key === k ? { key: k, dir: -S.sort.dir } : { key: k, dir: k === "createdTime" ? -1 : 1 }; remember("sort", S.sort); render(); return; }
+  const ow = t.closest("[data-owner]");
+  if (ow) { S.filter = { q: "", deal: "", stage: "", owner: ow.dataset.owner, intent: "", form: "", attention: false }; S.tab = "pipeline"; remember("tab", S.tab); remember("filter", S.filter); render(); return; }
+  const op = t.closest("[data-open]");
+  if (op) { openLead(op.dataset.open); return; }
+  if (t.matches("input[data-sel]")) { t.checked ? S.selected.add(t.dataset.sel) : S.selected.delete(t.dataset.sel); render(); return; }
+  if (t.closest(".cb")) return;
+  const tr = t.closest("#rows tr");
+  if (tr) { openLead(tr.dataset.id); return; }
+});
+$("#selAll").addEventListener("change", e => { const rows = visible(); if (e.target.checked) rows.forEach(l => S.selected.add(l.id)); else rows.forEach(l => S.selected.delete(l.id)); render(); });
+$("#bulkClear").addEventListener("click", () => { S.selected.clear(); render(); });
+async function bulk(fn, label) {
+  const ids = [...S.selected]; if (!ids.length) return;
+  toast(label + " " + plural(ids.length, "lead") + "…", 60000);
+  let ok = 0; await runPool(ids, 4, async id => { try { await fn(id); ok++; } catch {} });
+  S.selected.clear(); render(); toast(label.replace(/ing$/, "ed") + " " + plural(ok, "lead") + ".");
+}
+$("#bulkOwner").addEventListener("change", e => { const v = e.target.value; if (!v) return; bulk(id => setOwner(id, v === "__none" ? "" : v), "Updating"); });
+$("#bulkStage").addEventListener("change", e => { const v = e.target.value; if (!v) return; bulk(id => setStage(id, v), "Moving"); });
+
+let qT;
+$("#q").addEventListener("input", e => { clearTimeout(qT); qT = setTimeout(() => { S.filter.q = e.target.value; remember("filter", S.filter); render(); }, 120); });
+for (const [id, key] of [["#fDeal", "deal"], ["#fOwner", "owner"], ["#fIntent", "intent"], ["#fForm", "form"]]) $(id).addEventListener("change", e => { S.filter[key] = e.target.value; remember("filter", S.filter); render(); });
+$("#fAttn").addEventListener("change", e => { S.filter.attention = e.target.checked; remember("filter", S.filter); render(); });
+$("#noticeX").addEventListener("click", () => { remember("noticeHidden", true); render(); });
+
+$("#drawer").addEventListener("change", async e => {
+  const id = S.open; if (!id) return;
+  if (e.target.id === "dStage") { try { await setStage(id, e.target.value); toast("Stage saved"); } catch {} return; }
+  if (e.target.id === "dOwner") { try { await setOwner(id, e.target.value); toast("Owner saved"); } catch {} return; }
+});
+$("#drawer").addEventListener("input", e => { if (e.target.closest("#dDetails")) { S.drawerDirty = true; $("#dSave").disabled = false; $("#dSaveNote").textContent = "Unsaved changes"; } });
+$("#drawer").addEventListener("click", async e => {
+  const id = S.open; if (!id) return;
+  if (e.target.id === "dSave") {
+    const l = S.leads.get(id);
+    const next = { nextAction: $("#dNext").value.trim(), nextDue: $("#dDue").value, appraisalDate: $("#dAppr").value, dealType: $("#dDeal").value, intent: $("#dIntent").value };
+    const sub = $("#dSuburb").value.trim();
+    next.suburb = sub && sub !== l._suburb ? sub : "";
+    const patch = {}, notes = [];
+    for (const [k, v] of Object.entries(next)) if ((l[k] || "") !== v) patch[k] = v;
+    if (!Object.keys(patch).length) { S.drawerDirty = false; fillDetails(l); return; }
+    if ("nextAction" in patch || "nextDue" in patch) notes.push(next.nextAction ? "Next step: " + next.nextAction + (next.nextDue ? " (due " + fmtDay(next.nextDue) + ")" : "") : "Next step cleared");
+    if ("appraisalDate" in patch) notes.push(next.appraisalDate ? "Appraisal date set to " + fmtDay(next.appraisalDate) : "Appraisal date cleared");
+    if ("dealType" in patch) notes.push("Deal type changed to " + next.dealType);
+    if ("intent" in patch) notes.push(next.intent ? "Intent set to " + next.intent : "Intent back to form answers");
+    if ("suburb" in patch) notes.push("Suburb set to " + (next.suburb || l._suburb || "blank"));
+    if (next.appraisalDate && "appraisalDate" in patch && STAGE[l.stage].step != null && STAGE[l.stage].step < 3) Object.assign(patch, stagePatch(l, "appraisal_booked")), notes.push("Moved to Appraisal booked");
+    e.target.disabled = true;
+    try { await writeLead(id, patch, { kind: "detail", text: notes.join(". ") }); S.drawerDirty = false; fillDetails(S.leads.get(id)); toast("Details saved"); renderDrawer(false); }
+    catch { e.target.disabled = false; }
+    return;
+  }
+  if (e.target.id === "dActBtn") {
+    const kind = ($("#drawer input[name=actKind]:checked") || {}).value || "call";
+    const text = $("#dAct").value.trim();
+    if (kind === "note" && !text) { toast("Write the note first."); return; }
+    e.target.disabled = true;
+    try { await addActivity(id, kind, text); $("#dAct").value = ""; toast("Added to history"); } catch {}
+    e.target.disabled = false;
+  }
+});
+document.addEventListener("keydown", e => { if (e.key === "Escape") { if (!$("#teamModal").hidden) $("#teamModal").hidden = true; else if (S.open) closeLead(); } });
+
+$("#importBtn").addEventListener("click", () => $("#fileIn").click());
+$("#fileIn").addEventListener("change", async e => { const fs = [...e.target.files]; e.target.value = ""; if (fs.length) await importFiles(fs); });
+document.addEventListener("dragover", e => { if (S.canWrite && S.db) e.preventDefault(); });
+document.addEventListener("drop", async e => { if (!S.canWrite || !S.db) return; e.preventDefault(); const fs = [...(e.dataTransfer?.files || [])].filter(f => /\.csv$/i.test(f.name)); if (fs.length) await importFiles(fs); });
+$("#exportBtn").addEventListener("click", exportCSV);
+
+function renderTeamModal() {
+  $("#teamList").innerHTML = S.team.length ? S.team.map((n, i) => `<li><span>${esc(n)} <span class="muted">· ${plural([...S.leads.values()].filter(l => l.owner === n).length, "lead")}</span></span>${S.canWrite ? `<button class="btn ghost small" type="button" data-rm="${i}">Remove</button>` : ""}</li>`).join("") : `<li class="muted">No one yet. Add the people who work these leads.</li>`;
+  $("#teamForm").hidden = !S.canWrite;
+}
+$("#teamBtn").addEventListener("click", () => { renderTeamModal(); $("#teamModal").hidden = false; $("#teamName").focus(); });
+$("#teamClose").addEventListener("click", () => ($("#teamModal").hidden = true));
+$("#teamModal").addEventListener("click", async e => {
+  if (e.target === $("#teamModal")) { $("#teamModal").hidden = true; return; }
+  const rm = e.target.closest("[data-rm]");
+  if (rm) { const team = S.team.filter((_, i) => i !== +rm.dataset.rm); await saveTeam(team); }
+});
+$("#teamForm").addEventListener("submit", async e => {
+  e.preventDefault();
+  const n = $("#teamName").value.trim(); if (!n) return;
+  if (S.team.some(x => x.toLowerCase() === n.toLowerCase())) { toast(n + " is already on the team."); return; }
+  await saveTeam([...S.team, n]); $("#teamName").value = "";
+});
+let teamQ = Promise.resolve();
+function saveTeam(team) {
+  teamQ = teamQ.then(async () => { try { await S.db.doc("config/team").set({ members: team, updatedAt: nowISO(), updatedBy: S.me }); S.team = team; renderTeamModal(); render(); } catch (e) { writeErr(e); } });
+  return teamQ;
+}
+
+/* ---------- boot ---------- */
+render();
+(async () => {
+  const use = n => (window.claude && typeof window.claude.use === "function") ? window.claude.use(n).catch(() => null) : Promise.resolve(null);
+  const [db, user, downloads] = await Promise.all([use("db"), use("user"), use("downloads")]);
+  S.user = user; S.downloads = downloads;
+  if (!db) { S.status = "nodb"; render(); return; }
+  S.db = db;
+  if (user) { S.me = await user.id(); const cw = await user.can("data.write"); S.canWrite = cw !== false; }
+  db.collection("leads").onSnapshot(snap => {
+    for (const ch of snap.docChanges()) {
+      if (ch.type === "removed") S.leads.delete(ch.doc.id);
+      else S.leads.set(ch.doc.id, hydrate(ch.doc.id, ch.doc.data()));
+    }
+    if (!snap.metadata.fromCache || snap.size) S.status = "ready";
+    scheduleRender();
+  }, err => { toast(err && err.code === "revoked" ? "Access to this tracker changed. Reload the page." : "Lost the connection to the lead list. Reload the page."); });
+  db.doc("config/team").onSnapshot(s => { const d = s.exists ? s.data() : null; S.team = d && Array.isArray(d.members) ? [...d.members] : []; scheduleRender(); if (!$("#teamModal").hidden) renderTeamModal(); });
+  setTimeout(() => { if (S.status === "connecting") { S.status = "ready"; scheduleRender(); } }, 8000);
+})();
+})();
+</script>

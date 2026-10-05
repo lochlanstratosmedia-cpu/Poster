@@ -16,6 +16,8 @@ AI-writing patterns instead of its own instincts.
 | `content/` | Drafts |
 | `.claude/skills/cover-shot/SKILL.md` | Turns a property photo into a magazine-grade social post via Higgsfield |
 | `scripts/cover_shot.py` | Photo analysis, prompt builder, caption overlay and compare sheet for cover shots |
+| `tools/lead-tracker.html` | Meta Lead Tracker: shared stage, owner and follow-up tracking for Meta form leads. Published as a claude.ai artifact; lead data lives in its store, not in git |
+| `scripts/meta_leads_to_json.py` | Converts Meta lead CSV exports into lead records for the tracker |
 | `tools/cover-editor.html` | Listing Cover Studio: edit cover text and layout by hand in the browser |
 | `assets/fonts/` | Inter and Cormorant Garamond (OFL) for captions |
 
