@@ -1,0 +1,1295 @@
+<title>Landlord Leads</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@75..100,500..800&family=Public+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: a working desk. Summary strip on top, one filter bar, then board / table / sheets below; a detail drawer slides in from the right. */
+:root {
+  --bg: #F2F3EF;
+  --surface: #FFFFFF;
+  --surface-2: #E8EBE5;
+  --line: #D3D8D0;
+  --ink: #17201C;
+  --ink-2: #48534E;
+  --ink-3: #747E79;
+  --accent: #2847C2;
+  --accent-soft: #E2E7FA;
+  --on-accent: #FFFFFF;
+  --good: #1B7346;
+  --good-soft: #DBEFE2;
+  --warn: #9A5A00;
+  --warn-soft: #FAEBCF;
+  --crit: #B0281F;
+  --crit-soft: #F7DEDA;
+  --shadow: 0 10px 30px rgba(20, 30, 25, .14);
+  --f-display: "Archivo", "Arial Narrow", "Helvetica Neue", Arial, sans-serif;
+  --f-body: "Public Sans", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --f-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  --r: 6px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #111513; --surface: #191E1C; --surface-2: #222826; --line: #303835;
+    --ink: #E6EBE8; --ink-2: #A9B3AE; --ink-3: #7A8480;
+    --accent: #93A9FF; --accent-soft: #232D55; --on-accent: #0D1330;
+    --good: #72D29E; --good-soft: #163324; --warn: #F0B65C; --warn-soft: #382A11;
+    --crit: #FF8B80; --crit-soft: #3D1C19; --shadow: 0 10px 30px rgba(0,0,0,.5);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #111513; --surface: #191E1C; --surface-2: #222826; --line: #303835;
+  --ink: #E6EBE8; --ink-2: #A9B3AE; --ink-3: #7A8480;
+  --accent: #93A9FF; --accent-soft: #232D55; --on-accent: #0D1330;
+  --good: #72D29E; --good-soft: #163324; --warn: #F0B65C; --warn-soft: #382A11;
+  --crit: #FF8B80; --crit-soft: #3D1C19; --shadow: 0 10px 30px rgba(0,0,0,.5);
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font: 14px/1.45 var(--f-body); }
+[hidden] { display: none !important; }
+.app > * { min-width: 0; }
+.app { max-width: 1480px; margin: 0 auto; padding-inline: 16px; padding-block: 20px 60px; display: grid; gap: 18px; }
+h1, h2, h3 { font-family: var(--f-display); text-wrap: balance; margin: 0; }
+h1 { font-size: 28px; font-weight: 800; font-stretch: 80%; letter-spacing: -.01em; }
+h2 { font-size: 19px; font-weight: 700; font-stretch: 85%; }
+h3 { font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: var(--ink-2); }
+.mono, .num { font-family: var(--f-mono); font-variant-numeric: tabular-nums; }
+.muted { color: var(--ink-3); }
+button, select, input, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.btn { border: 1px solid var(--line); background: var(--surface); padding: 7px 12px; border-radius: var(--r); font-weight: 600; font-size: 13px; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.btn:hover { border-color: var(--ink-3); }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+.btn.primary:hover { filter: brightness(1.08); }
+.btn.ghost { background: transparent; }
+.btn.danger { color: var(--crit); }
+.btn.small { padding: 4px 9px; font-size: 12px; }
+.btn:disabled { opacity: .45; cursor: not-allowed; }
+input[type=text], input[type=search], input[type=date], input[type=number], input[type=email], input[type=tel], select, textarea {
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 7px 9px; min-width: 0; }
+textarea { width: 100%; resize: vertical; }
+label.field { display: grid; gap: 4px; font-size: 12px; color: var(--ink-2); font-weight: 600; }
+
+/* header */
+.top { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 14px; border-bottom: 2px solid var(--ink); padding-bottom: 14px; }
+.top p { margin: 4px 0 0; color: var(--ink-2); max-width: 60ch; }
+.top .actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.banner { border: 1px solid var(--line); background: var(--surface); border-radius: var(--r); padding: 10px 14px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; justify-content: space-between; }
+.banner.example { background: var(--warn-soft); border-color: transparent; color: var(--ink); }
+.banner.ro { background: var(--surface-2); }
+
+/* summary */
+.summary { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 18px; }
+@media (max-width: 900px) { .summary { grid-template-columns: minmax(0, 1fr); } }
+.kpis { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: var(--r); overflow: hidden; }
+@media (max-width: 520px) { .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.kpi { background: var(--surface); padding: 12px 14px; display: grid; gap: 2px; text-align: left; border: 0; border-radius: 0; }
+.kpi:hover { background: var(--surface-2); }
+.kpi .v { font-family: var(--f-display); font-weight: 800; font-size: 30px; font-stretch: 78%; font-variant-numeric: tabular-nums; line-height: 1.05; }
+.kpi .l { font-size: 12px; color: var(--ink-2); font-weight: 600; }
+.kpi .s { font-size: 11.5px; color: var(--ink-3); }
+.kpi.good .v { color: var(--good); }
+.kpi.warn .v { color: var(--warn); }
+.funnel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 12px 14px; display: grid; gap: 6px; align-content: start; }
+.funnel-head { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; margin-bottom: 4px; flex-wrap: wrap; }
+.frow { display: grid; grid-template-columns: 128px minmax(0, 1fr) 44px; gap: 10px; align-items: center; font-size: 12.5px; border: 0; background: none; padding: 1px 0; text-align: left; }
+.frow:hover .fl { color: var(--ink); text-decoration: underline; }
+.fl { color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ftrack { height: 12px; background: transparent; position: relative; }
+.ftrack i { position: absolute; inset: 0 auto 0 0; border-radius: 0 4px 4px 0; min-width: 2px; }
+.fv { text-align: right; font-family: var(--f-mono); font-variant-numeric: tabular-nums; }
+.g-queue { --c: var(--ink-3); --cs: var(--surface-2); }
+.g-open  { --c: var(--accent); --cs: var(--accent-soft); }
+.g-hot   { --c: var(--warn); --cs: var(--warn-soft); }
+.g-won   { --c: var(--good); --cs: var(--good-soft); }
+.g-lost  { --c: var(--ink-3); --cs: transparent; }
+.g-dnc   { --c: var(--crit); --cs: var(--crit-soft); }
+.ftrack i { background: var(--c); }
+.legend { display: flex; gap: 12px; flex-wrap: wrap; font-size: 11.5px; color: var(--ink-3); margin-top: 6px; }
+.legend span { display: inline-flex; gap: 5px; align-items: center; }
+.legend b { width: 9px; height: 9px; border-radius: 2px; background: var(--c); display: inline-block; }
+
+/* tabs + filters */
+.tabs { display: flex; gap: 2px; border-bottom: 1px solid var(--line); overflow-x: auto; }
+.tab { border: 0; background: none; padding: 10px 14px; font-weight: 600; color: var(--ink-2); border-bottom: 3px solid transparent; margin-bottom: -1px; white-space: nowrap; }
+.tab[aria-selected=true] { color: var(--ink); border-bottom-color: var(--accent); }
+.tab .num { font-size: 11px; color: var(--ink-3); margin-left: 4px; }
+.filters { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.filters input[type=search] { flex: 1 1 220px; }
+.filters .check { display: inline-flex; gap: 6px; align-items: center; font-size: 12.5px; color: var(--ink-2); }
+.selbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; background: var(--accent-soft); border-radius: var(--r); padding: 8px 12px; }
+
+/* pills */
+.pill { display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; font-weight: 600; padding: 2px 8px; border-radius: 999px; color: var(--c); background: var(--cs); border: 1px solid transparent; white-space: nowrap; }
+.pill.g-lost { border-color: var(--line); }
+.pill::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--c); }
+.tag { font-size: 11px; font-weight: 600; padding: 1px 6px; border-radius: 4px; background: var(--surface-2); color: var(--ink-2); white-space: nowrap; }
+.tag.due { background: var(--warn-soft); color: var(--warn); }
+.tag.off { background: var(--crit-soft); color: var(--crit); }
+
+/* board */
+.board-wrap { overflow-x: auto; padding-bottom: 8px; }
+.board { display: grid; grid-auto-flow: column; grid-auto-columns: 236px; gap: 10px; align-items: start; }
+.col { background: var(--surface-2); border-radius: var(--r); padding: 8px; display: grid; gap: 8px; min-height: 120px; align-content: start; }
+.col.drop { outline: 2px dashed var(--accent); outline-offset: -2px; }
+.col-head { display: flex; justify-content: space-between; align-items: center; gap: 6px; padding: 2px 2px 4px; border-bottom: 2px solid var(--c); }
+.col-head b { font-family: var(--f-display); font-stretch: 85%; font-size: 14px; }
+.col-hint { font-size: 11px; color: var(--ink-3); padding: 0 2px; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 9px 10px; display: grid; gap: 3px; cursor: pointer; text-align: left; }
+.card:hover { border-color: var(--ink-3); }
+.card.dragging { opacity: .4; }
+.card .a { font-weight: 700; font-size: 13px; }
+.card .b { font-size: 12px; color: var(--ink-2); }
+.card .c { font-size: 12px; }
+.card .d { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; align-items: center; }
+.initials { font-family: var(--f-mono); font-size: 10.5px; font-weight: 500; background: var(--ink); color: var(--bg); border-radius: 3px; padding: 1px 5px; }
+.more { font-size: 12px; color: var(--ink-3); text-align: center; padding: 4px; border: 0; background: none; }
+
+/* table */
+.tbl-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: var(--r); background: var(--surface); }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--ink-3); font-weight: 600; padding: 9px 10px; border-bottom: 1px solid var(--line); white-space: nowrap; background: var(--surface); position: sticky; top: 0; }
+td { padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+tr.row { cursor: pointer; }
+tr.row:hover td { background: var(--surface-2); }
+tr.row.sel td { background: var(--accent-soft); }
+td .sub { font-size: 12px; color: var(--ink-3); }
+td.n { text-align: right; font-family: var(--f-mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+/* sheets & agents */
+.grid-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 330px), 1fr)); gap: 12px; }
+.sheet { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 14px; display: grid; gap: 10px; }
+.sheet-no { font-family: var(--f-mono); font-size: 12px; color: var(--ink-3); }
+.stack { display: flex; height: 10px; gap: 2px; }
+.stack i { background: var(--c); border-radius: 2px; min-width: 3px; }
+.stack .empty { flex: 1; background: var(--surface-2); }
+.row-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 16px; display: grid; gap: 12px; }
+.form-row { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; }
+.form-row > * { flex: 1 1 160px; }
+.form-row > .btn { flex: 0 0 auto; }
+
+/* empty */
+.empty-state { background: var(--surface); border: 1px dashed var(--line); border-radius: var(--r); padding: 28px 22px; display: grid; gap: 10px; justify-items: start; }
+.empty-state p { margin: 0; max-width: 62ch; color: var(--ink-2); }
+.empty-state ol { margin: 0; padding-left: 20px; color: var(--ink-2); display: grid; gap: 4px; }
+
+/* import */
+.import-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; }
+@media (max-width: 900px) { .import-grid { grid-template-columns: minmax(0, 1fr); } }
+.drop-zone { border: 2px dashed var(--line); border-radius: var(--r); padding: 22px; text-align: center; display: grid; gap: 8px; justify-items: center; color: var(--ink-2); }
+.drop-zone.over { border-color: var(--accent); background: var(--accent-soft); }
+.map-tbl td, .map-tbl th { padding: 6px 8px; }
+.map-tbl select { width: 100%; }
+.progress { height: 8px; background: var(--surface-2); border-radius: 4px; overflow: hidden; }
+.progress i { display: block; height: 100%; background: var(--accent); width: 0; transition: width .2s; }
+
+/* drawer */
+.scrim { position: fixed; inset: 0; background: rgba(10, 15, 12, .35); z-index: 20; }
+.drawer { position: fixed; top: 0; right: 0; bottom: 0; width: min(520px, 100%); background: var(--bg); z-index: 21; box-shadow: var(--shadow); display: flex; flex-direction: column; padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
+.drawer-head { padding: 16px 18px 12px; border-bottom: 1px solid var(--line); display: grid; gap: 6px; background: var(--surface); }
+.drawer-head .x { justify-self: end; }
+.drawer-body { overflow-y: auto; padding: 16px 18px 40px; display: grid; gap: 18px; align-content: start; }
+.kv { display: grid; grid-template-columns: 130px minmax(0, 1fr); gap: 6px 12px; font-size: 13px; }
+.kv dt { color: var(--ink-3); }
+.kv dd { margin: 0; overflow-wrap: anywhere; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.outcomes { display: flex; flex-wrap: wrap; gap: 6px; }
+.log { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.log li { display: grid; grid-template-columns: 92px minmax(0, 1fr); gap: 10px; font-size: 12.5px; border-top: 1px solid var(--line); padding-top: 8px; }
+.log time { font-family: var(--f-mono); font-size: 11px; color: var(--ink-3); }
+.log .who { color: var(--ink-3); font-size: 11.5px; }
+.modal { position: fixed; inset: 0; z-index: 30; display: grid; place-items: center; padding: 16px; background: rgba(10, 15, 12, .4); }
+.modal-card { background: var(--bg); border-radius: 10px; box-shadow: var(--shadow); width: min(980px, 100%); max-height: calc(100% - 20px); display: flex; flex-direction: column; overflow: hidden; }
+.modal-head { padding: 16px 18px; border-bottom: 1px solid var(--line); background: var(--surface); display: flex; justify-content: space-between; gap: 10px; align-items: center; }
+.modal-body { padding: 16px 18px; overflow-y: auto; display: grid; gap: 14px; }
+.modal-foot { padding: 12px 18px; border-top: 1px solid var(--line); background: var(--surface); display: flex; gap: 10px; justify-content: space-between; align-items: center; flex-wrap: wrap; }
+.toast { position: fixed; left: 50%; bottom: calc(20px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: var(--ink); color: var(--bg); padding: 9px 16px; border-radius: 999px; font-weight: 600; font-size: 13px; z-index: 40; max-width: calc(100% - 32px); }
+.confirm { display: inline-flex; gap: 6px; align-items: center; flex-wrap: wrap; font-size: 12.5px; }
+@media (prefers-reduced-motion: no-preference) {
+  .drawer { animation: slide .18s ease-out; }
+  @keyframes slide { from { transform: translateX(24px); opacity: .6; } }
+}
+@media (max-width: 600px) {
+  .frow { grid-template-columns: 104px minmax(0, 1fr) 36px; }
+  .kv { grid-template-columns: 104px minmax(0, 1fr); }
+  h1 { font-size: 24px; }
+}
+</style>
+
+<div class="app">
+  <header class="top">
+    <div>
+      <h1>Landlord leads</h1>
+      <p>Every rental listed online in our region, worked as a lead. Ask about selling first. If they are not selling, offer management with Love.</p>
+    </div>
+    <div class="actions">
+      <button class="btn" data-act="tab" data-tab="import">Import listings</button>
+      <button class="btn primary" data-act="new-sheet">New contact sheet</button>
+    </div>
+  </header>
+
+  <div id="banner" hidden></div>
+
+  <section class="summary" aria-label="Summary">
+    <div class="kpis" id="kpis"></div>
+    <div class="funnel" id="funnel"></div>
+  </section>
+
+  <nav class="tabs" role="tablist" id="tabs">
+    <button class="tab" role="tab" data-act="tab" data-tab="pipeline" id="tab-pipeline">Pipeline</button>
+    <button class="tab" role="tab" data-act="tab" data-tab="properties" id="tab-properties">Properties<span class="num" id="n-props"></span></button>
+    <button class="tab" role="tab" data-act="tab" data-tab="sheets" id="tab-sheets">Contact sheets<span class="num" id="n-sheets"></span></button>
+    <button class="tab" role="tab" data-act="tab" data-tab="agents" id="tab-agents">Agents<span class="num" id="n-agents"></span></button>
+    <button class="tab" role="tab" data-act="tab" data-tab="import" id="tab-import">Import</button>
+  </nav>
+
+  <div class="filters" id="filters">
+    <input type="search" id="f-q" placeholder="Search address, landlord, phone, ID ref" aria-label="Search">
+    <select id="f-suburb" aria-label="Suburb"></select>
+    <select id="f-stage" aria-label="Stage"></select>
+    <select id="f-agent" aria-label="Agent"></select>
+    <select id="f-sheet" aria-label="Contact sheet"></select>
+    <label class="check"><input type="checkbox" id="f-offline"> Include offline listings</label>
+    <button class="btn ghost small" data-act="clear-filters" id="f-clear">Clear</button>
+  </div>
+
+  <main id="main"></main>
+</div>
+
+<div id="drawer-root"></div>
+<div id="modal-root"></div>
+<div id="toast" class="toast" hidden></div>
+
+<script>
+(() => {
+"use strict";
+
+/* ---------- constants ---------- */
+const STAGES = [
+  { k: "new",       label: "New",                g: "queue", hint: "Not on a contact sheet yet" },
+  { k: "assigned",  label: "On a sheet",         g: "queue", hint: "With an agent, not called yet" },
+  { k: "attempted", label: "Attempted",          g: "open",  hint: "No answer or message left" },
+  { k: "talking",   label: "In conversation",    g: "open",  hint: "Spoken to the landlord" },
+  { k: "appraisal", label: "Sale appraisal",     g: "hot",   hint: "Open to selling, appraisal booked" },
+  { k: "pm_pitch",  label: "Management pitch",   g: "hot",   hint: "Not selling, pitching management" },
+  { k: "won_sale",  label: "Listing to sell",    g: "won",   hint: "Signed a sale listing" },
+  { k: "won_pm",    label: "Managing with Love", g: "won",   hint: "Signed for management" },
+  { k: "lost",      label: "Not interested",     g: "lost",  hint: "Closed for now" },
+  { k: "dnc",       label: "Do not contact",     g: "dnc",   hint: "Asked not to be contacted" },
+];
+const STAGE = Object.fromEntries(STAGES.map(s => [s.k, s]));
+const CLOSED = new Set(["won_sale", "won_pm", "lost", "dnc"]);
+const EARLY = new Set(["new", "assigned", "attempted"]);
+const WORKING = new Set(["assigned", "attempted", "talking", "appraisal", "pm_pitch"]);
+
+const OUTCOMES = [
+  { k: "no_answer", label: "No answer",                       stage: "attempted", call: true, onlyEarly: true },
+  { k: "message",   label: "Left message",                    stage: "attempted", call: true, onlyEarly: true },
+  { k: "spoke",     label: "Spoke to landlord",               stage: "talking",   call: true },
+  { k: "appraisal", label: "Wants a sale appraisal",          stage: "appraisal", call: true },
+  { k: "pm",        label: "Not selling, open to management", stage: "pm_pitch",  call: true },
+  { k: "won_sale",  label: "Signed to sell",                  stage: "won_sale" },
+  { k: "won_pm",    label: "Signed for management",           stage: "won_pm" },
+  { k: "lost",      label: "Not interested",                  stage: "lost",      call: true },
+  { k: "dnc",       label: "Asked not to be contacted",       stage: "dnc",       call: true },
+];
+
+// [key, label, header synonyms]
+const FIELDS = [
+  ["address", "Street address", ["address", "street address", "property address", "street", "property", "full address"]],
+  ["suburb", "Suburb", ["suburb", "locality", "town", "city", "area", "region"]],
+  ["postcode", "Postcode", ["postcode", "post code", "zip", "zip code", "postal code"]],
+  ["propertyType", "Property type", ["type", "property type", "dwelling", "dwelling type"]],
+  ["beds", "Beds", ["beds", "bed", "bedrooms", "br"]],
+  ["baths", "Baths", ["baths", "bath", "bathrooms"]],
+  ["cars", "Car spaces", ["cars", "car", "parking", "garage", "car spaces"]],
+  ["rent", "Rent", ["rent", "price", "weekly rent", "rent pw", "rent per week", "asking rent", "rental price"]],
+  ["listedDate", "Date listed", ["listed", "date listed", "listed date", "first listed", "listing date", "date"]],
+  ["managingAgency", "Managing agency", ["agency", "managing agency", "listing agency", "listing agent", "property manager", "agent"]],
+  ["listingUrl", "Listing link", ["url", "link", "listing url", "listing link", "web link"]],
+  ["source", "Source", ["source", "portal", "site", "website"]],
+  ["ownerName", "Landlord name", ["owner", "owner name", "owners", "landlord", "landlord name", "owner names", "vendor"]],
+  ["ownerPhone", "Landlord phone", ["phone", "mobile", "owner phone", "owner mobile", "landlord phone", "contact number", "ph", "phone number"]],
+  ["ownerEmail", "Landlord email", ["email", "owner email", "landlord email", "e-mail", "email address"]],
+  ["ownerMailing", "Landlord postal address", ["mailing address", "postal address", "owner address", "landlord address", "owner postal address"]],
+  ["idRef", "ID lookup ref", ["id", "id ref", "reference", "ref", "lookup id", "record id", "title ref", "id number"]],
+];
+const FIELD_LABEL = Object.fromEntries(FIELDS.map(f => [f[0], f[1]]));
+const LISTING_KEYS = ["suburb", "postcode", "propertyType", "beds", "baths", "cars", "rent", "listedDate", "managingAgency", "listingUrl", "source"];
+const OWNER_KEYS = ["ownerName", "ownerPhone", "ownerEmail", "ownerMailing", "idRef"];
+const LOG_CAP = 200;
+
+/* ---------- state ---------- */
+const S = {
+  db: null, user: null, uid: null, readOnly: false, noDb: false, loaded: false, example: false,
+  props: new Map(), agents: new Map(), sheets: new Map(),
+  tab: "pipeline", selected: new Set(), openId: null, editing: false, tableLimit: 200,
+  sort: "listed",
+  f: { q: "", suburb: "", stage: "", agent: "", sheet: "", offline: false },
+  names: new Map(),
+};
+const I = { rows: null, headers: [], map: {}, fileName: "", markOffline: false, overwriteOwner: false, running: false, done: 0, total: 0, result: null, error: "" };
+
+try { const t = localStorage.getItem("ll.tab"); if (t) S.tab = t; } catch (e) {}
+
+/* ---------- utils ---------- */
+const $ = (s, r = document) => r.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const pad = n => String(n).padStart(2, "0");
+const isoDay = d => d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate());
+const today = () => isoDay(new Date());
+const nowISO = () => new Date().toISOString();
+function hash(s) { let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return (h >>> 0).toString(36); }
+const ABBR = { street: "st", road: "rd", avenue: "ave", drive: "dr", court: "ct", place: "pl", crescent: "cres", highway: "hwy", parade: "pde", terrace: "tce", lane: "ln", close: "cl", boulevard: "blvd", circuit: "cct", grove: "gr" };
+function normKey(address, suburb) {
+  return (address + " " + suburb).toLowerCase().replace(/[^a-z0-9]+/g, " ").trim()
+    .split(" ").map(w => ABBR[w] || w).join(" ");
+}
+function propId(address, suburb) {
+  const k = normKey(address, suburb);
+  return "p-" + k.replace(/ /g, "-").slice(0, 90) + "-" + hash(k);
+}
+function parseDay(s) {
+  if (!s) return null;
+  s = String(s).trim();
+  let m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+  if (m) return new Date(+m[1], +m[2] - 1, +m[3]);
+  m = s.match(/^(\d{1,2})[\/.\-](\d{1,2})[\/.\-](\d{2,4})/);
+  if (m) {
+    let d = +m[1], mo = +m[2], y = +m[3]; if (y < 100) y += 2000;
+    if (mo > 12 && d <= 12) [d, mo] = [mo, d]; // clearly month-first
+    return new Date(y, mo - 1, d);
+  }
+  const t = Date.parse(s); return isNaN(t) ? null : new Date(t);
+}
+function daysListed(p) {
+  const d = parseDay(p.listedDate) || parseDay(p.firstSeen);
+  if (!d) return null;
+  return Math.max(0, Math.floor((Date.now() - d.getTime()) / 864e5));
+}
+const isDue = p => !!p.nextFollowUp && p.nextFollowUp <= today() && !CLOSED.has(p.stage);
+const fmtDate = iso => { if (!iso) return ""; const d = parseDay(iso.slice(0, 10)); return d ? d.toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" }) : iso; };
+const fmtStamp = iso => { const d = new Date(iso); return isNaN(d) ? "" : d.toLocaleDateString(undefined, { day: "numeric", month: "short" }) + " " + d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" }); };
+const initials = n => (n || "?").split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0].toUpperCase()).join("");
+const agentName = id => S.agents.get(id)?.name || "";
+const pillHTML = k => { const s = STAGE[k] || STAGE.new; return `<span class="pill g-${s.g}">${esc(s.label)}</span>`; };
+function specs(p) { const b = []; if (p.propertyType) b.push(p.propertyType); if (p.beds) b.push(p.beds + " bd"); if (p.baths) b.push(p.baths + " ba"); if (p.cars) b.push(p.cars + " car"); return b.join(" · "); }
+function sheetNo() { const d = new Date(); return "CS-" + String(d.getFullYear()).slice(2) + pad(d.getMonth() + 1) + pad(d.getDate()) + "-" + Math.random().toString(36).slice(2, 5).toUpperCase(); }
+
+let toastT;
+function toast(msg) { const t = $("#toast"); t.textContent = msg; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => (t.hidden = true), 3200); }
+
+const use = n => (window.claude && window.claude.use) ? window.claude.use(n).catch(() => null) : Promise.resolve(null);
+
+/* ---------- data layer ---------- */
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+async function withRetry(fn) {
+  let wait = 600;
+  for (let i = 0; ; i++) {
+    try { return await fn(); }
+    catch (e) {
+      const code = e && e.code;
+      if ((code === "resource_exhausted" || code === "unavailable") && i < 4) { await sleep(wait + Math.random() * 400); wait *= 2; continue; }
+      throw e;
+    }
+  }
+}
+function onWriteError(e) {
+  const code = e && e.code;
+  if (code === "invalid_argument" && S.readOnly === false && S.canWriteUnknown) { S.readOnly = true; schedule(); toast("You have view access only, so changes can't be saved."); return; }
+  if (code === "quota_exceeded") { toast("Storage is full. Remove old offline properties, then try again."); return; }
+  toast("That change didn't save. Check your connection and try again.");
+}
+const chains = new Map();
+function chain(key, fn) { const p = (chains.get(key) || Promise.resolve()).then(fn); chains.set(key, p.catch(() => {})); return p; }
+
+function writeDoc(coll, map, id, data, mode) {
+  // mode: "set" | "update" | "delete"
+  if (mode === "delete") map.delete(id);
+  else map.set(id, mode === "set" ? data : { ...(map.get(id) || {}), ...data });
+  schedule();
+  if (S.example || !S.db) return Promise.resolve();
+  return chain(coll + "/" + id, () => withRetry(() => {
+    const ref = S.db.doc(coll + "/" + id);
+    return mode === "delete" ? ref.delete() : mode === "set" ? ref.set(data) : ref.update(data);
+  }));
+}
+const writeProp = (id, data, mode = "update") => writeDoc("properties", S.props, id, data, mode);
+const writeAgent = (id, data, mode = "update") => writeDoc("agents", S.agents, id, data, mode);
+const writeSheet = (id, data, mode = "update") => writeDoc("sheets", S.sheets, id, data, mode);
+function safe(p) { return p.catch(onWriteError); }
+
+function withLog(p, entry) {
+  const log = Array.isArray(p.log) ? p.log.slice(-(LOG_CAP - 1)) : [];
+  log.push({ t: nowISO(), by: S.uid || null, ...entry });
+  return log;
+}
+
+async function pool(jobs, n, onStep) {
+  let i = 0, done = 0, failed = 0;
+  async function worker() {
+    while (i < jobs.length) {
+      const j = jobs[i++];
+      try { await j(); } catch (e) { failed++; if (e && e.code === "quota_exceeded") { i = jobs.length; } }
+      done++; onStep && onStep(done, jobs.length);
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(n, jobs.length) }, worker));
+  return failed;
+}
+
+/* ---------- render scheduling ---------- */
+let raf = 0;
+function schedule() { if (!raf) raf = requestAnimationFrame(() => { raf = 0; renderAll(); }); }
+
+function canWrite() { return !S.readOnly && (S.example || !!S.db); }
+
+/* ---------- filters ---------- */
+function filtered() {
+  const f = S.f, q = f.q.trim().toLowerCase(), t = today();
+  const out = [];
+  for (const [id, p] of S.props) {
+    if (!f.offline && p.offline) continue;
+    if (f.suburb && (p.suburb || "") !== f.suburb) continue;
+    if (f.stage === "_due") { if (!isDue(p)) continue; }
+    else if (f.stage === "_working") { if (!WORKING.has(p.stage)) continue; }
+    else if (f.stage === "_won") { if (p.stage !== "won_sale" && p.stage !== "won_pm") continue; }
+    else if (f.stage && p.stage !== f.stage) continue;
+    if (f.agent === "_none") { if (p.agentId) continue; } else if (f.agent && p.agentId !== f.agent) continue;
+    if (f.sheet && p.sheetId !== f.sheet) continue;
+    if (q) {
+      const hay = [p.address, p.suburb, p.postcode, p.ownerName, p.ownerPhone, p.ownerEmail, p.managingAgency, p.idRef].join(" ").toLowerCase();
+      if (!hay.includes(q)) continue;
+    }
+    out.push([id, p]);
+  }
+  return out;
+}
+function sortRows(rows) {
+  const by = S.sort, idx = Object.fromEntries(STAGES.map((s, i) => [s.k, i]));
+  const addr = ([, p]) => ((p.suburb || "") + " " + (p.address || "")).toLowerCase();
+  const cmp = {
+    listed: (a, b) => (daysListed(b[1]) ?? -1) - (daysListed(a[1]) ?? -1),
+    address: (a, b) => addr(a).localeCompare(addr(b)),
+    stage: (a, b) => (idx[a[1].stage] ?? 0) - (idx[b[1].stage] ?? 0) || addr(a).localeCompare(addr(b)),
+    followup: (a, b) => (a[1].nextFollowUp || "9999").localeCompare(b[1].nextFollowUp || "9999"),
+    updated: (a, b) => (b[1].updatedAt || "").localeCompare(a[1].updatedAt || ""),
+  }[by] || (() => 0);
+  return rows.sort(cmp);
+}
+
+function fillSelect(el, opts, value) {
+  const html = opts.map(([v, l]) => `<option value="${esc(v)}">${esc(l)}</option>`).join("");
+  if (el._html !== html) { el.innerHTML = html; el._html = html; }
+  el.value = value;
+  if (el.value !== value) el.value = "";
+}
+function renderFilters() {
+  const subs = [...new Set([...S.props.values()].map(p => p.suburb).filter(Boolean))].sort();
+  fillSelect($("#f-suburb"), [["", "All suburbs"], ...subs.map(s => [s, s])], S.f.suburb);
+  fillSelect($("#f-stage"), [["", "All stages"], ["_due", "Follow-up due"], ["_working", "Being worked"], ["_won", "Won"], ...STAGES.map(s => [s.k, s.label])], S.f.stage);
+  const ags = [...S.agents.entries()].sort((a, b) => (a[1].name || "").localeCompare(b[1].name || ""));
+  fillSelect($("#f-agent"), [["", "All agents"], ["_none", "No agent"], ...ags.map(([id, a]) => [id, a.name])], S.f.agent);
+  const shs = [...S.sheets.entries()].sort((a, b) => (b[1].createdAt || "").localeCompare(a[1].createdAt || ""));
+  fillSelect($("#f-sheet"), [["", "All sheets"], ...shs.map(([id, s]) => [id, s.no + (agentName(s.agentId) ? " · " + agentName(s.agentId) : "")])], S.f.sheet);
+  $("#f-offline").checked = S.f.offline;
+  if (document.activeElement !== $("#f-q")) $("#f-q").value = S.f.q;
+  $("#filters").hidden = !(S.tab === "pipeline" || S.tab === "properties");
+  const active = S.f.q || S.f.suburb || S.f.stage || S.f.agent || S.f.sheet || S.f.offline;
+  $("#f-clear").hidden = !active;
+}
+
+/* ---------- banner, summary ---------- */
+function renderBanner() {
+  const b = $("#banner");
+  let html = "", cls = "banner";
+  if (S.example) { cls += " example"; html = `<span><b>Example rows.</b> Nothing here is real and nothing is saved. Changes reset when you leave the preview.</span><button class="btn small" data-act="exit-example">Leave preview</button>`; }
+  else if (S.noDb && S.loaded) { cls += " ro"; html = `<span>Shared storage isn't available in this view (it needs a signed-in claude.ai viewer). You can still preview how the dashboard works.</span><button class="btn small" data-act="example">Preview with example rows</button>`; }
+  else if (S.readOnly) { cls += " ro"; html = `<span>You have view access. Ask Lochlan for Contributor access to log calls and move leads.</span>`; }
+  b.className = cls; b.innerHTML = html; b.hidden = !html;
+}
+
+function renderSummary() {
+  const all = [...S.props.values()];
+  const online = all.filter(p => !p.offline);
+  const count = k => online.filter(p => p.stage === k).length;
+  const worked = online.filter(p => WORKING.has(p.stage)).length;
+  const due = online.filter(isDue).length;
+  const wonSale = all.filter(p => p.stage === "won_sale").length;
+  const wonPm = all.filter(p => p.stage === "won_pm").length;
+  const offline = all.length - online.length;
+  const k = (v, l, s, act, cls = "") => `<button class="kpi ${cls}" data-act="kpi" data-k="${act}"><span class="v">${v}</span><span class="l">${esc(l)}</span><span class="s">${esc(s)}</span></button>`;
+  $("#kpis").innerHTML =
+    k(online.length, "Rentals online", offline ? offline + " gone offline" : "In the latest imports", "online") +
+    k(count("new"), "Not on a sheet yet", "Ready to hand out", "new") +
+    k(worked, "Being worked", "On a sheet, not closed", "_working") +
+    k(due, "Follow-ups due", "Today or overdue", "_due", due ? "warn" : "") +
+    k(wonSale, "Listings to sell", "First goal", "won_sale", wonSale ? "good" : "") +
+    k(wonPm, "Managing with Love", "Fallback goal", "won_pm", wonPm ? "good" : "");
+
+  const counts = STAGES.map(s => [s, all.filter(p => p.stage === s.k && (!p.offline || CLOSED.has(s.k))).length]);
+  const max = Math.max(1, ...counts.map(c => c[1]));
+  const contacted = all.filter(p => !EARLY.has(p.stage) && p.stage !== undefined).length;
+  $("#funnel").innerHTML = `<div class="funnel-head"><h3>Leads by stage</h3><span class="muted" style="font-size:12px">${contacted} of ${all.length} reached a landlord</span></div>` +
+    counts.map(([s, n]) => `<button class="frow g-${s.g}" data-act="kpi" data-k="${s.k}" title="${esc(s.hint)}"><span class="fl">${esc(s.label)}</span><span class="ftrack">${n ? `<i style="width:${(n / max * 100).toFixed(1)}%"></i>` : ""}</span><span class="fv">${n}</span></button>`).join("") +
+    `<div class="legend"><span class="g-queue"><b></b>Queued</span><span class="g-open"><b></b>Contacting</span><span class="g-hot"><b></b>Interested</span><span class="g-won"><b></b>Won</span><span class="g-dnc"><b></b>Do not contact</span></div>`;
+
+  $("#n-props").textContent = all.length ? all.length : "";
+  $("#n-sheets").textContent = S.sheets.size ? S.sheets.size : "";
+  $("#n-agents").textContent = S.agents.size ? S.agents.size : "";
+}
+
+/* ---------- views ---------- */
+function emptyProps() {
+  if (!S.loaded) return `<div class="empty-state"><h2>Loading leads</h2><p>Fetching the shared lead list.</p></div>`;
+  return `<div class="empty-state">
+    <h2>No rental listings yet</h2>
+    <p>Start by importing the rental listings for the region. A CSV or Excel export works. Then add your associate agents and build contact sheets for them.</p>
+    <ol><li>Import listings (address, suburb, rent, agency, listing date).</li><li>Import or type in landlord details from the ID lookup. They match on address.</li><li>Add agents, then make a contact sheet and download it.</li><li>Agents log each call here, and the lead moves through the pipeline.</li></ol>
+    <div class="row-actions"><button class="btn primary" data-act="tab" data-tab="import">Import listings</button>${S.example ? "" : `<button class="btn" data-act="example">Preview with example rows</button>`}</div>
+  </div>`;
+}
+
+function cardHTML(id, p) {
+  const ag = agentName(p.agentId);
+  const tags = [];
+  if (ag) tags.push(`<span class="initials" title="${esc(ag)}">${esc(initials(ag))}</span>`);
+  if (isDue(p)) tags.push(`<span class="tag due">Follow up ${p.nextFollowUp === today() ? "today" : fmtDate(p.nextFollowUp)}</span>`);
+  if (p.attempts) tags.push(`<span class="tag">${p.attempts} call${p.attempts === 1 ? "" : "s"}</span>`);
+  if (p.offline) tags.push(`<span class="tag off">Offline</span>`);
+  const dl = daysListed(p);
+  const b = [p.suburb, specs(p), p.rent].filter(Boolean).join(" · ");
+  return `<article class="card" draggable="${canWrite()}" data-open="${esc(id)}" data-id="${esc(id)}" tabindex="0">
+    <div class="a">${esc(p.address)}</div>
+    ${b ? `<div class="b">${esc(b)}</div>` : ""}
+    <div class="c">${p.ownerName ? esc(p.ownerName) : `<span class="muted">No landlord details yet</span>`}${dl != null ? ` <span class="muted">· ${dl}d listed</span>` : ""}</div>
+    ${tags.length ? `<div class="d">${tags.join("")}</div>` : ""}
+  </article>`;
+}
+function viewPipeline() {
+  if (!S.props.size) return emptyProps();
+  const rows = sortRows(filtered());
+  const by = Object.fromEntries(STAGES.map(s => [s.k, []]));
+  for (const r of rows) (by[r[1].stage] || by.new).push(r);
+  const CAP = 40;
+  return `<div class="board-wrap"><div class="board">` + STAGES.map(s => {
+    const list = by[s.k];
+    return `<section class="col" data-stage="${s.k}">
+      <div class="col-head g-${s.g}"><b>${esc(s.label)}</b><span class="num muted">${list.length}</span></div>
+      <div class="col-hint">${esc(s.hint)}</div>
+      ${list.slice(0, CAP).map(([id, p]) => cardHTML(id, p)).join("")}
+      ${list.length > CAP ? `<button class="more" data-act="see-stage" data-k="${s.k}">${list.length - CAP} more in the table</button>` : ""}
+    </section>`;
+  }).join("") + `</div></div>` + (canWrite() ? `<p class="muted" style="margin:0;font-size:12px">Drag a card to another column to move it, or open it to log a call.</p>` : "");
+}
+
+function viewProperties() {
+  if (!S.props.size) return emptyProps();
+  const rows = sortRows(filtered());
+  const sel = [...S.selected].filter(id => S.props.has(id));
+  const allSel = rows.length && rows.every(([id]) => S.selected.has(id));
+  const shown = rows.slice(0, S.tableLimit);
+  return `
+  <div class="filters">
+    <label class="check">Sort
+      <select id="sort" aria-label="Sort">
+        ${[["listed", "Longest listed"], ["address", "Suburb, then address"], ["stage", "Stage"], ["followup", "Next follow-up"], ["updated", "Recently updated"]].map(([v, l]) => `<option value="${v}"${S.sort === v ? " selected" : ""}>${l}</option>`).join("")}
+      </select></label>
+    <span class="muted" style="font-size:12.5px">${rows.length} of ${S.props.size} properties</span>
+    <span style="flex:1"></span>
+    <button class="btn small" data-act="export-view">Download this view (CSV)</button>
+  </div>
+  ${sel.length ? `<div class="selbar"><b>${sel.length} selected</b>
+    <button class="btn small primary" data-act="sheet-from-sel">Make a contact sheet</button>
+    <button class="btn small ghost" data-act="clear-sel">Clear selection</button></div>` : ""}
+  <div class="tbl-wrap"><table>
+    <thead><tr>
+      <th><input type="checkbox" id="sel-all" aria-label="Select all in view" ${allSel ? "checked" : ""}></th>
+      <th>Property</th><th>Rent</th><th style="text-align:right">Listed</th><th>Landlord</th><th>Stage</th><th>Agent</th><th>Sheet</th><th>Follow-up</th>
+    </tr></thead>
+    <tbody>
+    ${shown.map(([id, p]) => {
+      const dl = daysListed(p); const sh = S.sheets.get(p.sheetId);
+      return `<tr class="row${S.selected.has(id) ? " sel" : ""}" data-open="${esc(id)}">
+        <td><input type="checkbox" data-sel="${esc(id)}" aria-label="Select ${esc(p.address)}" ${S.selected.has(id) ? "checked" : ""}></td>
+        <td><b>${esc(p.address)}</b>${p.offline ? ` <span class="tag off">Offline</span>` : ""}<div class="sub">${esc([p.suburb, p.postcode].filter(Boolean).join(" "))}${specs(p) ? " · " + esc(specs(p)) : ""}</div></td>
+        <td class="mono">${esc(p.rent || "")}</td>
+        <td class="n">${dl != null ? dl + "d" : ""}</td>
+        <td>${p.ownerName ? esc(p.ownerName) : `<span class="muted">Missing</span>`}<div class="sub mono">${esc(p.ownerPhone || "")}</div></td>
+        <td>${pillHTML(p.stage)}</td>
+        <td>${esc(agentName(p.agentId))}</td>
+        <td class="mono" style="font-size:12px">${esc(sh ? sh.no : "")}</td>
+        <td>${p.nextFollowUp ? `<span class="${isDue(p) ? "tag due" : ""}">${esc(fmtDate(p.nextFollowUp))}</span>` : ""}</td>
+      </tr>`;
+    }).join("")}
+    ${rows.length ? "" : `<tr><td colspan="9" class="muted" style="padding:18px">No properties match these filters.</td></tr>`}
+    </tbody></table></div>
+  ${rows.length > shown.length ? `<button class="btn" data-act="more-rows">Show ${Math.min(200, rows.length - shown.length)} more</button>` : ""}`;
+}
+
+function stackHTML(ps) {
+  const groups = [["queue", 0], ["open", 0], ["hot", 0], ["won", 0], ["lost", 0], ["dnc", 0]];
+  const gi = Object.fromEntries(groups.map((g, i) => [g[0], i]));
+  for (const p of ps) groups[gi[(STAGE[p.stage] || STAGE.new).g]][1]++;
+  if (!ps.length) return `<div class="stack"><span class="empty"></span></div>`;
+  return `<div class="stack">${groups.filter(g => g[1]).map(([g, n]) => `<i class="g-${g}" style="flex:${n}" title="${n}"></i>`).join("")}</div>`;
+}
+function viewSheets() {
+  const list = [...S.sheets.entries()].sort((a, b) => (b[1].createdAt || "").localeCompare(a[1].createdAt || ""));
+  if (!list.length) return `<div class="empty-state"><h2>No contact sheets yet</h2>
+    <p>A contact sheet is a batch of rental properties with the landlord's details, handed to one associate agent. Making one assigns those leads to the agent and moves them to "On a sheet". You can download it as a spreadsheet or as a printable page.</p>
+    <div class="row-actions"><button class="btn primary" data-act="new-sheet">New contact sheet</button>${S.agents.size ? "" : `<button class="btn" data-act="tab" data-tab="agents">Add agents first</button>`}</div></div>`;
+  return `<div class="grid-cards">` + list.map(([id, s]) => {
+    const ps = (s.propertyIds || []).map(pid => S.props.get(pid)).filter(Boolean);
+    const reached = ps.filter(p => !EARLY.has(p.stage)).length;
+    const won = ps.filter(p => p.stage === "won_sale" || p.stage === "won_pm").length;
+    const due = ps.filter(isDue).length;
+    return `<article class="sheet">
+      <div style="display:flex;justify-content:space-between;gap:10px;align-items:baseline;flex-wrap:wrap">
+        <h2>${esc(agentName(s.agentId) || "Unassigned")}</h2><span class="sheet-no">${esc(s.no)}</span></div>
+      <div class="muted" style="font-size:12.5px">Made ${esc(fmtDate(s.createdAt))} · ${ps.length} properties${s.note ? " · " + esc(s.note) : ""}</div>
+      ${stackHTML(ps)}
+      <div style="font-size:12.5px;display:flex;gap:14px;flex-wrap:wrap"><span><b class="num">${reached}</b> reached</span><span><b class="num">${won}</b> won</span>${due ? `<span class="tag due">${due} follow-ups due</span>` : ""}</div>
+      <div class="row-actions">
+        <button class="btn small" data-act="sheet-csv" data-id="${esc(id)}">Download CSV</button>
+        <button class="btn small" data-act="sheet-html" data-id="${esc(id)}">Download printable</button>
+        <button class="btn small ghost" data-act="sheet-view" data-id="${esc(id)}">Show leads</button>
+      </div>
+    </article>`;
+  }).join("") + `</div>`;
+}
+
+function viewAgents() {
+  const list = [...S.agents.entries()].sort((a, b) => (a[1].name || "").localeCompare(b[1].name || ""));
+  const all = [...S.props.values()];
+  return `<div class="panel">
+    <h2>Associate agents</h2>
+    <p class="muted" style="margin:0">Agents named here can be given contact sheets. They don't need a claude.ai account unless they will log calls on this dashboard themselves.</p>
+    ${canWrite() ? `<form class="form-row" id="agent-form" autocomplete="off">
+      <label class="field">Name<input type="text" id="ag-name" required></label>
+      <label class="field">Phone<input type="tel" id="ag-phone"></label>
+      <label class="field">Email<input type="email" id="ag-email"></label>
+      <button class="btn primary" type="submit">Add agent</button>
+    </form>` : ""}
+  </div>
+  ${list.length ? `<div class="tbl-wrap"><table><thead><tr><th>Agent</th><th>Contact</th><th style="text-align:right">Assigned</th><th style="text-align:right">Being worked</th><th style="text-align:right">Due</th><th style="text-align:right">Won</th><th></th></tr></thead><tbody>
+    ${list.map(([id, a]) => {
+      const mine = all.filter(p => p.agentId === id);
+      return `<tr><td><b>${esc(a.name)}</b></td><td class="mono" style="font-size:12px">${esc([a.phone, a.email].filter(Boolean).join(" · "))}</td>
+      <td class="n">${mine.length}</td><td class="n">${mine.filter(p => WORKING.has(p.stage)).length}</td><td class="n">${mine.filter(isDue).length}</td><td class="n">${mine.filter(p => p.stage === "won_sale" || p.stage === "won_pm").length}</td>
+      <td style="text-align:right;white-space:nowrap"><button class="btn small ghost" data-act="agent-leads" data-id="${esc(id)}">Leads</button>
+      ${canWrite() ? (S.confirmAgent === id ? `<span class="confirm">Remove? Their leads stay. <button class="btn small danger" data-act="agent-del" data-id="${esc(id)}">Remove</button><button class="btn small ghost" data-act="agent-del-cancel">Keep</button></span>` : `<button class="btn small ghost danger" data-act="agent-del-ask" data-id="${esc(id)}">Remove</button>`) : ""}</td></tr>`;
+    }).join("")}
+  </tbody></table></div>` : ""}`;
+}
+
+function viewImport() {
+  if (!canWrite()) return `<div class="empty-state"><h2>Importing needs edit access</h2><p>${S.noDb ? "Shared storage isn't available in this view. Open a preview with example rows to try the import." : "You have view access only."}</p>${S.noDb && !S.example ? `<button class="btn" data-act="example">Preview with example rows</button>` : ""}</div>`;
+  const h = I.headers;
+  const mapRows = FIELDS.map(([k, l]) => {
+    const ci = I.map[k];
+    const sample = I.rows && ci !== "" && ci != null ? I.rows.slice(0, 3).map(r => r[ci]).filter(Boolean).join(" | ") : "";
+    return `<tr><td>${esc(l)}${k === "address" ? ` <span class="tag">required</span>` : ""}</td>
+      <td><select data-map="${k}" aria-label="Column for ${esc(l)}"><option value="">Not in file</option>${h.map((x, i) => `<option value="${i}"${String(ci) === String(i) ? " selected" : ""}>${esc(x || "Column " + (i + 1))}</option>`).join("")}</select></td>
+      <td class="muted" style="font-size:12px;max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(sample)}</td></tr>`;
+  }).join("");
+  return `<div class="import-grid">
+    <div class="panel">
+      <h2>1. Load a file</h2>
+      <div class="drop-zone" id="drop">
+        <b>Drop a CSV or Excel file here</b>
+        <span class="muted">or</span>
+        <label class="btn">Choose file<input type="file" id="file" accept=".csv,.tsv,.txt,.xlsx,.xls" hidden></label>
+        ${I.fileName ? `<span class="mono" style="font-size:12px">${esc(I.fileName)} · ${I.rows ? I.rows.length : 0} rows</span>` : ""}
+      </div>
+      <label class="field">Or paste rows from a spreadsheet (first row is the headings)
+        <textarea id="paste" rows="5" placeholder="Address, Suburb, Rent, Agency, Listed&#10;12 Example St, Sampleton, 650, Example Realty, 01/09/2026"></textarea></label>
+      <div class="row-actions"><button class="btn" data-act="parse-paste">Read pasted rows</button></div>
+      <p class="muted" style="margin:0;font-size:12.5px">Properties match on street address and suburb. Importing a property that already exists refreshes its listing details and leaves its stage, agent and call history alone. Landlord details only fill gaps unless you tick the overwrite box. Dates like 03/09/2026 are read day first.</p>
+      ${I.error ? `<p style="color:var(--crit);margin:0">${esc(I.error)}</p>` : ""}
+    </div>
+    <div class="panel">
+      <h2>2. Match the columns</h2>
+      ${I.rows ? `<div class="tbl-wrap"><table class="map-tbl"><thead><tr><th>Dashboard field</th><th>Column in your file</th><th>First values</th></tr></thead><tbody>${mapRows}</tbody></table></div>
+      <label class="check"><input type="checkbox" id="opt-offline" ${I.markOffline ? "checked" : ""}> This file is the full current list of rentals online. Mark properties missing from it as offline.</label>
+      <label class="check"><input type="checkbox" id="opt-owner" ${I.overwriteOwner ? "checked" : ""}> Overwrite landlord details that are already filled in</label>
+      ${I.running || I.result ? `<div class="progress"><i style="width:${I.total ? (I.done / I.total * 100).toFixed(1) : 0}%"></i></div>` : ""}
+      ${I.result ? `<p style="margin:0">${esc(I.result)}</p>` : ""}
+      <div class="row-actions"><button class="btn primary" data-act="run-import" ${I.running ? "disabled" : ""}>${I.running ? `Importing ${I.done} of ${I.total}` : `Import ${I.rows.length} rows`}</button>
+      <button class="btn ghost" data-act="reset-import" ${I.running ? "disabled" : ""}>Start over</button></div>`
+      : `<p class="muted" style="margin:0">Load a file first. Columns are matched automatically where the headings are recognisable, and you can change any match before importing.</p>`}
+    </div>
+  </div>`;
+}
+
+/* ---------- drawer ---------- */
+function renderDrawer() {
+  const root = $("#drawer-root");
+  const p = S.openId && S.props.get(S.openId);
+  if (!p) { if (root.innerHTML) root.innerHTML = ""; return; }
+  const id = S.openId;
+  const keep = { note: $("#d-note")?.value || "", focus: document.activeElement?.id, scroll: $(".drawer-body")?.scrollTop || 0 };
+  if (S.editing && $("#edit-form")) return; // don't clobber an open edit form
+  const w = canWrite();
+  const dl = daysListed(p);
+  const sh = S.sheets.get(p.sheetId);
+  const copy = v => v ? `<button class="btn small ghost" data-act="copy" data-v="${esc(v)}">Copy</button>` : "";
+  const agents = [...S.agents.entries()].sort((a, b) => (a[1].name || "").localeCompare(b[1].name || ""));
+  const log = (p.log || []).slice().reverse();
+  const body = S.editing ? editFormHTML(p) : `
+    <section style="display:grid;gap:8px">
+      <h3>Landlord</h3>
+      <dl class="kv">
+        <dt>Name</dt><dd>${p.ownerName ? esc(p.ownerName) : `<span class="muted">Not found yet</span>`}</dd>
+        <dt>Phone</dt><dd><span class="mono">${esc(p.ownerPhone || "")}</span>${copy(p.ownerPhone)}</dd>
+        <dt>Email</dt><dd>${esc(p.ownerEmail || "")}${copy(p.ownerEmail)}</dd>
+        <dt>Postal address</dt><dd>${esc(p.ownerMailing || "")}</dd>
+        <dt>ID lookup ref</dt><dd class="mono">${esc(p.idRef || "")}</dd>
+      </dl>
+    </section>
+    <section style="display:grid;gap:10px">
+      <h3>Lead</h3>
+      <div class="form-row">
+        <label class="field">Stage<select id="d-stage" ${w ? "" : "disabled"}>${STAGES.map(s => `<option value="${s.k}"${p.stage === s.k ? " selected" : ""}>${esc(s.label)}</option>`).join("")}</select></label>
+        <label class="field">Agent<select id="d-agent" ${w ? "" : "disabled"}><option value="">No agent</option>${agents.map(([aid, a]) => `<option value="${esc(aid)}"${p.agentId === aid ? " selected" : ""}>${esc(a.name)}</option>`).join("")}</select></label>
+        <label class="field">Next follow-up<input type="date" id="d-follow" value="${esc(p.nextFollowUp || "")}" ${w ? "" : "disabled"}></label>
+      </div>
+      <div class="muted" style="font-size:12.5px">${p.attempts || 0} call attempt${p.attempts === 1 ? "" : "s"}${p.lastContact ? " · last " + esc(fmtStamp(p.lastContact)) : ""}${sh ? " · sheet " + esc(sh.no) : ""}</div>
+      ${w ? `<label class="field">Note for this call (optional)<textarea id="d-note" rows="2" placeholder="What did they say? Best time to call back?"></textarea></label>
+      <div class="field" style="font-size:12px;color:var(--ink-2);font-weight:600">Log a call outcome</div>
+      <div class="outcomes">${OUTCOMES.map(o => `<button class="btn small" data-act="outcome" data-k="${o.k}">${esc(o.label)}</button>`).join("")}</div>
+      <div class="row-actions"><button class="btn small ghost" data-act="add-note">Save note only</button></div>` : ""}
+    </section>
+    <section style="display:grid;gap:8px">
+      <h3>Listing</h3>
+      <dl class="kv">
+        <dt>Rent</dt><dd class="mono">${esc(p.rent || "")}</dd>
+        <dt>Property</dt><dd>${esc(specs(p))}</dd>
+        <dt>Managing agency</dt><dd>${esc(p.managingAgency || "")}</dd>
+        <dt>Listed</dt><dd>${esc(p.listedDate || "")}${dl != null ? ` <span class="muted">(${dl} days)</span>` : ""}</dd>
+        <dt>Online</dt><dd>${p.offline ? `<span class="tag off">Offline since ${esc(fmtDate(p.offlineSince))}</span>` : "Yes"}${p.lastSeen ? ` <span class="muted">seen ${esc(fmtDate(p.lastSeen))}</span>` : ""}</dd>
+        <dt>Source</dt><dd>${esc(p.source || "")}</dd>
+        <dt>Link</dt><dd>${/^https?:\/\//i.test(p.listingUrl || "") ? `<a href="${esc(p.listingUrl)}" target="_blank" rel="noopener">Open listing</a>` : esc(p.listingUrl || "")}</dd>
+      </dl>
+      ${w ? `<div class="row-actions"><button class="btn small" data-act="edit">Edit details</button></div>` : ""}
+    </section>
+    <section style="display:grid;gap:8px">
+      <h3>History</h3>
+      ${log.length ? `<ul class="log">${log.map(e => `<li><time>${esc(fmtStamp(e.t))}</time><div>${esc(e.text)}${e.note ? `<div>${esc(e.note)}</div>` : ""}${e.by && S.names.get(e.by) ? `<div class="who">${esc(S.names.get(e.by))}</div>` : ""}</div></li>`).join("")}</ul>` : `<p class="muted" style="margin:0">Nothing logged yet.</p>`}
+    </section>`;
+  root.innerHTML = `<div class="scrim" data-act="close"></div>
+    <aside class="drawer" role="dialog" aria-modal="true" aria-labelledby="d-title">
+      <div class="drawer-head">
+        <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start">
+          <div><h2 id="d-title">${esc(p.address)}</h2><div class="muted">${esc([p.suburb, p.postcode].filter(Boolean).join(" "))}</div></div>
+          <button class="btn small ghost x" data-act="close" aria-label="Close">Close</button>
+        </div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap">${pillHTML(p.stage)}${agentName(p.agentId) ? `<span class="tag">${esc(agentName(p.agentId))}</span>` : ""}${isDue(p) ? `<span class="tag due">Follow-up due</span>` : ""}</div>
+      </div>
+      <div class="drawer-body">${body}</div>
+    </aside>`;
+  if (keep.note && $("#d-note")) $("#d-note").value = keep.note;
+  if (keep.focus && document.getElementById(keep.focus)) document.getElementById(keep.focus).focus();
+  $(".drawer-body").scrollTop = keep.scroll;
+  resolveNames(log.map(e => e.by).filter(Boolean));
+}
+function editFormHTML(p) {
+  return `<form id="edit-form" style="display:grid;gap:10px" autocomplete="off">
+    <h3>Edit details</h3>
+    ${FIELDS.map(([k, l]) => `<label class="field">${esc(l)}<input type="text" name="${k}" id="e-${k}" value="${esc(p[k] || "")}" ${k === "address" ? "readonly title=\"The address identifies the property and can't be changed here\"" : ""}></label>`).join("")}
+    <div class="row-actions"><button class="btn primary" type="submit">Save details</button><button class="btn ghost" type="button" data-act="edit-cancel">Cancel</button></div>
+    <div style="border-top:1px solid var(--line);padding-top:12px">
+      ${S.confirmDelete ? `<span class="confirm">Remove this property and its history? <button class="btn small danger" type="button" data-act="prop-del">Remove</button><button class="btn small ghost" type="button" data-act="prop-del-cancel">Keep</button></span>`
+        : `<button class="btn small ghost danger" type="button" data-act="prop-del-ask">Remove property</button>`}
+    </div>
+  </form>`;
+}
+
+let nameReq = 0;
+async function resolveNames(ids) {
+  if (!S.user || !S.user.profiles) return;
+  const need = [...new Set(ids)].filter(id => !S.names.has(id));
+  if (!need.length) return;
+  const my = ++nameReq;
+  try {
+    const ps = await S.user.profiles(need);
+    for (const id of need) S.names.set(id, (ps && ps[id] && ps[id].name) || "Someone");
+    if (my === nameReq) schedule();
+  } catch (e) {}
+}
+
+/* ---------- modal: new contact sheet ---------- */
+const M = { open: false, agentId: "", suburb: "", stage: "new", max: 25, sort: "listed", picked: null, note: "", busy: false, done: null };
+function sheetCandidates() {
+  const rows = [];
+  for (const [id, p] of S.props) {
+    if (p.offline || CLOSED.has(p.stage)) continue;
+    if (M.suburb && p.suburb !== M.suburb) continue;
+    if (M.stage === "new" && p.stage !== "new") continue;
+    if (M.stage === "nosheet" && p.sheetId) continue;
+    rows.push([id, p]);
+  }
+  const s = S.sort; S.sort = M.sort; sortRows(rows); S.sort = s;
+  return rows;
+}
+function renderModal() {
+  const root = $("#modal-root");
+  if (!M.open) { if (root.innerHTML) root.innerHTML = ""; return; }
+  const keepScroll = $(".modal-body")?.scrollTop || 0;
+  if (M.done) {
+    const s = S.sheets.get(M.done);
+    root.innerHTML = `<div class="modal" role="dialog" aria-modal="true"><div class="modal-card" style="width:min(520px,100%)">
+      <div class="modal-head"><h2>Contact sheet ${esc(s ? s.no : "")} is ready</h2><button class="btn small ghost" data-act="modal-close">Close</button></div>
+      <div class="modal-body"><p style="margin:0">${s ? (s.propertyIds || []).length : 0} leads are now with ${esc(agentName(s && s.agentId))} and sit in "On a sheet". Download the sheet to send to them.</p>
+      <div class="row-actions"><button class="btn primary" data-act="sheet-csv" data-id="${esc(M.done)}">Download CSV</button><button class="btn" data-act="sheet-html" data-id="${esc(M.done)}">Download printable</button></div></div>
+    </div></div>`;
+    return;
+  }
+  const subs = [...new Set([...S.props.values()].map(p => p.suburb).filter(Boolean))].sort();
+  const agents = [...S.agents.entries()].sort((a, b) => (a[1].name || "").localeCompare(b[1].name || ""));
+  const cands = M.fromSel ? M.fromSel.map(id => [id, S.props.get(id)]).filter(r => r[1]) : sheetCandidates();
+  if (!M.picked) M.picked = new Set(cands.slice(0, M.fromSel ? cands.length : M.max).map(r => r[0]));
+  const picked = cands.filter(([id]) => M.picked.has(id));
+  const already = picked.filter(([, p]) => p.sheetId).length;
+  root.innerHTML = `<div class="modal" role="dialog" aria-modal="true" aria-labelledby="m-title"><div class="modal-card">
+    <div class="modal-head"><h2 id="m-title">New contact sheet</h2><button class="btn small ghost" data-act="modal-close">Cancel</button></div>
+    <div class="modal-body">
+      ${!agents.length ? `<div class="banner"><span>Add at least one associate agent before making a sheet.</span><button class="btn small" data-act="tab" data-tab="agents">Go to agents</button></div>` : ""}
+      <div class="form-row">
+        <label class="field">Agent<select id="m-agent"><option value="">Choose an agent</option>${agents.map(([id, a]) => `<option value="${esc(id)}"${M.agentId === id ? " selected" : ""}>${esc(a.name)}</option>`).join("")}</select></label>
+        ${M.fromSel ? "" : `
+        <label class="field">Suburb<select id="m-suburb"><option value="">All suburbs</option>${subs.map(s => `<option${M.suburb === s ? " selected" : ""}>${esc(s)}</option>`).join("")}</select></label>
+        <label class="field">Take from<select id="m-stage"><option value="new"${M.stage === "new" ? " selected" : ""}>New leads only</option><option value="nosheet"${M.stage === "nosheet" ? " selected" : ""}>Any open lead not on a sheet</option><option value="any"${M.stage === "any" ? " selected" : ""}>Any open lead (reassign)</option></select></label>
+        <label class="field">Order<select id="m-sort"><option value="listed"${M.sort === "listed" ? " selected" : ""}>Longest listed first</option><option value="address"${M.sort === "address" ? " selected" : ""}>Suburb, then address</option></select></label>
+        <label class="field">How many<input type="number" id="m-max" min="1" max="500" value="${M.max}"></label>`}
+      </div>
+      <label class="field">Note on the sheet (optional)<input type="text" id="m-note" value="${esc(M.note)}" placeholder="For example: north side, call after 5pm"></label>
+      <div class="muted" style="font-size:12.5px">${picked.length} picked from ${cands.length} available${already ? ` · ${already} already on another sheet and will move to this one` : ""}. ${cands.filter(([, p]) => !p.ownerPhone && !p.ownerEmail).length ? "Some have no landlord contact yet." : ""}</div>
+      <div class="tbl-wrap" style="max-height:46vh;overflow:auto"><table>
+        <thead><tr><th></th><th>Property</th><th style="text-align:right">Listed</th><th>Landlord</th><th>Phone</th><th>Stage</th></tr></thead>
+        <tbody>${cands.slice(0, 500).map(([id, p]) => { const dl = daysListed(p); return `<tr>
+          <td><input type="checkbox" data-pick="${esc(id)}" ${M.picked.has(id) ? "checked" : ""} aria-label="Include ${esc(p.address)}"></td>
+          <td><b>${esc(p.address)}</b><div class="sub">${esc(p.suburb || "")}</div></td>
+          <td class="n">${dl != null ? dl + "d" : ""}</td>
+          <td>${p.ownerName ? esc(p.ownerName) : `<span class="muted">Missing</span>`}</td>
+          <td class="mono" style="font-size:12px">${esc(p.ownerPhone || "")}</td>
+          <td>${pillHTML(p.stage)}</td></tr>`; }).join("")}
+          ${cands.length ? "" : `<tr><td colspan="6" class="muted" style="padding:16px">No open leads match. Try another suburb or "Any open lead not on a sheet".</td></tr>`}</tbody>
+      </table></div>
+    </div>
+    <div class="modal-foot"><span class="muted" style="font-size:12.5px">Making the sheet assigns these leads to the agent.</span>
+      <button class="btn primary" data-act="create-sheet" ${!M.agentId || !picked.length || M.busy || !canWrite() ? "disabled" : ""}>${M.busy ? "Making sheet" : `Make sheet with ${picked.length}`}</button></div>
+  </div></div>`;
+  $(".modal-body").scrollTop = keepScroll;
+}
+function openSheetModal(fromSel) {
+  M.open = true; M.done = null; M.busy = false; M.picked = null; M.note = "";
+  M.fromSel = fromSel || null;
+  if (!M.agentId && S.agents.size === 1) M.agentId = [...S.agents.keys()][0];
+  renderModal();
+}
+async function createSheet() {
+  const cands = M.fromSel ? M.fromSel.map(id => [id, S.props.get(id)]).filter(r => r[1]) : sheetCandidates();
+  const ids = cands.filter(([id]) => M.picked.has(id)).map(r => r[0]);
+  if (!ids.length || !M.agentId) return;
+  M.busy = true; renderModal();
+  const sid = "s-" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+  const sheet = { no: sheetNo(), agentId: M.agentId, propertyIds: ids, note: M.note.trim(), createdAt: nowISO(), createdBy: S.uid || null };
+  try {
+    await writeSheet(sid, sheet, "set");
+    const ag = agentName(M.agentId), now = nowISO();
+    const failed = await pool(ids.map(id => () => {
+      const p = S.props.get(id); if (!p) return;
+      const prevSheet = S.sheets.get(p.sheetId);
+      const patch = { sheetId: sid, agentId: M.agentId, updatedAt: now,
+        stage: p.stage === "new" ? "assigned" : p.stage,
+        log: withLog(p, { kind: "sheet", text: `Added to sheet ${sheet.no} for ${ag}` + (prevSheet ? ` (was on ${prevSheet.no})` : "") }) };
+      return writeProp(id, patch);
+    }), 4);
+    if (failed) toast(failed + " leads didn't update. Open the sheet and try again.");
+    M.busy = false; M.done = sid; S.selected.clear(); renderModal(); schedule();
+  } catch (e) { M.busy = false; renderModal(); onWriteError(e); }
+}
+
+/* ---------- exports ---------- */
+const CSV_COLS = [
+  ["#", null], ["Address", "address"], ["Suburb", "suburb"], ["Postcode", "postcode"], ["Property", p => specs(p)], ["Rent", "rent"],
+  ["Listed", "listedDate"], ["Days listed", p => daysListed(p) ?? ""], ["Managing agency", "managingAgency"],
+  ["Landlord", "ownerName"], ["Phone", "ownerPhone"], ["Email", "ownerEmail"], ["Postal address", "ownerMailing"], ["ID ref", "idRef"],
+  ["Stage", p => (STAGE[p.stage] || STAGE.new).label], ["Call attempts", p => p.attempts || 0], ["Next follow-up", "nextFollowUp"],
+  ["Outcome", () => ""], ["Notes", () => ""], ["Lead ID", "_id"],
+];
+const csvCell = v => { v = String(v ?? ""); return /[",\n\r]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; };
+function toCSV(rows, head = []) {
+  const lines = head.map(r => r.map(csvCell).join(","));
+  lines.push(CSV_COLS.map(c => c[0]).join(","));
+  rows.forEach(([id, p], i) => lines.push(CSV_COLS.map(([, k]) => k === null ? i + 1 : k === "_id" ? id : typeof k === "function" ? k(p) : p[k]).map(csvCell).join(",")));
+  return "﻿" + lines.join("\r\n") + "\r\n";
+}
+function sheetRows(s) { return (s.propertyIds || []).map(id => [id, S.props.get(id)]).filter(r => r[1]); }
+function sheetCSV(s) {
+  return toCSV(sheetRows(s), [["Contact sheet", s.no], ["Agent", agentName(s.agentId)], ["Made", fmtDate(s.createdAt)], ["Goal", "Ask about selling first. If not selling, offer management with Love."], s.note ? ["Note", s.note] : null].filter(Boolean).concat([[]]));
+}
+function sheetHTML(s) {
+  const rows = sheetRows(s);
+  const outcomes = ["No answer", "Message", "Spoke", "Appraisal", "Mgmt", "Not int.", "DNC"];
+  return `<!doctype html><html><head><meta charset="utf-8"><title>${esc(s.no)} ${esc(agentName(s.agentId))}</title>
+<style>
+body{font:11px/1.35 Arial,Helvetica,sans-serif;color:#111;margin:18px}
+h1{font-size:18px;margin:0 0 2px}.meta{color:#444;margin-bottom:8px}
+.goal{border:1.5px solid #111;padding:6px 8px;margin:8px 0 12px;font-weight:bold}
+table{border-collapse:collapse;width:100%}th,td{border:1px solid #999;padding:5px 6px;vertical-align:top;text-align:left}
+th{background:#eee;font-size:10px;text-transform:uppercase}
+.box{display:inline-block;margin:0 6px 3px 0;white-space:nowrap}.box i{display:inline-block;width:9px;height:9px;border:1px solid #333;margin-right:3px;vertical-align:-1px}
+.notes{height:34px}.mono{font-family:Consolas,monospace}
+@page{size:A4 landscape;margin:12mm}@media print{body{margin:0}tr{page-break-inside:avoid}}
+</style></head><body>
+<h1>Contact sheet ${esc(s.no)}</h1>
+<div class="meta">Agent: <b>${esc(agentName(s.agentId))}</b> · Made ${esc(fmtDate(s.createdAt))} · ${rows.length} properties${s.note ? " · " + esc(s.note) : ""}</div>
+<div class="goal">Ask about selling first. If they are not selling, offer management with Love. Record every call, and mark anyone who asks not to be contacted as DNC.</div>
+<table><thead><tr><th>#</th><th>Property</th><th>Listing</th><th>Landlord</th><th>Contact</th><th style="width:34%">Outcome and notes</th></tr></thead><tbody>
+${rows.map(([id, p], i) => `<tr><td>${i + 1}</td>
+<td><b>${esc(p.address)}</b><br>${esc([p.suburb, p.postcode].filter(Boolean).join(" "))}<br>${esc(specs(p))}</td>
+<td>${esc(p.rent || "")}<br>${esc(p.managingAgency || "")}<br>${daysListed(p) != null ? daysListed(p) + " days listed" : ""}</td>
+<td>${esc(p.ownerName || "")}<br><span class="mono">${esc(p.idRef || "")}</span></td>
+<td class="mono">${esc(p.ownerPhone || "")}<br>${esc(p.ownerEmail || "")}<br>${esc(p.ownerMailing || "")}</td>
+<td>${outcomes.map(o => `<span class="box"><i></i>${o}</span>`).join("")}<div class="notes"></div><span style="color:#777">Ref ${esc(id.slice(-8))}</span></td></tr>`).join("")}
+</tbody></table></body></html>`;
+}
+let dlNS;
+async function offerFile(filename, data) {
+  if (dlNS === undefined) dlNS = await use("downloads");
+  if (!dlNS) { showText(filename, data); return; }
+  try { await dlNS.save({ filename, data }); toast("Saved " + filename); }
+  catch (e) {
+    if (e && e.code === "declined") return;
+    if (e && e.code === "rate_limited") { toast("A save prompt is already open."); return; }
+    showText(filename, data);
+  }
+}
+function showText(filename, data) {
+  $("#modal-root").innerHTML = `<div class="modal" role="dialog" aria-modal="true"><div class="modal-card" style="width:min(760px,100%)">
+    <div class="modal-head"><h2>${esc(filename)}</h2><button class="btn small ghost" data-act="modal-close">Close</button></div>
+    <div class="modal-body"><p style="margin:0" class="muted">Downloads aren't available in this view. Copy the text below and save it as ${esc(filename)}.</p>
+    <textarea id="dl-text" rows="14" readonly class="mono" style="font-size:11.5px"></textarea>
+    <div class="row-actions"><button class="btn primary" data-act="copy-dl">Copy all</button></div></div></div></div>`;
+  $("#dl-text").value = data; M.open = true; M.textOnly = true;
+}
+
+/* ---------- import ---------- */
+function parseDelimited(text) {
+  text = text.replace(/^﻿/, "");
+  const first = text.split(/\r?\n/, 1)[0] || "";
+  const cnt = ch => first.split(ch).length - 1;
+  const delim = cnt("\t") > cnt(",") && cnt("\t") >= cnt(";") ? "\t" : cnt(";") > cnt(",") ? ";" : ",";
+  const rows = []; let row = [], f = "", q = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (q) { if (c === '"') { if (text[i + 1] === '"') { f += '"'; i++; } else q = false; } else f += c; }
+    else if (c === '"' && f === "") q = true;
+    else if (c === delim) { row.push(f); f = ""; }
+    else if (c === "\n" || c === "\r") { if (c === "\r" && text[i + 1] === "\n") i++; row.push(f); f = ""; rows.push(row); row = []; }
+    else f += c;
+  }
+  if (f !== "" || row.length) { row.push(f); rows.push(row); }
+  return rows.filter(r => r.some(x => String(x).trim() !== ""));
+}
+function autoMap(headers) {
+  const norm = h => String(h || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+  const H = headers.map(norm), map = {}, used = new Set();
+  for (const [k, , syn] of FIELDS) { const i = H.findIndex((h, i) => !used.has(i) && syn.includes(h)); if (i >= 0) { map[k] = i; used.add(i); } }
+  for (const [k, , syn] of FIELDS) {
+    if (map[k] != null) continue;
+    const i = H.findIndex((h, i) => !used.has(i) && syn.some(s => s.length > 3 && h.includes(s)));
+    if (i >= 0) { map[k] = i; used.add(i); }
+  }
+  return map;
+}
+function loadRows(rows, name) {
+  I.error = ""; I.result = null;
+  if (!rows || rows.length < 2) { I.error = "That file needs a heading row and at least one row of data."; I.rows = null; schedule(); return; }
+  I.headers = rows[0].map(h => String(h ?? "").trim());
+  I.rows = rows.slice(1).map(r => r.map(x => String(x ?? "")));
+  I.map = autoMap(I.headers); I.fileName = name;
+  schedule();
+}
+let xlsxP;
+function loadXLSX() {
+  if (window.XLSX) return Promise.resolve(window.XLSX);
+  return xlsxP || (xlsxP = new Promise((res, rej) => {
+    const s = document.createElement("script");
+    s.src = "https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js";
+    s.onload = () => res(window.XLSX); s.onerror = () => { xlsxP = null; rej(new Error("load")); };
+    document.head.appendChild(s);
+  }));
+}
+async function readFile(file) {
+  if (!file) return;
+  try {
+    if (/\.xlsx?$/i.test(file.name)) {
+      const X = await loadXLSX();
+      const wb = X.read(await file.arrayBuffer(), { type: "array" });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      loadRows(X.utils.sheet_to_json(ws, { header: 1, raw: false, defval: "" }), file.name);
+    } else loadRows(parseDelimited(await file.text()), file.name);
+  } catch (e) { I.error = "Couldn't read that file. Save it as CSV and try again."; schedule(); }
+}
+async function runImport() {
+  if (I.running || !I.rows) return;
+  if (I.map.address == null || I.map.address === "") { I.error = "Pick the column that holds the street address."; schedule(); return; }
+  I.running = true; I.error = ""; I.result = null; I.done = 0;
+  const now = nowISO(), t = today(), seen = new Set(), jobs = [];
+  let created = 0, refreshed = 0, skipped = 0, back = 0, off = 0;
+  for (const r of I.rows) {
+    const rec = {};
+    for (const [k] of FIELDS) { const ci = I.map[k]; if (ci !== "" && ci != null) { const v = String(r[ci] ?? "").trim(); if (v) rec[k] = v; } }
+    if (!rec.address) { skipped++; continue; }
+    const id = propId(rec.address, rec.suburb || "");
+    if (seen.has(id)) { skipped++; continue; }
+    seen.add(id);
+    const cur = S.props.get(id);
+    if (cur) {
+      const patch = { lastSeen: t, updatedAt: now };
+      for (const k of LISTING_KEYS) if (rec[k] && rec[k] !== cur[k]) patch[k] = rec[k];
+      for (const k of OWNER_KEYS) if (rec[k] && (I.overwriteOwner || !cur[k])) patch[k] = rec[k];
+      if (cur.offline) { patch.offline = false; patch.offlineSince = null; patch.log = withLog(cur, { kind: "system", text: "Listed online again" }); back++; }
+      jobs.push(() => writeProp(id, patch)); refreshed++;
+    } else {
+      const doc = { ...rec, stage: "new", attempts: 0, firstSeen: t, lastSeen: t, offline: false, createdAt: now, updatedAt: now,
+        log: [{ t: now, by: S.uid || null, kind: "system", text: "Imported" + (I.fileName ? " from " + I.fileName : "") }] };
+      jobs.push(() => writeProp(id, doc, "set")); created++;
+    }
+  }
+  if (I.markOffline) for (const [id, p] of S.props) if (!seen.has(id) && !p.offline) {
+    off++; jobs.push(() => writeProp(id, { offline: true, offlineSince: t, updatedAt: now, log: withLog(p, { kind: "system", text: "Not in the latest import, marked offline" }) }));
+  }
+  I.total = jobs.length; schedule();
+  const failed = await pool(jobs, S.example ? 8 : 4, (d) => { I.done = d; schedule(); });
+  I.running = false;
+  I.result = `${created} new, ${refreshed} updated${back ? ` (${back} back online)` : ""}${off ? `, ${off} marked offline` : ""}${skipped ? `, ${skipped} rows skipped (no address or repeated)` : ""}.` + (failed ? ` ${failed} didn't save; run the import again to retry them.` : "");
+  schedule();
+}
+
+/* ---------- lead actions ---------- */
+function logOutcome(id, k) {
+  const p = S.props.get(id), o = OUTCOMES.find(x => x.k === k);
+  if (!p || !o) return;
+  const note = ($("#d-note")?.value || "").trim();
+  const newStage = o.onlyEarly && !EARLY.has(p.stage) ? p.stage : o.stage;
+  const now = nowISO();
+  const text = o.label + (newStage !== p.stage ? ` · ${STAGE[p.stage]?.label || "New"} → ${STAGE[newStage].label}` : "");
+  const patch = { stage: newStage, updatedAt: now, log: withLog(p, { kind: "call", outcome: k, text, ...(note ? { note } : {}) }) };
+  if (o.call) { patch.attempts = (p.attempts || 0) + 1; patch.lastContact = now; }
+  if (CLOSED.has(newStage)) patch.nextFollowUp = "";
+  if ($("#d-note")) $("#d-note").value = "";
+  safe(writeProp(id, patch)); toast("Logged: " + o.label);
+}
+function setStage(id, stage, how) {
+  const p = S.props.get(id); if (!p || p.stage === stage) return;
+  safe(writeProp(id, { stage, updatedAt: nowISO(), ...(CLOSED.has(stage) ? { nextFollowUp: "" } : {}),
+    log: withLog(p, { kind: "stage", text: `${STAGE[p.stage]?.label || "New"} → ${STAGE[stage].label}${how ? " (" + how + ")" : ""}` }) }));
+}
+
+/* ---------- example mode ---------- */
+function loadExample() {
+  S.example = true; S.loaded = true;
+  S.props = new Map(); S.agents = new Map(); S.sheets = new Map();
+  const d = n => { const x = new Date(); x.setDate(x.getDate() - n); return isoDay(x); };
+  const A = [["a-1", "Example Agent One", "0400 000 101"], ["a-2", "Example Agent Two", "0400 000 102"]];
+  A.forEach(([id, name, phone]) => S.agents.set(id, { name, phone, email: "" }));
+  const rows = [
+    ["1 Example Street", "Sampleton", "House", 3, 2, "650", 41, "Example Owner A", "0400 000 001", "new"],
+    ["2/8 Demo Road", "Sampleton", "Unit", 2, 1, "480", 12, "Example Owner B", "0400 000 002", "new"],
+    ["17 Placeholder Avenue", "Demo Heights", "House", 4, 2, "820", 63, "", "", "new"],
+    ["5 Specimen Court", "Demo Heights", "Townhouse", 3, 2, "700", 28, "Example Owner D", "0400 000 004", "assigned"],
+    ["44 Mock Lane", "Testbury", "House", 3, 1, "590", 35, "Example Owner E", "0400 000 005", "attempted"],
+    ["9 Trial Crescent", "Testbury", "Apartment", 1, 1, "420", 8, "Example Owner F", "0400 000 006", "talking"],
+    ["31 Sample Parade", "Sampleton", "House", 4, 3, "950", 52, "Example Owner G", "0400 000 007", "appraisal"],
+    ["12 Dummy Place", "Demo Heights", "Unit", 2, 1, "500", 19, "Example Owner H", "0400 000 008", "pm_pitch"],
+    ["3 Fictional Terrace", "Testbury", "House", 3, 2, "680", 70, "Example Owner I", "0400 000 009", "won_pm"],
+    ["60 Pretend Drive", "Sampleton", "House", 5, 3, "1100", 90, "Example Owner J", "0400 000 010", "lost"],
+  ];
+  const sid = "s-example";
+  const onSheet = [];
+  rows.forEach(([address, suburb, propertyType, beds, baths, rent, ago, ownerName, ownerPhone, stage], i) => {
+    const id = propId(address, suburb);
+    const p = { address, suburb, propertyType, beds: String(beds), baths: String(baths), rent: rent + " (example)", listedDate: d(ago), managingAgency: "Example Realty",
+      ownerName, ownerPhone, stage, attempts: EARLY.has(stage) && stage !== "attempted" ? 0 : 1 + (i % 3), firstSeen: d(ago), lastSeen: today(), offline: false,
+      createdAt: nowISO(), updatedAt: nowISO(), log: [{ t: nowISO(), kind: "system", text: "Example row" }] };
+    if (!["new"].includes(stage)) { p.agentId = i % 2 ? "a-1" : "a-2"; p.sheetId = sid; onSheet.push(id); }
+    if (stage === "talking" || stage === "appraisal") p.nextFollowUp = today();
+    S.props.set(id, p);
+  });
+  S.sheets.set(sid, { no: "CS-EXAMPLE", agentId: "a-1", propertyIds: onSheet, createdAt: nowISO(), note: "Example sheet" });
+  S.selected.clear(); closeDrawer(); renderAll();
+}
+function exitExample() { location.reload(); }
+
+/* ---------- main render ---------- */
+function renderAll() {
+  for (const t of ["pipeline", "properties", "sheets", "agents", "import"]) $("#tab-" + t).setAttribute("aria-selected", String(S.tab === t));
+  renderBanner(); renderSummary(); renderFilters();
+  const main = $("#main");
+  const focusId = document.activeElement && main.contains(document.activeElement) ? document.activeElement.id : null;
+  const keepX = $(".board-wrap")?.scrollLeft || 0;
+  main.innerHTML = { pipeline: viewPipeline, properties: viewProperties, sheets: viewSheets, agents: viewAgents, import: viewImport }[S.tab]();
+  if ($(".board-wrap")) $(".board-wrap").scrollLeft = keepX;
+  if (focusId && document.getElementById(focusId)) document.getElementById(focusId).focus();
+  renderDrawer(); if (M.open && !M.textOnly) renderModal();
+}
+function setTab(t) { S.tab = t; try { localStorage.setItem("ll.tab", t); } catch (e) {} closeModal(); renderAll(); window.scrollTo({ top: 0 }); }
+function openDrawer(id) { S.openId = id; S.editing = false; S.confirmDelete = false; renderDrawer(); }
+function closeDrawer() { S.openId = null; S.editing = false; renderDrawer(); }
+function closeModal() { M.open = false; M.textOnly = false; M.fromSel = null; $("#modal-root").innerHTML = ""; }
+
+/* ---------- events ---------- */
+document.addEventListener("click", async e => {
+  const t = e.target.closest("[data-act]");
+  if (!t) {
+    if (e.target.closest("input,select,textarea,label,a")) return;
+    const o = e.target.closest("[data-open]"); if (o) openDrawer(o.dataset.open);
+    return;
+  }
+  const act = t.dataset.act, id = t.dataset.id;
+  switch (act) {
+    case "tab": setTab(t.dataset.tab); break;
+    case "kpi": {
+      const k = t.dataset.k;
+      S.f = { q: "", suburb: "", stage: k === "online" ? "" : k, agent: "", sheet: "", offline: k === "won_sale" || k === "won_pm" || k === "lost" || k === "dnc" };
+      setTab("properties"); break;
+    }
+    case "see-stage": S.f.stage = t.dataset.k; setTab("properties"); break;
+    case "clear-filters": S.f = { q: "", suburb: "", stage: "", agent: "", sheet: "", offline: false }; S.tableLimit = 200; renderAll(); break;
+    case "more-rows": S.tableLimit += 200; renderAll(); break;
+    case "clear-sel": S.selected.clear(); renderAll(); break;
+    case "sheet-from-sel": openSheetModal([...S.selected].filter(x => S.props.has(x))); break;
+    case "new-sheet": if (!canWrite()) { toast(S.noDb ? "Preview with example rows to try contact sheets." : "You have view access only."); break; } openSheetModal(); break;
+    case "modal-close": closeModal(); break;
+    case "create-sheet": createSheet(); break;
+    case "sheet-csv": { const s = S.sheets.get(id); if (s) offerFile(`${s.no} ${agentName(s.agentId)}.csv`.replace(/[\\/:*?"<>|]/g, ""), sheetCSV(s)); break; }
+    case "sheet-html": { const s = S.sheets.get(id); if (s) offerFile(`${s.no} ${agentName(s.agentId)}.html`.replace(/[\\/:*?"<>|]/g, ""), sheetHTML(s)); break; }
+    case "sheet-view": S.f = { q: "", suburb: "", stage: "", agent: "", sheet: id, offline: true }; setTab("properties"); break;
+    case "agent-leads": S.f = { q: "", suburb: "", stage: "", agent: id, sheet: "", offline: false }; setTab("properties"); break;
+    case "agent-del-ask": S.confirmAgent = id; renderAll(); break;
+    case "agent-del-cancel": S.confirmAgent = null; renderAll(); break;
+    case "agent-del": S.confirmAgent = null; safe(writeAgent(id, null, "delete")); toast("Agent removed"); break;
+    case "export-view": offerFile(`Landlord leads ${today()}.csv`, toCSV(sortRows(filtered()))); break;
+    case "example": loadExample(); break;
+    case "exit-example": exitExample(); break;
+    case "close": closeDrawer(); break;
+    case "copy": {
+      const v = t.dataset.v;
+      try { await navigator.clipboard.writeText(v); toast("Copied"); }
+      catch (err) { const r = document.createRange(); r.selectNodeContents(t.previousElementSibling || t.parentNode); const s = getSelection(); s.removeAllRanges(); s.addRange(r); toast("Selected. Press copy on your keyboard."); }
+      break;
+    }
+    case "copy-dl": { const ta = $("#dl-text"); try { await navigator.clipboard.writeText(ta.value); toast("Copied"); } catch (err) { ta.select(); toast("Selected. Press copy on your keyboard."); } break; }
+    case "outcome": logOutcome(S.openId, t.dataset.k); break;
+    case "add-note": {
+      const p = S.props.get(S.openId), note = ($("#d-note")?.value || "").trim();
+      if (!p || !note) { toast("Type a note first."); break; }
+      $("#d-note").value = "";
+      safe(writeProp(S.openId, { updatedAt: nowISO(), log: withLog(p, { kind: "note", text: "Note", note }) })); break;
+    }
+    case "edit": S.editing = true; S.confirmDelete = false; $("#drawer-root").innerHTML = ""; renderDrawer(); break;
+    case "edit-cancel": S.editing = false; $("#drawer-root").innerHTML = ""; renderDrawer(); break;
+    case "prop-del-ask": S.confirmDelete = true; $("#drawer-root").innerHTML = ""; renderDrawer(); break;
+    case "prop-del-cancel": S.confirmDelete = false; $("#drawer-root").innerHTML = ""; renderDrawer(); break;
+    case "prop-del": { const pid = S.openId; closeDrawer(); S.selected.delete(pid); safe(writeProp(pid, null, "delete")); toast("Property removed"); break; }
+    case "parse-paste": { const v = $("#paste").value; if (!v.trim()) { I.error = "Paste some rows first."; schedule(); break; } loadRows(parseDelimited(v), "pasted rows"); break; }
+    case "run-import": runImport(); break;
+    case "reset-import": Object.assign(I, { rows: null, headers: [], map: {}, fileName: "", result: null, error: "", done: 0, total: 0 }); schedule(); break;
+  }
+});
+document.addEventListener("keydown", e => {
+  if (e.key === "Escape") { if (M.open) closeModal(); else if (S.openId) closeDrawer(); }
+  if (e.key === "Enter" && e.target.matches(".card[data-open]")) openDrawer(e.target.dataset.open);
+});
+document.addEventListener("input", e => {
+  const t = e.target;
+  if (t.id === "f-q") { S.f.q = t.value; S.tableLimit = 200; clearTimeout(t._d); t._d = setTimeout(renderAll, 160); }
+  if (t.id === "m-note") M.note = t.value;
+  if (t.id === "m-max") { const n = Math.max(1, Math.min(500, parseInt(t.value, 10) || 1)); if (n !== M.max) { M.max = n; M.picked = null; clearTimeout(t._d); t._d = setTimeout(renderModal, 300); } }
+});
+document.addEventListener("change", e => {
+  const t = e.target;
+  const fmap = { "f-suburb": "suburb", "f-stage": "stage", "f-agent": "agent", "f-sheet": "sheet" };
+  if (fmap[t.id]) { S.f[fmap[t.id]] = t.value; S.tableLimit = 200; renderAll(); return; }
+  if (t.id === "f-offline") { S.f.offline = t.checked; renderAll(); return; }
+  if (t.id === "sort") { S.sort = t.value; renderAll(); return; }
+  if (t.id === "sel-all") { const rows = filtered(); rows.forEach(([id]) => t.checked ? S.selected.add(id) : S.selected.delete(id)); renderAll(); return; }
+  if (t.dataset.sel) { t.checked ? S.selected.add(t.dataset.sel) : S.selected.delete(t.dataset.sel); renderAll(); return; }
+  if (t.id === "m-agent") { M.agentId = t.value; renderModal(); return; }
+  if (t.id === "m-suburb") { M.suburb = t.value; M.picked = null; renderModal(); return; }
+  if (t.id === "m-stage") { M.stage = t.value; M.picked = null; renderModal(); return; }
+  if (t.id === "m-sort") { M.sort = t.value; M.picked = null; renderModal(); return; }
+  if (t.dataset.pick) { t.checked ? M.picked.add(t.dataset.pick) : M.picked.delete(t.dataset.pick); renderModal(); return; }
+  if (t.id === "d-stage") { setStage(S.openId, t.value, "changed in detail"); return; }
+  if (t.id === "d-agent") {
+    const p = S.props.get(S.openId); if (!p) return;
+    safe(writeProp(S.openId, { agentId: t.value, updatedAt: nowISO(), log: withLog(p, { kind: "agent", text: t.value ? "Assigned to " + agentName(t.value) : "Agent removed" }) })); return;
+  }
+  if (t.id === "d-follow") {
+    const p = S.props.get(S.openId); if (!p) return;
+    safe(writeProp(S.openId, { nextFollowUp: t.value, updatedAt: nowISO(), log: withLog(p, { kind: "follow", text: t.value ? "Follow-up set for " + fmtDate(t.value) : "Follow-up cleared" }) })); return;
+  }
+  if (t.dataset.map) { I.map[t.dataset.map] = t.value === "" ? "" : +t.value; schedule(); return; }
+  if (t.id === "opt-offline") { I.markOffline = t.checked; return; }
+  if (t.id === "opt-owner") { I.overwriteOwner = t.checked; return; }
+  if (t.id === "file") { readFile(t.files && t.files[0]); return; }
+});
+document.addEventListener("submit", e => {
+  e.preventDefault();
+  if (e.target.id === "agent-form") {
+    const name = $("#ag-name").value.trim(); if (!name) return;
+    const aid = "a-" + Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
+    safe(writeAgent(aid, { name, phone: $("#ag-phone").value.trim(), email: $("#ag-email").value.trim(), createdAt: nowISO() }, "set"));
+    toast("Added " + name);
+  }
+  if (e.target.id === "edit-form") {
+    const p = S.props.get(S.openId); if (!p) return;
+    const patch = {}, changed = [];
+    for (const [k] of FIELDS) { if (k === "address") continue; const v = e.target.elements[k].value.trim(); if (v !== (p[k] || "")) { patch[k] = v; changed.push(FIELD_LABEL[k].toLowerCase()); } }
+    S.editing = false; $("#drawer-root").innerHTML = "";
+    if (changed.length) { patch.updatedAt = nowISO(); patch.log = withLog(p, { kind: "edit", text: "Edited " + changed.join(", ") }); safe(writeProp(S.openId, patch)); toast("Saved"); }
+    renderDrawer();
+  }
+});
+// drag and drop on the board
+let dragId = null;
+document.addEventListener("dragstart", e => { const c = e.target.closest && e.target.closest(".card"); if (!c || !canWrite()) return; dragId = c.dataset.id; c.classList.add("dragging"); e.dataTransfer.effectAllowed = "move"; try { e.dataTransfer.setData("text/plain", dragId); } catch (err) {} });
+document.addEventListener("dragend", e => { dragId = null; document.querySelectorAll(".dragging,.drop").forEach(x => x.classList.remove("dragging", "drop")); });
+document.addEventListener("dragover", e => { const col = e.target.closest && e.target.closest(".col"); if (!col || !dragId) return; e.preventDefault(); document.querySelectorAll(".col.drop").forEach(x => x !== col && x.classList.remove("drop")); col.classList.add("drop"); });
+document.addEventListener("drop", e => { const col = e.target.closest && e.target.closest(".col"); if (!col || !dragId) return; e.preventDefault(); col.classList.remove("drop"); setStage(dragId, col.dataset.stage, "moved on board"); dragId = null; });
+// file drop on import
+document.addEventListener("dragover", e => { const z = e.target.closest && e.target.closest("#drop"); if (z && e.dataTransfer && [...e.dataTransfer.types].includes("Files")) { e.preventDefault(); z.classList.add("over"); } });
+document.addEventListener("dragleave", e => { const z = e.target.closest && e.target.closest("#drop"); if (z) z.classList.remove("over"); });
+document.addEventListener("drop", e => { const z = e.target.closest && e.target.closest("#drop"); if (z && e.dataTransfer && e.dataTransfer.files.length) { e.preventDefault(); z.classList.remove("over"); readFile(e.dataTransfer.files[0]); } });
+
+/* ---------- boot ---------- */
+async function boot() {
+  renderAll();
+  const [db, user] = await Promise.all([use("db"), use("user")]);
+  if (S.example) return;
+  S.db = db; S.user = user;
+  if (user) {
+    try { S.uid = await user.id(); } catch (e) {}
+    try { const c = await user.can("data.write"); if (c === false) S.readOnly = true; if (c === null) S.canWriteUnknown = true; } catch (e) {}
+  } else S.canWriteUnknown = true;
+  if (!db) { S.noDb = true; S.loaded = true; schedule(); return; }
+  let got = 0;
+  const ready = () => { if (++got >= 1) S.loaded = true; };
+  const sub = (coll, key) => db.collection(coll).onSnapshot(snap => {
+    if (S.example) return;
+    S[key] = new Map(snap.docs.map(d => [d.id, d.data()]));
+    if (key === "props") ready();
+    schedule();
+  }, err => { if (key === "props") { S.loaded = true; } toast("Live updates stopped. Reload the page to reconnect."); schedule(); });
+  sub("properties", "props"); sub("agents", "agents"); sub("sheets", "sheets");
+}
+boot();
+})();
+</script>
