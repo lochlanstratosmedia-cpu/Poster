@@ -428,11 +428,20 @@ dialog.sheet::backdrop { background: rgba(0, 0, 0, 0.18); }
       <section class="pane" data-pane="places">
         <div class="sec-h"><h3>In this shot</h3><span class="aside" id="placeCount"></span></div>
         <div class="group" id="placeList"><div class="list-empty">Drop a photo to see the places in view.</div></div>
+        <div class="sec-h"><h3>Property outline</h3><span class="aside" id="olInfo"></span></div>
+        <div class="group">
+          <div class="row"><span class="lbl">Show outline</span><input class="switch" type="checkbox" id="olShow"></div>
+          <div class="row" style="justify-content:flex-start"><button class="btn small" id="olFind">Find lot</button><button class="btn small" id="olDraw">Draw</button><button class="btn small" id="olClear">Clear</button></div>
+        </div>
+        <p class="hint" id="olHint">Find lot uses NSW land records for the address. Draw traces it by hand, anywhere. Drag the outline to line it up, or a corner to reshape it.</p>
         <div class="sec-h"><h3>Show</h3></div>
         <div class="chips" id="cats"></div>
         <div class="group">
           <div class="row"><span class="lbl">Range</span>
             <div class="seg" id="rangeSeg"><button data-v="1000">1 km</button><button data-v="3000">3 km</button><button data-v="8000">8 km</button></div>
+          </div>
+          <div class="row"><span class="lbl">Distances</span>
+            <div class="seg" id="distSeg"><button data-v="km">km</button><button data-v="walk">Walk</button><button data-v="drive">Drive</button></div>
           </div>
           <div class="row"><span class="lbl">Start with</span>
             <div class="seg" id="pickSeg"><button data-v="smart">Key places</button><button data-v="all">Everything</button></div>
@@ -466,6 +475,8 @@ dialog.sheet::backdrop { background: rgba(0, 0, 0, 0.18); }
           <div class="row"><span class="lbl">Line length</span><input type="range" id="bStem" min="0" max="10" step="0.05"></div>
           <div class="row"><span class="lbl">Corners</span><input type="range" id="bRadius" min="0" max="1" step="0.05"></div>
           <div class="row"><span class="lbl">Shadow</span><input type="range" id="bShadow" min="0" max="3" step="0.05"><span class="val" id="bShadowV"></span></div>
+          <div class="row"><span class="lbl">Outline width</span><input type="range" id="bOutlineW" min="0.3" max="4" step="0.05"></div>
+          <div class="row"><span class="lbl">Outline fill</span><input type="range" id="bOutlineFill" min="0" max="0.6" step="0.01"></div>
         </div>
         <div class="sec-h"><h3>Labels</h3></div>
         <div class="group">
@@ -594,7 +605,7 @@ const FONTS = {
   cormorant: { label: "Cormorant", stack: '"Cormorant Garamond", serif', load: "Cormorant Garamond" },
 };
 const STYLE_NAMES = { classic: "Classic", glass: "Glass", liquid: "Liquid", beacon: "Beacon", editorial: "Editorial", bold: "Bold", tag: "Tag" };
-const BRAND_DEFAULTS = { style: "classic", accent: "#007aff", labelBg: "#ffffff", text: "#1d1d1f", font: "system", weight: 600, upper: false, distance: true, icons: true, catColors: true, size: 1, stem: 1, radius: 0.6, shadow: 1, heroOn: true, logo: null, logoOnly: false };
+const BRAND_DEFAULTS = { style: "classic", accent: "#007aff", labelBg: "#ffffff", text: "#1d1d1f", font: "system", weight: 600, upper: false, distance: true, icons: true, catColors: true, size: 1, stem: 1, radius: 0.6, shadow: 1, outlineW: 1, outlineFill: 0.18, heroOn: true, logo: null, logoOnly: false };
 const BUILTIN_BRANDS = [
   { id: "classic", name: "Classic", style: "classic" },
   { id: "glass", name: "Glass", style: "glass", labelBg: "#1c1c1e", text: "#ffffff", radius: 0.7 },
@@ -611,7 +622,7 @@ const state = {
   address: store.get("address", null),
   places: [], placesKey: "", placesStatus: "idle", placesError: "",
   names: {}, selected: null, addMode: false,
-  settings: Object.assign({ range: 3000, pick: "smart", cats: Object.fromEntries(Object.keys(CATS).map(k => [k, true])) }, store.get("settings", {})),
+  settings: Object.assign({ range: 3000, pick: "smart", dist: "km", cats: Object.fromEntries(Object.keys(CATS).map(k => [k, true])) }, store.get("settings", {})),
   brands: store.get("brands", null) || BUILTIN_BRANDS.map(b => ({ ...b })),
   brandId: store.get("brandId", "classic"),
   view: "photo", styleScope: "all",
@@ -949,6 +960,50 @@ function parsePlaces(elements) {
   });
 }
 
+/* ------------------------------------------------------------------ travel times
+   Walk and drive times come from the OpenStreetMap routing servers run by
+   FOSSGIS (routing.openstreetmap.de), asked in batches with OSRM's table
+   service. Until an answer arrives, and if none does, a time is estimated from
+   the straight-line distance and marked "est." in the list. */
+const ROUTERS = { walk: "https://routing.openstreetmap.de/routed-foot", drive: "https://routing.openstreetmap.de/routed-car" };
+const travel = { cache: new Map(), queue: new Map(), timer: 0 };
+const geoKey = g => `${g.lat.toFixed(5)},${g.lon.toFixed(5)}`;
+function fmtTime(sec) {
+  const m = Math.max(1, Math.round(sec / 60));
+  return m < 60 ? `${m} min` : `${Math.floor(m / 60)} hr${m % 60 ? ` ${m % 60} min` : ""}`;
+}
+function estimateTime(mode, d) { return mode === "walk" ? d * 1.3 / 1.25 : d * 1.4 / 11 + 90; }
+// The label for a place: distance, or walk/drive time from the property.
+function distLabel(g, d, forList) {
+  const mode = state.settings.dist;
+  if (mode === "km" || !state.address || !g) return fmtDist(d);
+  const key = `${mode}|${geoKey(state.address)}|${geoKey(g)}`;
+  let t = travel.cache.get(key);
+  if (!t) { if (!travel.queue.has(key)) travel.queue.set(key, { mode, from: state.address, to: g }); scheduleTravel(); t = { sec: estimateTime(mode, d), est: true, pending: true }; }
+  return `${fmtTime(t.sec)} ${mode}${forList && t.est && !t.pending ? " (est.)" : ""}`;
+}
+function scheduleTravel() { clearTimeout(travel.timer); travel.timer = setTimeout(flushTravel, 200); }
+async function flushTravel() {
+  const jobs = [...travel.queue.entries()]; travel.queue.clear();
+  const groups = new Map();
+  for (const [key, j] of jobs) { const gk = `${j.mode}|${geoKey(j.from)}`; if (!groups.has(gk)) groups.set(gk, { mode: j.mode, from: j.from, items: [] }); groups.get(gk).items.push({ key, to: j.to }); }
+  await Promise.all([...groups.values()].flatMap(g => {
+    const chunks = []; for (let i = 0; i < g.items.length; i += 80) chunks.push(g.items.slice(i, i + 80));
+    return chunks.map(async items => {
+      const coords = [g.from, ...items.map(i => i.to)].map(c => `${c.lon.toFixed(6)},${c.lat.toFixed(6)}`).join(";");
+      try {
+        const j = await getJSON(`${ROUTERS[g.mode]}/table/v1/driving/${coords}?sources=0&annotations=duration`, {}, 15000);
+        const row = j.durations?.[0] || [];
+        items.forEach((it, i) => { const sec = row[i + 1]; travel.cache.set(it.key, sec != null ? { sec } : { sec: estimateTime(g.mode, haversine(g.from, it.to)), est: true }); });
+      } catch (e) {
+        console.warn("Routing failed; using estimates", e);
+        items.forEach(it => travel.cache.set(it.key, { sec: estimateTime(g.mode, haversine(g.from, it.to)), est: true }));
+      }
+    });
+  }));
+  render();
+}
+
 /* ------------------------------------------------------------------ smart picks
    What matters for this address, switched on by default: the nearest public
    primary and high school (catchments go by government schools), the nearest
@@ -1055,7 +1110,7 @@ function computePins(ph) {
   for (const c of res.inView) {
     c.why = picks.get(c.pl.id) || null;
     c.on = ph.overrides[c.pl.id] ?? (state.settings.pick === "all" || !!c.why);
-    if (c.on) res.pins.push({ id: c.pl.id, kind: "place", cat: c.pl.cat, icon: c.pl.icon, name: placeName(c.pl), sub: ref ? fmtDist(c.d) : "", x: c.x, y: c.y, moved: c.moved });
+    if (c.on) res.pins.push({ id: c.pl.id, kind: "place", cat: c.pl.cat, icon: c.pl.icon, name: placeName(c.pl), sub: ref ? distLabel(c.pl, c.d) : "", x: c.x, y: c.y, moved: c.moved });
   }
   if (state.address) {
     // The property always gets a pin. If the maths puts it outside the frame
@@ -1074,10 +1129,84 @@ function computePins(ph) {
     // Distance from the real place when the name was found on the map, else from
     // the spot on the ground under the pin.
     const g = c.geo || groundPoint(ph, c.x, c.y);
-    c._d = ref && g && !c.noDist ? haversine(ref, g) : null;
-    res.pins.push({ id: c.id, kind: "custom", cat: c.cat || "custom", icon: c.icon || "custom", name: c.name, sub: c._d != null ? fmtDist(c._d) : "", x: c.x, y: c.y });
+    c._d = ref && g && !c.noDist ? haversine(ref, g) : null; c._g = g;
+    res.pins.push({ id: c.id, kind: "custom", cat: c.cat || "custom", icon: c.icon || "custom", name: c.name, sub: c._d != null ? distLabel(g, c._d) : "", x: c.x, y: c.y });
   }
   return res;
+}
+
+/* ------------------------------------------------------------------ property outline
+   The lot comes from NSW Spatial Services' public cadastre (Lot layer), found
+   at the address point or, when that lands on the street, the nearest lot
+   within 30 m. It is stored as coordinates and projected into each photo,
+   with a per-photo nudge. Dragging a corner turns it into a hand-drawn outline
+   in photo coordinates, which is also what Draw makes. */
+const CADASTRE = "https://maps.six.nsw.gov.au/arcgis/rest/services/public/NSW_Cadastre/MapServer/9/query";
+function inPoly(pt, ring, kx = 1, ky = 1) {
+  let inside = false;
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    const a = ring[i], b = ring[j];
+    if ((a.y > pt.y) !== (b.y > pt.y) && pt.x < (b.x - a.x) * (pt.y - a.y) / (b.y - a.y) + a.x) inside = !inside;
+  }
+  return inside;
+}
+// Metres from a point to a lot ring (0 when inside).
+function distToRing(g, ring) {
+  const kx = R_EARTH * D * Math.cos(g.lat * D), ky = R_EARTH * D;
+  const pts = ring.map(p => ({ x: (p.lon - g.lon) * kx, y: (p.lat - g.lat) * ky }));
+  if (inPoly({ x: 0, y: 0 }, pts)) return 0;
+  let best = Infinity;
+  for (let i = 0; i < pts.length; i++) {
+    const a = pts[i], b = pts[(i + 1) % pts.length], dx = b.x - a.x, dy = b.y - a.y;
+    const t = clamp(-(a.x * dx + a.y * dy) / (dx * dx + dy * dy || 1), 0, 1);
+    best = Math.min(best, Math.hypot(a.x + t * dx, a.y + t * dy));
+  }
+  return best;
+}
+async function findLot() {
+  const a = state.address; if (!a) { flash("Add the property address first."); return; }
+  const q = d => `${CADASTRE}?geometry=${a.lon.toFixed(7)}%2C${a.lat.toFixed(7)}&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelIntersects${d ? `&distance=${d}&units=esriSRUnit_Meter` : ""}&outFields=lotnumber%2Cplanlabel&returnGeometry=true&outSR=4326&geometryPrecision=7&f=json`;
+  $("#olFind").disabled = true; $("#olFind").textContent = "Finding…";
+  try {
+    let j = await getJSON(q(0), {}, 15000);
+    if (!j.features?.length) j = await getJSON(q(30), {}, 15000);
+    const lots = (j.features || []).map(f => ({ rings: (f.geometry?.rings || []).map(r => r.map(([lon, lat]) => ({ lat, lon }))), attr: f.attributes || {} })).filter(l => l.rings.length);
+    if (!lots.length) { flash("No lot found at this address. NSW only; use Draw instead."); return; }
+    lots.forEach(l => { l.d = distToRing(a, l.rings[0]); });
+    lots.sort((x, y) => x.d - y.d);
+    const lot = lots[0];
+    state.lot = { rings: lot.rings, label: [lot.attr.lotnumber && `Lot ${lot.attr.lotnumber}`, lot.attr.planlabel].filter(Boolean).join(" ") };
+    // The photo you're on always takes the lot; other photos only if they have no hand-drawn outline.
+    for (const ph of state.photos) if (ph.id === state.current || !ph.outline || ph.outline.mode === "lot") ph.outline = { mode: "lot", off: { x: 0, y: 0 }, show: true };
+    render();
+    flash(`Outlined ${state.lot.label || "the lot"}. Drag it to line it up.`);
+  } catch (e) { console.warn("Cadastre lookup failed", e); flash("Couldn't reach NSW land records. Use Draw instead."); }
+  finally { $("#olFind").disabled = false; $("#olFind").textContent = "Find lot"; }
+}
+// The outline for a photo as rings of photo coordinates (0..1), or null.
+function outlineRings(ph) {
+  const o = ph.outline; if (!o || o.show === false) return null;
+  if (o.mode === "draw") return o.pts?.length >= 2 ? [o.pts] : null;
+  if (!state.lot || !ph.cam || ph.cam.lat == null) return null;
+  const aspect = ph.w / ph.h, B = basis(ph.cam), rings = [];
+  for (const ring of state.lot.rings) {
+    const pts = ring.map(g => project(ph.cam, aspect, g.lat, g.lon, B));
+    if (pts.some(p => !p)) continue;
+    rings.push(pts.map(p => ({ x: p.x + o.off.x, y: p.y + o.off.y })));
+  }
+  return rings.length ? rings : null;
+}
+function drawOutline(ctx, W, H, rings, b, opts = {}) {
+  const u = W / 1000, col = b.accent, lw = (b.outlineW ?? 1);
+  const path = () => { ctx.beginPath(); for (const r of rings) { r.forEach((p, i) => i ? ctx.lineTo(p.x * W, p.y * H) : ctx.moveTo(p.x * W, p.y * H)); if (!opts.open) ctx.closePath(); } };
+  ctx.save(); ctx.lineJoin = "round"; ctx.lineCap = "round";
+  if (!opts.open) { path(); ctx.fillStyle = withAlpha(col, b.outlineFill ?? 0.18); ctx.fill(); }
+  path(); ctx.shadowColor = withAlpha(col, 0.9); ctx.shadowBlur = 12 * u * lw; ctx.strokeStyle = col; ctx.lineWidth = 3 * u * lw; ctx.stroke();
+  ctx.shadowColor = "transparent"; path(); ctx.strokeStyle = "rgba(255,255,255,0.9)"; ctx.lineWidth = Math.max(1, 1 * u * lw); ctx.stroke();
+  if (opts.handles) for (const r of rings) for (const p of r) {
+    ctx.beginPath(); ctx.arc(p.x * W, p.y * H, 5 * u + 2, 0, 7); ctx.fillStyle = "#fff"; ctx.fill(); ctx.lineWidth = 2 * u + 1; ctx.strokeStyle = col; ctx.stroke();
+  }
+  ctx.restore();
 }
 
 /* ------------------------------------------------------------------ custom pins
@@ -1414,6 +1543,12 @@ function drawScene(ctx, W, H, ph, src, opts = {}) {
   ctx.clearRect(0, 0, W, H);
   ctx.drawImage(src, 0, 0, W, H);
   const b = opts.brand || brand();
+  const ol = opts.brand ? null : outlineRings(ph);
+  if (ol) drawOutline(ctx, W, H, ol, b, { handles: !opts.export && state.selected === "outline" });
+  if (!opts.export && state.drawing && state.drawing.ph === ph.id && state.drawing.pts.length) {
+    const pts = state.drawing.cursor ? [...state.drawing.pts, state.drawing.cursor] : state.drawing.pts;
+    drawOutline(ctx, W, H, [pts], b, { open: true, handles: true });
+  }
   const { pins } = computePins(ph);
   const layout = layoutPins(ctx, pins, b, W, H, opts.brand ? null : ph);
   for (const L of layout.slice().reverse()) drawPin(ctx, L, L.b || b, src, W, H, !opts.export && L.pin.id === state.selected);
@@ -1461,7 +1596,7 @@ async function addFiles(files) {
       pv.getContext("2d").drawImage(img, 0, 0, pv.width, pv.height);
       const th = document.createElement("canvas"); const ts = 160 / w; th.width = 160; th.height = Math.round(h * ts);
       th.getContext("2d").drawImage(pv, 0, 0, th.width, th.height);
-      const ph = { id: uid(), name: file.name, img, preview: pv, thumb: th, w, h, meta, has, base0: cam, base: null, cam: null, moved: {}, overrides: {}, custom: [], manual: null, pinStyle: {} };
+      const ph = { id: uid(), name: file.name, img, preview: pv, thumb: th, w, h, meta, has, base0: cam, base: null, cam: null, moved: {}, overrides: {}, custom: [], manual: null, pinStyle: {}, outline: state.lot ? { mode: "lot", off: { x: 0, y: 0 }, show: true } : null };
       rebase(ph);
       state.photos.push(ph);
       if (!state.current) state.current = ph.id;
@@ -1503,6 +1638,7 @@ function renderHud() {
   if (flashMsg) html = `<span>${esc(flashMsg)}</span>`;
   else if (!ph) html = "";
   else if (state.addMode) html = `<span>Click the photo where the new pin goes</span><button data-act="cancelAdd">Cancel</button>`;
+  else if (state.drawing) html = `<span>Click around the property. Click the first corner, double-click or press Enter to finish.</span><button data-act="doneDraw">Done</button><button data-act="cancelDraw">Cancel</button>`;
   else if (state.view !== "photo" && state.placesStatus !== "loading" && state.placesStatus !== "error" && !mapState.hintSeen) html = `<span>Drag to look around, scroll to zoom. Drag the arrow handle to turn the camera, or the drone to move it.</span><button data-act="okMap">OK</button>`;
   else if (!ph.base) html = `<span>No location in this photo. Add the property address to place pins.</span>`;
   else if (state.placesStatus === "loading") html = `<span class="spinner"></span><span>Finding nearby places…</span>`;
@@ -1517,6 +1653,8 @@ $("#hud").addEventListener("click", e => {
   const a = e.target.closest("button")?.dataset.act; if (!a) return;
   if (a === "retry") { state.placesKey = ""; ensurePlaces(); }
   if (a === "cancelAdd") setAddMode(false);
+  if (a === "doneDraw") finishDrawing(true);
+  if (a === "cancelDraw") finishDrawing(false);
   if (a === "okMap") { mapState.hintSeen = true; renderHud(); }
   if (a === "okHint") { const ph = cur(); if (ph) ph.hintShown = true; renderHud(); }
 });
@@ -1565,14 +1703,14 @@ function renderPlaces() {
   const rows = [];
   if (res.hero) rows.push(placeRow({ id: "hero", kind: "hero", name: heroName(), sub: res.hero.offscreen ? "Property · not found in frame, drag onto the house" : "Property", icon: "home", color: brand().accent, on: brand().heroOn && ph.overrides.hero !== false, moved: res.hero.moved }));
   const list = res.inView;
-  const row = c => placeRow({ id: c.pl.id, kind: "place", name: placeName(c.pl), sub: `${c.why || CATS[c.pl.cat].one} · ${fmtDist(c.d)}`, icon: c.pl.icon, color: CATS[c.pl.cat].color, on: c.on, moved: c.moved });
+  const row = c => placeRow({ id: c.pl.id, kind: "place", name: placeName(c.pl), sub: `${c.why || CATS[c.pl.cat].one} · ${distLabel(c.pl, c.d, true)}`, icon: c.pl.icon, color: CATS[c.pl.cat].color, on: c.on, moved: c.moved });
   const key = list.filter(c => c.why), more = list.filter(c => !c.why);
   if (key.length) rows.push(`<div class="list-sub">Key places for this address</div>`, ...key.map(row));
   if (more.length) rows.push(`<div class="list-sub">More in this shot</div>`, ...more.map(row));
   for (const c of ph.custom) rows.push(placeRow({ id: c.id, kind: "custom", name: c.name, icon: c.icon || "custom", color: CATS[c.cat]?.color || "#636366", on: true,
-    sub: `${CATS[c.cat] ? (c.icon === "ferry" ? "Ferry" : c.icon === "plane" ? "Airport" : CATS[c.cat].one) : "Your pin"}${c._d != null ? ` · ${fmtDist(c._d)}${c.geo ? "" : " (est.)"}` : ""}` }));
+    sub: `${CATS[c.cat] ? (c.icon === "ferry" ? "Ferry" : c.icon === "plane" ? "Airport" : CATS[c.cat].one) : "Your pin"}${c._d != null ? ` · ${distLabel(c._g, c._d, true)}${c.geo || state.settings.dist !== "km" ? "" : " (est.)"}` : ""}` }));
   if (res.keyOut?.length) rows.push(`<div class="list-sub">Key places not in this shot</div>`, ...res.keyOut.sort((a, b) => a.d - b.d).map(o =>
-    `<div class="place off-shot"><span class="tile" style="background:${CATS[o.pl.cat].color}">${svgIcon(o.pl.icon)}</span><div style="min-width:0"><div class="nm static">${esc(placeName(o.pl))}</div><div class="sub">${esc(o.why)} · ${fmtDist(o.d)}</div></div></div>`));
+    `<div class="place off-shot"><span class="tile" style="background:${CATS[o.pl.cat].color}">${svgIcon(o.pl.icon)}</span><div style="min-width:0"><div class="nm static">${esc(placeName(o.pl))}</div><div class="sub">${esc(o.why)} · ${esc(distLabel(o.pl, o.d, true))}</div></div></div>`));
   let html = rows.join("");
   if (!state.address && rows.length) html = `<div class="list-empty">Add the property address above to get the home pin.</div>` + html;
   if (!rows.length) html = `<div class="list-empty">${state.placesStatus === "loading" ? "Finding nearby places…" : state.placesStatus === "error" ? "Couldn't load places." : "No mapped places in view. Try a wider range or more categories."}</div>`;
@@ -1619,7 +1757,13 @@ $("#placeList").addEventListener("click", e => {
 function renderSettings() {
   document.querySelectorAll("#rangeSeg button").forEach(b => b.setAttribute("aria-pressed", String(+b.dataset.v === state.settings.range)));
   document.querySelectorAll("#pickSeg button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.v === state.settings.pick)));
+  document.querySelectorAll("#distSeg button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.v === state.settings.dist)));
 }
+$("#distSeg").addEventListener("click", e => {
+  const b = e.target.closest("button"); if (!b) return;
+  state.settings.dist = b.dataset.v; saveSettings(); renderSettings(); render();
+  if (b.dataset.v !== "km" && !state.address) flash("Travel times need the property address.");
+});
 $("#pickSeg").addEventListener("click", e => {
   const b = e.target.closest("button"); if (!b) return;
   state.settings.pick = b.dataset.v; saveSettings(); renderSettings(); render();
@@ -1628,6 +1772,17 @@ $("#rangeSeg").addEventListener("click", e => {
   const b = e.target.closest("button"); if (!b) return;
   state.settings.range = +b.dataset.v; saveSettings(); renderSettings(); ensurePlaces();
 });
+function renderOutline() {
+  const ph = cur(), o = ph?.outline;
+  $("#olShow").checked = !!o && o.show !== false; $("#olShow").disabled = !o;
+  $("#olClear").disabled = !o; $("#olDraw").disabled = !ph || state.view !== "photo"; $("#olFind").disabled = !ph || !state.address;
+  $("#olInfo").textContent = !o ? "" : o.mode === "lot" ? (state.lot?.label || "Lot") : "Drawn";
+  $("#olDraw").textContent = state.drawing ? "Drawing…" : "Draw";
+}
+$("#olFind").onclick = () => findLot();
+$("#olDraw").onclick = () => { const ph = cur(); if (!ph) return; setAddMode(false); state.drawing = { ph: ph.id, pts: [], cursor: null }; state.selected = null; view.className = "add"; render(); };
+$("#olClear").onclick = () => { const ph = cur(); if (ph) { ph.outline = null; if (state.selected === "outline") state.selected = null; render(); } };
+$("#olShow").onchange = e => { const ph = cur(); if (ph?.outline) { ph.outline.show = e.target.checked; render(); } };
 // Show or hide every place in this shot at once; the property pin is left alone.
 function setAllPlaces(on) {
   const ph = cur(); if (!ph) return;
@@ -1651,6 +1806,7 @@ function renderBrand() {
   $("#bAccent").value = b.accent; $("#bLabel").value = b.labelBg; $("#bText").value = b.text;
   $("#bFont").innerHTML = Object.entries(FONTS).map(([k, f]) => `<option value="${k}" ${k === b.font ? "selected" : ""}>${f.label}</option>`).join("");
   $("#bSize").value = b.size; $("#bStem").value = b.stem; $("#bRadius").value = b.radius;
+  $("#bOutlineW").value = b.outlineW ?? 1; $("#bOutlineFill").value = b.outlineFill ?? 0.18;
   $("#bShadow").value = b.shadow; $("#bShadowV").textContent = b.shadow ? `${Math.round(b.shadow * 100)}%` : "Off";
   $("#bDistance").checked = b.distance; $("#bIcons").checked = b.icons; $("#bCatColors").checked = b.catColors; $("#bUpper").checked = b.upper; $("#bHero").checked = br.heroOn;
   $("#bLogoOnly").checked = !!br.logoOnly && !!br.logo; $("#bLogoOnly").disabled = !br.logo;
@@ -1715,6 +1871,8 @@ $("#bSize").oninput = e => editBrand({ size: +e.target.value });
 $("#bStem").oninput = e => editBrand({ stem: +e.target.value });
 $("#bRadius").oninput = e => editBrand({ radius: +e.target.value });
 $("#bShadow").oninput = e => editBrand({ shadow: +e.target.value });
+$("#bOutlineW").oninput = e => editBrandOnly({ outlineW: +e.target.value });
+$("#bOutlineFill").oninput = e => editBrandOnly({ outlineFill: +e.target.value });
 $("#bDistance").onchange = e => editBrand({ distance: e.target.checked });
 $("#bIcons").onchange = e => editBrand({ icons: e.target.checked });
 $("#bCatColors").onchange = e => editBrand({ catColors: e.target.checked });
@@ -1824,9 +1982,32 @@ function hitTest(n) {
   }
   return null;
 }
+// Outline under the pointer: a corner (only once the outline is selected) or its inside.
+function outlineHit(ph, n) {
+  const rings = outlineRings(ph); if (!rings) return null;
+  if (state.selected === "outline") {
+    for (let ri = 0; ri < rings.length; ri++) for (let i = 0; i < rings[ri].length; i++) {
+      const p = rings[ri][i];
+      if (Math.hypot((p.x - n.x) * view.width, (p.y - n.y) * view.height) < 12 * (window.devicePixelRatio || 1)) return { type: "vertex", ring: ri, i, rings };
+    }
+  }
+  return rings.some(r => inPoly(n, r)) ? { type: "body", rings } : null;
+}
+function finishDrawing(save) {
+  const d = state.drawing; state.drawing = null;
+  const ph = state.photos.find(p => p.id === d?.ph);
+  if (save && ph && d.pts.length >= 3) { ph.outline = { mode: "draw", pts: d.pts, show: true }; state.selected = "outline"; }
+  view.className = ""; render();
+}
 view.addEventListener("pointerdown", e => {
   const ph = cur(); if (!ph) return;
   const n = toNorm(e);
+  if (state.drawing) {
+    const d = state.drawing, first = d.pts[0];
+    // Clicking the first corner again closes the shape.
+    if (first && d.pts.length >= 3 && Math.hypot((first.x - n.x) * view.width, (first.y - n.y) * view.height) < 14 * (window.devicePixelRatio || 1)) { finishDrawing(true); return; }
+    d.pts.push({ x: n.x, y: n.y }); drawView(); renderHud(); return;
+  }
   if (state.addMode) {
     const c = { id: "c" + uid(), name: "New pin", x: n.x, y: n.y };
     ph.custom.push(c); state.selected = c.id; setAddMode(false); render();
@@ -1834,7 +2015,17 @@ view.addEventListener("pointerdown", e => {
     return;
   }
   const L = hitTest(n);
-  if (!L) { if (state.selected) { state.selected = null; render(); } return; }
+  if (!L) {
+    const o = outlineHit(ph, n);
+    if (o) {
+      view.setPointerCapture(e.pointerId);
+      drag = { kind: "outline", o, start: n, moved: false, off: { ...(ph.outline.off || { x: 0, y: 0 }) }, pts: ph.outline.pts?.map(p => ({ ...p })) };
+      if (state.selected !== "outline") { state.selected = "outline"; render(); }
+      view.className = "grabbing"; return;
+    }
+    if (state.selected) { state.selected = null; render(); }
+    return;
+  }
   view.setPointerCapture(e.pointerId);
   const pin = L.pin;
   drag = { id: pin.id, kind: pin.kind, start: n, offX: n.x - pin.x, offY: n.y - pin.y, moved: false };
@@ -1844,9 +2035,20 @@ view.addEventListener("pointerdown", e => {
 view.addEventListener("pointermove", e => {
   const ph = cur(); if (!ph) return;
   const n = toNorm(e);
-  if (!drag) { view.className = state.addMode ? "add" : hitTest(n) ? "grab" : ""; return; }
+  if (state.drawing) { state.drawing.cursor = n; view.className = "add"; drawView(); return; }
+  if (!drag) { view.className = state.addMode ? "add" : hitTest(n) || outlineHit(ph, n) ? "grab" : ""; return; }
   if (!drag.moved && Math.hypot((n.x - drag.start.x) * view.width, (n.y - drag.start.y) * view.height) < 4) return;
   drag.moved = true;
+  if (drag.kind === "outline") {
+    const dx = n.x - drag.start.x, dy = n.y - drag.start.y, o = ph.outline;
+    if (drag.o.type === "vertex") {
+      // Reshaping a lot outline turns it into a hand-drawn one, from what is on screen now.
+      if (o.mode === "lot") { ph.outline = { mode: "draw", pts: drag.o.rings[drag.o.ring].map(p => ({ ...p })), show: true }; drag.o.type = "vertex"; drag.pts = ph.outline.pts.map(p => ({ ...p })); }
+      ph.outline.pts[drag.o.i] = { x: clamp(n.x, 0, 1), y: clamp(n.y, 0, 1) };
+    } else if (o.mode === "lot") o.off = { x: drag.off.x + dx, y: drag.off.y + dy };
+    else o.pts = drag.pts.map(p => ({ x: p.x + dx, y: p.y + dy }));
+    drawView(); return;
+  }
   const x = clamp(n.x - drag.offX, 0, 1), y = clamp(n.y - drag.offY, 0, 1);
   // Only the pin being dragged moves; nothing else changes.
   if (drag.kind === "custom") { const c = ph.custom.find(c => c.id === drag.id); if (c) { c.x = x; c.y = y; } }
@@ -1863,6 +2065,7 @@ function endDrag() {
 view.addEventListener("pointerup", endDrag);
 view.addEventListener("pointercancel", endDrag);
 view.addEventListener("dblclick", e => {
+  if (state.drawing) { const d = state.drawing; d.pts.pop(); finishDrawing(true); return; }   // the double-click's second click added a corner
   const L = hitTest(toNorm(e)); if (!L) return;
   const f = document.querySelector(`[data-name="${CSS.escape(L.pin.id)}"]`); if (f) { f.scrollIntoView({ block: "nearest" }); f.focus(); f.select(); }
 });
@@ -1876,13 +2079,16 @@ document.addEventListener("keydown", e => {
   if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "f") { e.preventDefault(); $("#addr").focus(); $("#addr").select(); return; }
   if (typing) return;
   const ph = cur();
-  if (e.key === "Escape") { if (state.addMode) setAddMode(false); else if (state.selected) { state.selected = null; render(); } }
+  if (state.drawing && e.key === "Enter") { finishDrawing(true); return; }
+  if (state.drawing && (e.key === "Backspace" || e.key === "Delete")) { e.preventDefault(); state.drawing.pts.pop(); drawView(); return; }
+  if (e.key === "Escape") { if (state.drawing) finishDrawing(false); else if (state.addMode) setAddMode(false); else if (state.selected) { state.selected = null; render(); } }
   if ((e.key === "p" || e.key === "P") && ph && state.view === "photo") setAddMode(!state.addMode);
   if ((e.key === "m" || e.key === "M") && ph) setView(state.view === "photo" ? "satellite" : "photo");
   if ((e.key === "Backspace" || e.key === "Delete") && ph && state.selected) {
     e.preventDefault();
     const id = state.selected;
-    if (ph.custom.some(c => c.id === id)) ph.custom = ph.custom.filter(c => c.id !== id);
+    if (id === "outline") ph.outline = null;
+    else if (ph.custom.some(c => c.id === id)) ph.custom = ph.custom.filter(c => c.id !== id);
     else ph.overrides[id] = false;
     state.selected = null; render();
   }
@@ -2078,6 +2284,12 @@ function paintMap() {
     ctx.globalAlpha = 1;
   }
 
+  // The lot, if found.
+  if (state.lot) {
+    ctx.save(); ctx.beginPath();
+    for (const r of state.lot.rings) { r.forEach((g, i) => { const [x, y] = F.toPx(g.lat, g.lon); i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); }); ctx.closePath(); }
+    ctx.fillStyle = withAlpha(brand().accent, 0.22); ctx.fill(); ctx.strokeStyle = brand().accent; ctx.lineWidth = 2 * k; ctx.stroke(); ctx.restore();
+  }
   // The property.
   if (state.address) {
     const [x, y] = F.toPx(state.address.lat, state.address.lon);
@@ -2260,7 +2472,8 @@ function pickAddress(r) {
   addr.value = state.address.label; $("#addrClear").hidden = false;
   showSuggest([]); addr.blur();
   delete state.names.hero;
-  state.photos.forEach(p => { delete p.moved.hero; rebase(p); });
+  state.lot = null;
+  state.photos.forEach(p => { delete p.moved.hero; if (p.outline?.mode === "lot") p.outline = null; rebase(p); });
   render(); ensurePlaces();
 }
 $("#addrClear").onclick = () => {
@@ -2350,7 +2563,7 @@ function render() {
   $("#empty").hidden = !!ph; view.hidden = !ph || mapMode; mapCv.hidden = !mapMode;
   document.querySelectorAll("#viewSeg [data-view]").forEach(b => { b.setAttribute("aria-pressed", String(b.dataset.view === (ph ? state.view : "photo"))); b.disabled = !ph; });
   $("#exportBtn").disabled = !ph; $("#addPinBtn").disabled = !ph || mapMode;
-  renderPhotos(); renderPlaces(); renderCamera(); renderHud();
+  renderPhotos(); renderPlaces(); renderCamera(); renderHud(); renderOutline();
   if (state.styleScope === "pin" && renderBrand.lastSel !== state.selected) { renderBrand.lastSel = state.selected; renderBrand(); }
   if (ph) drawView();
 }
@@ -2375,7 +2588,7 @@ renderCats(); renderSettings(); renderBrand(); render(); loadFont();
 document.fonts?.ready.then(() => { renderStyleTiles(); drawView(); });
 
 // Hooks for scripted checks.
-window.pinpoint = { state, project, basis, setCam, setView, footprint, mapState, mapFrame, computePins, smartPicks, schoolLevel, groundPoint, guessKind, readMeta, cameraFromMeta, parsePlaces, addFiles, pickAddress, fovToF, fToFov };
+window.pinpoint = { state, project, outlineRings, findLot, distLabel, travel, basis, setCam, setView, footprint, mapState, mapFrame, computePins, smartPicks, schoolLevel, groundPoint, guessKind, readMeta, cameraFromMeta, parsePlaces, addFiles, pickAddress, fovToF, fToFov };
 </script>
 </body>
 </html>

@@ -98,9 +98,18 @@ That link always serves the latest version on this branch. You can also open
    in the list puts it back. A pin you add takes its icon and distance from
    its name: a place already found, a map search near the property, or else
    keywords in the name and the ground under the pin (marked est. in the
-   list). Click its icon in the list to choose the type or hide the distance. The nearest public school is a guide to the
+   list). Click its icon in the list to choose the type or hide the distance.
+   Distances can show as km, or as walk or drive times from the property
+   (OpenStreetMap routing by FOSSGIS at routing.openstreetmap.de; when it
+   can't be reached the time is estimated and marked est. in the list).
+4. Property outline: Find lot draws the lot boundary from NSW Spatial
+   Services' public cadastre for the address (NSW only). Draw traces an
+   outline by hand anywhere: click the corners, then Enter, double-click or
+   click the first corner. Drag inside the outline to line it up and drag a
+   corner to reshape it (select it first). Outline width and fill are in the
+   Style tab. The nearest public school is a guide to the
    catchment, not the official boundary.
-4. Export (Cmd+E) at full resolution, one photo or all of them as a zip.
+5. Export (Cmd+E) at full resolution, one photo or all of them as a zip.
 
 Pins are placed from the camera data DJI drones write into each JPG: GPS
 position, height above takeoff, gimbal heading and tilt, and focal length.
