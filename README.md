@@ -95,7 +95,10 @@ That link always serves the latest version on this branch. You can also open
    and key places that fall outside the shot are listed too. Start with:
    Everything switches all of them on instead. Rename pins inline, press P
    and click to add your own, and drag any pin to move just that one; Reset
-   in the list puts it back. The nearest public school is a guide to the
+   in the list puts it back. A pin you add takes its icon and distance from
+   its name: a place already found, a map search near the property, or else
+   keywords in the name and the ground under the pin (marked est. in the
+   list). Click its icon in the list to choose the type or hide the distance. The nearest public school is a guide to the
    catchment, not the official boundary.
 4. Export (Cmd+E) at full resolution, one photo or all of them as a zip.
 
@@ -113,7 +116,8 @@ place the drone on the map first.
 Brand styles live in the Style tab: seven pin designs (Classic, Glass,
 Liquid, Beacon, Editorial, Bold, Tag), colours, font, size, line length, capitals,
 distances, icons, a Shadow slider (off to heavy, for bright or busy photos)
-and a logo for the property pin. Turn on Logo only to show
+and a logo for the property pin. Customise all changes the brand; Customise
+clicked changes only the pin you click (Reset this pin undoes it). Turn on Logo only to show
 just the logo on the property pin; it sits on the brand's Label colour, so
 pick a light Label for a dark logo and a dark one for a white logo. Brands save in the browser.
 Use the ... menu to export a brand as a `.pinpoint.json` file and import it

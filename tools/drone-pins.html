@@ -262,6 +262,8 @@ input[type="range"]::-moz-range-progress { height: 4px; border-radius: 2px; back
 .place:last-child { border-bottom: 0; }
 .place.sel { background: var(--accent-soft); margin: 0 -12px; padding: 7px 12px; }
 .tile { width: 30px; height: 30px; border-radius: 8px; display: grid; place-items: center; color: #fff; box-shadow: inset 0 0.5px 0 rgba(255, 255, 255, 0.35), 0 1px 2px rgba(0, 0, 0, 0.12); }
+.tile.pick { cursor: pointer; transition: transform .15s; }
+.tile.pick:hover { transform: scale(1.08); box-shadow: 0 0 0 2px var(--accent-soft), 0 1px 2px rgba(0,0,0,0.12); }
 .tile svg { width: 17px; height: 17px; stroke-width: 2; }
 .place .nm { display: block; width: 100%; border: 0; background: transparent; padding: 1px 5px; margin-left: -5px; border-radius: 6px; font-weight: 500; text-overflow: ellipsis; outline: 0; }
 .place .nm:focus { background: var(--glass-strong); box-shadow: 0 0 0 2px var(--accent) !important; }
@@ -270,6 +272,8 @@ input[type="range"]::-moz-range-progress { height: 4px; border-radius: 2px; back
 .place .sub .anch svg { width: 10px; height: 10px; stroke-width: 2.6; }
 .place .del { border: 0; background: transparent; color: var(--ink3); padding: 4px; border-radius: 999px; }
 .place .del:hover { color: var(--danger); background: var(--fill); }
+#pinStyleCtrls.dim { opacity: 0.4; pointer-events: none; }
+.scope-on { display: flex; align-items: center; gap: 8px; justify-content: space-between; }
 .list-sub { font-size: 11px; font-weight: 600; color: var(--ink2); padding: 10px 0 4px; border-bottom: 0.5px solid var(--sep); }
 .list-sub:first-child { padding-top: 8px; }
 .place.off-shot { opacity: 0.7; grid-template-columns: 30px minmax(0, 1fr); }
@@ -434,11 +438,14 @@ dialog.sheet::backdrop { background: rgba(0, 0, 0, 0.18); }
       </section>
 
       <section class="pane" data-pane="style" hidden>
+        <div class="seg" id="scopeSeg" style="margin:8px 0 4px"><button data-v="all" aria-pressed="true">Customise all</button><button data-v="pin" aria-pressed="false">Customise clicked</button></div>
+        <div class="hint" id="scopeHint" hidden style="margin:8px 4px 0"></div>
         <div class="sec-h"><h3>Brand</h3></div>
         <div class="brandbar">
           <select id="brandSel" aria-label="Brand"></select>
           <button class="cap-btn" id="brandMenuBtn" title="Brand options" aria-label="Brand options"><svg class="i" viewBox="0 0 24 24"><circle cx="5.5" cy="12" r="1.1" fill="currentColor"/><circle cx="12" cy="12" r="1.1" fill="currentColor"/><circle cx="18.5" cy="12" r="1.1" fill="currentColor"/></svg></button>
         </div>
+        <div id="pinStyleCtrls">
         <div class="styles" id="styleTiles"></div>
         <div class="sec-h"><h3>Colour and type</h3></div>
         <div class="group">
@@ -460,6 +467,7 @@ dialog.sheet::backdrop { background: rgba(0, 0, 0, 0.18); }
           <div class="row"><span class="lbl">Show icons</span><input class="switch" type="checkbox" id="bIcons"></div>
           <div class="row"><span class="lbl">Colour by category</span><input class="switch" type="checkbox" id="bCatColors"></div>
           <div class="row"><span class="lbl">Capitals</span><input class="switch" type="checkbox" id="bUpper"></div>
+        </div>
         </div>
         <div class="sec-h"><h3>Property</h3></div>
         <div class="group">
@@ -600,7 +608,7 @@ const state = {
   settings: Object.assign({ range: 3000, pick: "smart", cats: Object.fromEntries(Object.keys(CATS).map(k => [k, true])) }, store.get("settings", {})),
   brands: store.get("brands", null) || BUILTIN_BRANDS.map(b => ({ ...b })),
   brandId: store.get("brandId", "classic"),
-  view: "photo",
+  view: "photo", styleScope: "all",
 };
 state.brands = state.brands.map(b => ({ ...BRAND_DEFAULTS, ...b }));
 for (const bb of BUILTIN_BRANDS) if (!state.brands.some(b => b.id === bb.id)) state.brands.push({ ...bb });
@@ -1056,9 +1064,87 @@ function computePins(ph) {
       res.pins.unshift({ id: "hero", kind: "hero", cat: "home", icon: "home", name: heroName(), sub: "", x: pos.x, y: pos.y, moved: !!mv });
     }
   }
-  for (const c of ph.custom) res.pins.push({ id: c.id, kind: "custom", cat: "custom", icon: "custom", name: c.name, sub: "", x: c.x, y: c.y });
+  for (const c of ph.custom) {
+    // Distance from the real place when the name was found on the map, else from
+    // the spot on the ground under the pin.
+    const g = c.geo || groundPoint(ph, c.x, c.y);
+    c._d = ref && g && !c.noDist ? haversine(ref, g) : null;
+    res.pins.push({ id: c.id, kind: "custom", cat: c.cat || "custom", icon: c.icon || "custom", name: c.name, sub: c._d != null ? fmtDist(c._d) : "", x: c.x, y: c.y });
+  }
   return res;
 }
+
+/* ------------------------------------------------------------------ custom pins
+   A pin you add yourself gets a real distance and a fitting icon from its name:
+   first from the places already found, then a map search near the property,
+   and failing that from keywords in the name and the ground under the pin. */
+const NAME_KINDS = [
+  [/pre-?school|early learning|child ?care|kindy|kindergarten|day ?care/i, "school"],
+  [/school|college|university|\buni\b|tafe|academy|campus/i, "school"],
+  [/airport|airfield|aerodrome/i, "transport", "plane"],
+  [/ferry|wharf/i, "transport", "ferry"],
+  [/station|train|railway|interchange|light rail|metro/i, "transport", "train"],
+  [/hospital|medical|clinic|health/i, "health"],
+  [/westfield|stockland|shopping|centre|center|mall|plaza|square|market|shops|coles|woolworths|aldi|\biga\b|bunnings|kmart|target|myer|harris farm/i, "shopping"],
+  [/beach|\bbay\b|surf|baths|ocean|harbou?r|lake|river|lagoon|foreshore|marina|jetty/i, "beach"],
+  [/stadium|oval|golf|sport|pool|aquatic|tennis|arena|racecourse|velodrome/i, "sport"],
+  [/park|reserve|gardens?|forest|bushland|lookout|walk|track/i, "park"],
+  [/museum|gallery|church|cathedral|lighthouse|monument|memorial|zoo|theatre|library|bridge|tower|pier/i, "landmark"],
+  [/\bcbd\b|city|town|suburb/i, "area"],
+];
+function guessKind(name) {
+  for (const [re, cat, icon] of NAME_KINDS) if (re.test(name)) return { cat, icon: icon || CATS[cat].icon };
+  return { cat: "custom", icon: "custom" };
+}
+// Where a point in the photo meets flat ground at the takeoff height.
+function groundPoint(ph, x, y) {
+  const cam = ph.cam; if (!cam || cam.lat == null) return null;
+  const B = basis(cam), aspect = ph.w / ph.h;
+  const a = (x - 0.5) / cam.f, b = -(y - 0.5) / (cam.f * aspect);
+  const d = [0, 1, 2].map(i => B.f[i] + B.r[i] * a + B.u[i] * b);
+  if (d[2] > -1e-4) return null;   // at or above the horizon
+  const t = cam.h / -d[2];
+  return { lat: cam.lat + d[1] * t / (R_EARTH * D), lon: cam.lon + d[0] * t / (R_EARTH * D * Math.cos(cam.lat * D)) };
+}
+const normName = s => s.toLowerCase().replace(/[^a-z0-9 ]/g, " ").replace(/\b(the|station)\b/g, " ").replace(/\s+/g, " ").trim();
+// Same place if every word of the shorter name is in the longer ("Merewether Baths" ~ "Merewether Ocean Baths").
+function sameName(a, b) {
+  const x = normName(a).split(" ").filter(Boolean), y = normName(b).split(" ").filter(Boolean);
+  if (!x.length || !y.length) return false;
+  const [s, l] = x.length <= y.length ? [x, new Set(y)] : [y, new Set(x)];
+  return s.join(" ").length >= 4 && s.every(w => l.has(w));
+}
+async function resolveCustom(ph, c) {
+  const name = c.name.trim();
+  c.geo = null;
+  if (!name || name === "New pin") { render(); return; }
+  if (c.auto !== false) Object.assign(c, guessKind(name));
+  const ref = refPoint(ph);
+  const known = state.places.filter(p => sameName(p.name, name)).sort((a, b) => (ref ? haversine(ref, a) - haversine(ref, b) : 0))[0];
+  if (known) {
+    c.geo = { lat: known.lat, lon: known.lon };
+    if (c.auto !== false) { c.cat = known.cat; c.icon = known.icon; }
+    render(); return;
+  }
+  render();
+  if (!ref) return;
+  const seq = c.seq = (c.seq || 0) + 1;
+  try {
+    const j = await getJSON(`https://photon.komoot.io/api/?limit=8&q=${encodeURIComponent(name)}&lat=${ref.lat.toFixed(5)}&lon=${ref.lon.toFixed(5)}`, {}, 8000);
+    if (seq !== c.seq) return;
+    const hit = (j.features || []).map(f => ({ f, d: haversine(ref, { lat: f.geometry.coordinates[1], lon: f.geometry.coordinates[0] }) }))
+      .filter(o => o.d < 25000 && sameName(o.f.properties?.name || "", name)).sort((a, b) => a.d - b.d)[0];
+    if (hit) {
+      c.geo = { lat: hit.f.geometry.coordinates[1], lon: hit.f.geometry.coordinates[0] };
+      const k = classify({ [hit.f.properties.osm_key]: hit.f.properties.osm_value });
+      if (k && c.auto !== false) { c.cat = k[0]; c.icon = k[1]; }
+      render();
+    }
+  } catch (e) { console.warn("Custom pin lookup failed", e); }
+}
+const KIND_MENU = [["School", "school", "school"], ["Beach or water", "beach", "beach"], ["Park", "park", "park"], ["Train station", "transport", "train"],
+  ["Ferry", "transport", "ferry"], ["Airport", "transport", "plane"], ["Shopping", "shopping", "shopping"], ["Hospital", "health", "health"],
+  ["Sport", "sport", "sport"], ["Landmark", "landmark", "landmark"], ["Suburb", "area", "area"], ["Plain pin", "custom", "custom"]];
 
 /* ------------------------------------------------------------------ drawing
    One renderer for the preview and the export, so what you see is what you
@@ -1122,14 +1208,17 @@ function measurePin(ctx, pin, b, u) {
   }
   return m;
 }
-function layoutPins(ctx, pins, b, W, H) {
-  const u = W / 1000 * b.size, margin = 8 * u;
+// The look for one pin: the brand, plus any changes made to that pin alone.
+function pinBrand(ph, pin) { const o = ph?.pinStyle?.[pin.id]; return o ? { ...brand(), ...o } : null; }
+function layoutPins(ctx, pins, base, W, H, ph) {
+  const u0 = W / 1000 * base.size, margin = 8 * u0;
   const placed = [], out = [];
   // Every pin's dot is an obstacle, so no label covers a point it labels.
-  for (const pin of pins) { const d = 9 * u; placed.push({ x: pin.x * W - d, y: pin.y * H - d, w: 2 * d, h: 2 * d }); }
+  for (const pin of pins) { const d = 9 * u0; placed.push({ x: pin.x * W - d, y: pin.y * H - d, w: 2 * d, h: 2 * d }); }
   const order = pins.slice().sort((a, b2) => (b2.kind === "hero") - (a.kind === "hero") || b2.y - a.y);
-  const hits = (r) => placed.some(o => r.x < o.x + o.w + 5 * u && r.x + r.w + 5 * u > o.x && r.y < o.y + o.h + 5 * u && r.y + r.h + 5 * u > o.y);
+  const hits = (r) => placed.some(o => r.x < o.x + o.w + 5 * u0 && r.x + r.w + 5 * u0 > o.x && r.y < o.y + o.h + 5 * u0 && r.y + r.h + 5 * u0 > o.y);
   for (const pin of order) {
+    const b = pinBrand(ph, pin) || base, u = W / 1000 * b.size;
     const m = measurePin(ctx, pin, b, u);
     const px = pin.x * W, py = pin.y * H;
     const L = (b.style === "bold" ? 26 : 44) * u * Math.max(0.05, b.stem) * (pin.kind === "hero" ? 1.2 : 1) + (b.style === "bold" || b.style === "tag" ? 8 * u : 0);
@@ -1148,7 +1237,7 @@ function layoutPins(ctx, pins, b, W, H) {
     }
     if (!box) box = best ? best.r : { x: left, y: clamp(py - L - m.h, margin, H - margin - m.h), w: m.w, h: m.h, up: py - L - m.h >= margin };
     placed.push(box);
-    out.push({ pin, m, box, px, py, u });
+    out.push({ pin, m, box, px, py, u, b });
   }
   return out;
 }
@@ -1320,8 +1409,8 @@ function drawScene(ctx, W, H, ph, src, opts = {}) {
   ctx.drawImage(src, 0, 0, W, H);
   const b = opts.brand || brand();
   const { pins } = computePins(ph);
-  const layout = layoutPins(ctx, pins, b, W, H);
-  for (const L of layout.slice().reverse()) drawPin(ctx, L, b, src, W, H, !opts.export && L.pin.id === state.selected);
+  const layout = layoutPins(ctx, pins, b, W, H, opts.brand ? null : ph);
+  for (const L of layout.slice().reverse()) drawPin(ctx, L, L.b || b, src, W, H, !opts.export && L.pin.id === state.selected);
   return layout;
 }
 
@@ -1366,7 +1455,7 @@ async function addFiles(files) {
       pv.getContext("2d").drawImage(img, 0, 0, pv.width, pv.height);
       const th = document.createElement("canvas"); const ts = 160 / w; th.width = 160; th.height = Math.round(h * ts);
       th.getContext("2d").drawImage(pv, 0, 0, th.width, th.height);
-      const ph = { id: uid(), name: file.name, img, preview: pv, thumb: th, w, h, meta, has, base0: cam, base: null, cam: null, moved: {}, overrides: {}, custom: [], manual: null };
+      const ph = { id: uid(), name: file.name, img, preview: pv, thumb: th, w, h, meta, has, base0: cam, base: null, cam: null, moved: {}, overrides: {}, custom: [], manual: null, pinStyle: {} };
       rebase(ph);
       state.photos.push(ph);
       if (!state.current) state.current = ph.id;
@@ -1460,7 +1549,7 @@ function placeRow(o) {
   const { id, name, sub, icon, color, on, moved, kind } = o;
   const anch = moved ? `<button class="anch" data-reset="${id}" title="Put this pin back where Pinpoint placed it">${svgPath("M4 12a8 8 0 1 0 2.5-5.8 M4 4v4.5h4.5")}Reset</button>` : "";
   const right = kind === "custom" ? `<button class="del" data-del="${id}" aria-label="Delete pin">${svgPath("M5 7h14 M10 7V4.5h4V7 M7 7l1 13h8l1-13")}</button>` : `<input class="switch" type="checkbox" data-toggle="${id}" ${on ? "checked" : ""} aria-label="Show ${esc(name)}">`;
-  return `<div class="place${state.selected === id ? " sel" : ""}" data-id="${id}"><span class="tile" style="background:${color}">${svgIcon(icon)}</span><div style="min-width:0"><input class="nm" data-name="${id}" value="${esc(name)}" aria-label="Pin label"><div class="sub">${esc(sub)}${anch}</div></div>${right}</div>`;
+  return `<div class="place${state.selected === id ? " sel" : ""}" data-id="${id}"><span class="tile${kind === "custom" ? " pick" : ""}" ${kind === "custom" ? `data-kindmenu="${id}" title="Choose the icon"` : ""} style="background:${color}">${svgIcon(icon)}</span><div style="min-width:0"><input class="nm" data-name="${id}" value="${esc(name)}" aria-label="Pin label"><div class="sub">${esc(sub)}${anch}</div></div>${right}</div>`;
 }
 function renderPlaces() {
   const ph = cur(), el = $("#placeList");
@@ -1474,7 +1563,8 @@ function renderPlaces() {
   const key = list.filter(c => c.why), more = list.filter(c => !c.why);
   if (key.length) rows.push(`<div class="list-sub">Key places for this address</div>`, ...key.map(row));
   if (more.length) rows.push(`<div class="list-sub">More in this shot</div>`, ...more.map(row));
-  for (const c of ph.custom) rows.push(placeRow({ id: c.id, kind: "custom", name: c.name, sub: "Your pin", icon: "custom", color: "#636366", on: true }));
+  for (const c of ph.custom) rows.push(placeRow({ id: c.id, kind: "custom", name: c.name, icon: c.icon || "custom", color: CATS[c.cat]?.color || "#636366", on: true,
+    sub: `${CATS[c.cat] ? (c.icon === "ferry" ? "Ferry" : c.icon === "plane" ? "Airport" : CATS[c.cat].one) : "Your pin"}${c._d != null ? ` · ${fmtDist(c._d)}${c.geo ? "" : " (est.)"}` : ""}` }));
   if (res.keyOut?.length) rows.push(`<div class="list-sub">Key places not in this shot</div>`, ...res.keyOut.sort((a, b) => a.d - b.d).map(o =>
     `<div class="place off-shot"><span class="tile" style="background:${CATS[o.pl.cat].color}">${svgIcon(o.pl.icon)}</span><div style="min-width:0"><div class="nm static">${esc(placeName(o.pl))}</div><div class="sub">${esc(o.why)} · ${fmtDist(o.d)}</div></div></div>`));
   let html = rows.join("");
@@ -1489,10 +1579,11 @@ function renderPlaces() {
 $("#placeList").addEventListener("change", e => {
   const ph = cur(); if (!ph) return;
   const t = e.target;
+  if (t.dataset.name) { const c = ph.custom.find(c => c.id === t.dataset.name); if (c) resolveCustom(ph, c); return; }
   if (t.dataset.toggle) {
     ph.overrides[t.dataset.toggle] = t.checked;
     // Switching the home pin on here also turns it on for the brand if it was off there.
-    if (t.dataset.toggle === "hero" && t.checked && !brand().heroOn) { editBrand({ heroOn: true }); return; }
+    if (t.dataset.toggle === "hero" && t.checked && !brand().heroOn) { editBrandOnly({ heroOn: true }); return; }
     render();
   }
 });
@@ -1505,6 +1596,13 @@ $("#placeList").addEventListener("input", e => {
 $("#placeList").addEventListener("keydown", e => { if (e.key === "Enter" && e.target.dataset.name) e.target.blur(); });
 $("#placeList").addEventListener("click", e => {
   const ph = cur(); if (!ph) return;
+  const km = e.target.closest("[data-kindmenu]");
+  if (km) {
+    const c = ph.custom.find(c => c.id === km.dataset.kindmenu); if (!c) return;
+    openMenu(km, [...KIND_MENU.map(([label, cat, icon]) => ({ label: (c.icon === icon && (c.cat || "custom") === cat ? "✓ " : "") + label, run: () => { c.cat = cat; c.icon = icon; c.auto = false; render(); } })),
+      "-", { label: c.noDist ? "Show distance" : "Hide distance", run: () => { c.noDist = !c.noDist; render(); } }]);
+    return;
+  }
   const reset = e.target.closest("[data-reset]"), del = e.target.closest("[data-del]");
   if (reset) { delete ph.moved[reset.dataset.reset]; render(); return; }
   if (del) { ph.custom = ph.custom.filter(c => c.id !== del.dataset.del); render(); return; }
@@ -1535,18 +1633,25 @@ $("#hideAll").onclick = () => setAllPlaces(false);
 
 /* Brand editor */
 function renderBrand() {
-  const b = brand();
-  $("#brandSel").innerHTML = state.brands.map(x => `<option value="${x.id}" ${x.id === b.id ? "selected" : ""}>${esc(x.name)}</option>`).join("");
+  const br = brand(), b = styleTarget(), ph = cur(), sel = state.selected, pinMode = state.styleScope === "pin";
+  $("#brandSel").innerHTML = state.brands.map(x => `<option value="${x.id}" ${x.id === br.id ? "selected" : ""}>${esc(x.name)}</option>`).join("");
+  document.querySelectorAll("#scopeSeg button").forEach(x => x.setAttribute("aria-pressed", String(x.dataset.v === state.styleScope)));
+  const hint = $("#scopeHint"), selPin = pinMode && ph && sel ? computePins(ph).pins.find(q => q.id === sel) : null;
+  hint.hidden = !pinMode;
+  if (pinMode) hint.innerHTML = selPin
+    ? `<div class="scope-on"><span>Customising <b>${esc(selPin.name)}</b> only.</span>${ph.pinStyle?.[sel] ? `<button class="btn small" id="scopeReset">Reset this pin</button>` : ""}</div>`
+    : "Click a pin on the photo, or a place in the list, to customise it on its own.";
+  $("#pinStyleCtrls").classList.toggle("dim", pinMode && !selPin);
   $("#bAccent").value = b.accent; $("#bLabel").value = b.labelBg; $("#bText").value = b.text;
   $("#bFont").innerHTML = Object.entries(FONTS).map(([k, f]) => `<option value="${k}" ${k === b.font ? "selected" : ""}>${f.label}</option>`).join("");
   $("#bSize").value = b.size; $("#bStem").value = b.stem; $("#bRadius").value = b.radius;
   $("#bShadow").value = b.shadow; $("#bShadowV").textContent = b.shadow ? `${Math.round(b.shadow * 100)}%` : "Off";
-  $("#bDistance").checked = b.distance; $("#bIcons").checked = b.icons; $("#bCatColors").checked = b.catColors; $("#bUpper").checked = b.upper; $("#bHero").checked = b.heroOn;
-  $("#bLogoOnly").checked = !!b.logoOnly && !!b.logo; $("#bLogoOnly").disabled = !b.logo;
-  const lc = $("#bLogoImg"), li = logoImg(b.logo);
+  $("#bDistance").checked = b.distance; $("#bIcons").checked = b.icons; $("#bCatColors").checked = b.catColors; $("#bUpper").checked = b.upper; $("#bHero").checked = br.heroOn;
+  $("#bLogoOnly").checked = !!br.logoOnly && !!br.logo; $("#bLogoOnly").disabled = !br.logo;
+  const lc = $("#bLogoImg"), li = logoImg(br.logo);
   lc.hidden = !li;
   if (li) { lc.height = 48; lc.width = Math.round(48 * li.width / li.height); lc.style.width = lc.width / 2 + "px"; lc.style.height = "24px"; lc.getContext("2d").drawImage(li, 0, 0, lc.width, lc.height); }
-  $("#bLogoRm").hidden = !b.logo; $("#bLogoBtn").textContent = b.logo ? "Change…" : "Choose…";
+  $("#bLogoRm").hidden = !br.logo; $("#bLogoBtn").textContent = br.logo ? "Change…" : "Choose…";
   renderStyleTiles();
 }
 const tileBg = (() => {
@@ -1556,7 +1661,7 @@ const tileBg = (() => {
   return c;
 })();
 function renderStyleTiles() {
-  const b = brand(), wrap = $("#styleTiles");
+  const b = styleTarget(), wrap = $("#styleTiles");
   if (wrap.children.length !== Object.keys(STYLE_NAMES).length) {
     wrap.innerHTML = Object.entries(STYLE_NAMES).map(([k, n]) => `<button data-style="${k}" aria-label="${n} style"><canvas width="300" height="200"></canvas>${n}</button>`).join("");
   }
@@ -1571,17 +1676,31 @@ function renderStyleTiles() {
     for (const L of Ls) drawPin(x, L, tb, tileBg, 300, 200, false);
   });
 }
-function editBrand(patch) { Object.assign(brand(), patch); saveBrands(); renderBrand(); render(); }
+// The look being edited: the clicked pin's in "Customise clicked", else the brand's.
+function styleTarget() {
+  const ph = cur(), sel = state.selected;
+  return state.styleScope === "pin" && ph && sel ? { ...brand(), ...(ph.pinStyle?.[sel] || {}) } : brand();
+}
+function editBrand(patch) {
+  const ph = cur(), sel = state.selected;
+  if (state.styleScope === "pin" && ph && sel) { ph.pinStyle = ph.pinStyle || {}; ph.pinStyle[sel] = { ...(ph.pinStyle[sel] || {}), ...patch }; }
+  else { Object.assign(brand(), patch); saveBrands(); }
+  renderBrand(); render();
+}
+// Brand-wide settings (name, property pin, logo) never go to a single pin.
+function editBrandOnly(patch) { Object.assign(brand(), patch); saveBrands(); renderBrand(); render(); }
 $("#styleTiles").addEventListener("click", e => {
   const s = e.target.closest("[data-style]")?.dataset.style; if (!s) return;
   const preset = BUILTIN_BRANDS.find(z => z.style === s);
   // Switching style keeps the brand's colours unless the style needs dark text on light or the reverse.
   const patch = { style: s };
   if (s === "glass" || s === "editorial" || s === "liquid") { patch.text = "#ffffff"; if (s === "glass") patch.labelBg = "#1c1c1e"; if (s === "liquid") patch.labelBg = "#ffffff"; }
-  else if (brand().text === "#ffffff" && s !== "bold") { patch.text = preset.text; patch.labelBg = preset.labelBg; }
+  else if (styleTarget().text === "#ffffff" && s !== "bold") { patch.text = preset.text; patch.labelBg = preset.labelBg; }
   editBrand(patch);
 });
 $("#brandSel").onchange = e => { state.brandId = e.target.value; saveBrands(); renderBrand(); render(); loadFont(); };
+$("#scopeSeg").addEventListener("click", e => { const b = e.target.closest("button"); if (!b) return; state.styleScope = b.dataset.v; renderBrand(); });
+$("#scopeHint").addEventListener("click", e => { if (!e.target.closest("#scopeReset")) return; const ph = cur(); if (ph?.pinStyle) delete ph.pinStyle[state.selected]; renderBrand(); render(); });
 $("#bAccent").oninput = e => editBrand({ accent: e.target.value });
 $("#bLabel").oninput = e => editBrand({ labelBg: e.target.value });
 $("#bText").oninput = e => editBrand({ text: e.target.value });
@@ -1594,10 +1713,10 @@ $("#bDistance").onchange = e => editBrand({ distance: e.target.checked });
 $("#bIcons").onchange = e => editBrand({ icons: e.target.checked });
 $("#bCatColors").onchange = e => editBrand({ catColors: e.target.checked });
 $("#bUpper").onchange = e => editBrand({ upper: e.target.checked });
-$("#bHero").onchange = e => editBrand({ heroOn: e.target.checked });
-$("#bLogoOnly").onchange = e => editBrand({ logoOnly: e.target.checked });
+$("#bHero").onchange = e => editBrandOnly({ heroOn: e.target.checked });
+$("#bLogoOnly").onchange = e => editBrandOnly({ logoOnly: e.target.checked });
 $("#bLogoBtn").onclick = () => $("#logoInput").click();
-$("#bLogoRm").onclick = () => editBrand({ logo: null });
+$("#bLogoRm").onclick = () => editBrandOnly({ logo: null });
 $("#logoInput").onchange = async e => {
   const f = e.target.files[0]; e.target.value = ""; if (!f) return;
   let im;
@@ -1606,7 +1725,7 @@ $("#logoInput").onchange = async e => {
   const s = Math.min(1, 1200 / Math.max(iw, ih));
   const c = document.createElement("canvas"); c.width = Math.round(iw * s); c.height = Math.round(ih * s);
   c.getContext("2d").drawImage(im, 0, 0, c.width, c.height);
-  editBrand({ logo: c.toDataURL("image/png") });
+  editBrandOnly({ logo: c.toDataURL("image/png") });
 };
 async function loadFont() {
   const f = FONTS[brand().font]; if (!f || !document.fonts) return;
@@ -1621,7 +1740,10 @@ function openMenu(anchor, items) {
   m.innerHTML = items.map((it, i) => it === "-" ? "<hr>" : `<button data-i="${i}" class="${it.danger ? "danger" : ""}">${esc(it.label)}</button>`).join("");
   document.body.appendChild(m);
   const r = anchor.getBoundingClientRect();
-  m.style.top = r.bottom + 6 + "px"; m.style.left = Math.max(8, Math.min(window.innerWidth - m.offsetWidth - 8, r.right - m.offsetWidth)) + "px";
+  const below = window.innerHeight - r.bottom - 12, above = r.top - 12;
+  m.style.maxHeight = Math.max(below, above) + "px"; m.style.overflowY = "auto";
+  m.style.top = (m.offsetHeight <= below || below >= above ? r.bottom + 6 : Math.max(8, r.top - 6 - Math.min(m.offsetHeight, above))) + "px";
+  m.style.left = Math.max(8, Math.min(window.innerWidth - m.offsetWidth - 8, r.right - m.offsetWidth)) + "px";
   m.addEventListener("click", e => { const b = e.target.closest("[data-i]"); if (!b) return; closeMenu(); items[+b.dataset.i].run(); });
   setTimeout(() => document.addEventListener("pointerdown", outside), 0);
   function outside(e) { if (!m.contains(e.target)) closeMenu(); }
@@ -1642,7 +1764,7 @@ $("#brandMenuBtn").onclick = e => {
     { label: "Delete brand", danger: true, run: () => { if (state.brands.length < 2) return flash("Keep at least one brand."); if (!confirm(`Delete "${b.name}"?`)) return; state.brands = state.brands.filter(x => x.id !== b.id); state.brandId = state.brands[0].id; saveBrands(); renderBrand(); render(); } },
   ]);
 };
-function renameBrand() { const n = prompt("Brand name", brand().name); if (n && n.trim()) editBrand({ name: n.trim() }); }
+function renameBrand() { const n = prompt("Brand name", brand().name); if (n && n.trim()) editBrandOnly({ name: n.trim() }); }
 $("#brandInput").onchange = async e => {
   const f = e.target.files[0]; e.target.value = ""; if (!f) return;
   try {
@@ -2180,6 +2302,7 @@ function render() {
   document.querySelectorAll("#viewSeg [data-view]").forEach(b => { b.setAttribute("aria-pressed", String(b.dataset.view === (ph ? state.view : "photo"))); b.disabled = !ph; });
   $("#exportBtn").disabled = !ph; $("#addPinBtn").disabled = !ph || mapMode;
   renderPhotos(); renderPlaces(); renderCamera(); renderHud();
+  if (state.styleScope === "pin" && renderBrand.lastSel !== state.selected) { renderBrand.lastSel = state.selected; renderBrand(); }
   if (ph) drawView();
 }
 let ambientFor = null;
@@ -2203,7 +2326,7 @@ renderCats(); renderSettings(); renderBrand(); render(); loadFont();
 document.fonts?.ready.then(() => { renderStyleTiles(); drawView(); });
 
 // Hooks for scripted checks.
-window.pinpoint = { state, project, basis, setCam, setView, footprint, computePins, smartPicks, schoolLevel, readMeta, cameraFromMeta, parsePlaces, addFiles, pickAddress, fovToF, fToFov };
+window.pinpoint = { state, project, basis, setCam, setView, footprint, computePins, smartPicks, schoolLevel, groundPoint, guessKind, readMeta, cameraFromMeta, parsePlaces, addFiles, pickAddress, fovToF, fToFov };
 </script>
 </body>
 </html>
