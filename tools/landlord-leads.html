@@ -1,221 +1,252 @@
 <title>Landlord Leads</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@75..100,500..800&family=Public+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
 <style>
-/* Layout: a working desk. Summary strip on top, one filter bar, then board / table / sheets below; a detail drawer slides in from the right. */
+/* Layout: an Apple-style grouped interface. Frosted sticky header with a large title, a segmented control for views, white rounded groups on the system grey ground, and a sheet-style detail panel. */
 :root {
-  --bg: #F2F3EF;
+  --bg: #F2F2F7;
   --surface: #FFFFFF;
-  --surface-2: #E8EBE5;
-  --line: #D3D8D0;
-  --ink: #17201C;
-  --ink-2: #48534E;
-  --ink-3: #747E79;
-  --accent: #2847C2;
-  --accent-soft: #E2E7FA;
+  --surface-2: #F2F2F7;
+  --fill: rgba(120, 120, 128, .12);
+  --line: rgba(60, 60, 67, .14);
+  --ink: #000000;
+  --ink-2: rgba(60, 60, 67, .85);
+  --ink-3: rgba(60, 60, 67, .55);
+  --accent: #007AFF;
+  --accent-soft: rgba(0, 122, 255, .12);
   --on-accent: #FFFFFF;
-  --good: #1B7346;
-  --good-soft: #DBEFE2;
-  --warn: #9A5A00;
-  --warn-soft: #FAEBCF;
-  --crit: #B0281F;
-  --crit-soft: #F7DEDA;
-  --shadow: 0 10px 30px rgba(20, 30, 25, .14);
-  --f-display: "Archivo", "Arial Narrow", "Helvetica Neue", Arial, sans-serif;
-  --f-body: "Public Sans", "Segoe UI", system-ui, -apple-system, sans-serif;
-  --f-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
-  --r: 6px;
+  --good: #248A3D;
+  --good-mark: #34C759;
+  --good-soft: rgba(52, 199, 89, .15);
+  --warn: #C93400;
+  --warn-mark: #FF9500;
+  --warn-soft: rgba(255, 149, 0, .15);
+  --crit: #D70015;
+  --crit-mark: #FF3B30;
+  --crit-soft: rgba(255, 59, 48, .12);
+  --bar: rgba(242, 242, 247, .78);
+  --shadow: 0 12px 40px rgba(0, 0, 0, .14), 0 2px 6px rgba(0, 0, 0, .06);
+  --f-display: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Helvetica Neue", "Segoe UI", Roboto, Arial, sans-serif;
+  --f-body: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", "Segoe UI", Roboto, Arial, sans-serif;
+  --f-mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
+  --r: 10px;
+  --r-lg: 14px;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --bg: #111513; --surface: #191E1C; --surface-2: #222826; --line: #303835;
-    --ink: #E6EBE8; --ink-2: #A9B3AE; --ink-3: #7A8480;
-    --accent: #93A9FF; --accent-soft: #232D55; --on-accent: #0D1330;
-    --good: #72D29E; --good-soft: #163324; --warn: #F0B65C; --warn-soft: #382A11;
-    --crit: #FF8B80; --crit-soft: #3D1C19; --shadow: 0 10px 30px rgba(0,0,0,.5);
+    --bg: #000000; --surface: #1C1C1E; --surface-2: #2C2C2E; --fill: rgba(118, 118, 128, .24); --line: rgba(84, 84, 88, .55);
+    --ink: #FFFFFF; --ink-2: rgba(235, 235, 245, .8); --ink-3: rgba(235, 235, 245, .5);
+    --accent: #0A84FF; --accent-soft: rgba(10, 132, 255, .22); --on-accent: #FFFFFF;
+    --good: #30D158; --good-mark: #30D158; --good-soft: rgba(48, 209, 88, .18);
+    --warn: #FF9F0A; --warn-mark: #FF9F0A; --warn-soft: rgba(255, 159, 10, .18);
+    --crit: #FF453A; --crit-mark: #FF453A; --crit-soft: rgba(255, 69, 58, .2);
+    --bar: rgba(28, 28, 30, .78); --shadow: 0 12px 40px rgba(0, 0, 0, .6);
     color-scheme: dark;
   }
 }
 :root[data-theme="dark"] {
-  --bg: #111513; --surface: #191E1C; --surface-2: #222826; --line: #303835;
-  --ink: #E6EBE8; --ink-2: #A9B3AE; --ink-3: #7A8480;
-  --accent: #93A9FF; --accent-soft: #232D55; --on-accent: #0D1330;
-  --good: #72D29E; --good-soft: #163324; --warn: #F0B65C; --warn-soft: #382A11;
-  --crit: #FF8B80; --crit-soft: #3D1C19; --shadow: 0 10px 30px rgba(0,0,0,.5);
+  --bg: #000000; --surface: #1C1C1E; --surface-2: #2C2C2E; --fill: rgba(118, 118, 128, .24); --line: rgba(84, 84, 88, .55);
+  --ink: #FFFFFF; --ink-2: rgba(235, 235, 245, .8); --ink-3: rgba(235, 235, 245, .5);
+  --accent: #0A84FF; --accent-soft: rgba(10, 132, 255, .22); --on-accent: #FFFFFF;
+  --good: #30D158; --good-mark: #30D158; --good-soft: rgba(48, 209, 88, .18);
+  --warn: #FF9F0A; --warn-mark: #FF9F0A; --warn-soft: rgba(255, 159, 10, .18);
+  --crit: #FF453A; --crit-mark: #FF453A; --crit-soft: rgba(255, 69, 58, .2);
+  --bar: rgba(28, 28, 30, .78); --shadow: 0 12px 40px rgba(0, 0, 0, .6);
   color-scheme: dark;
 }
 * { box-sizing: border-box; }
-body { background: var(--bg); color: var(--ink); font: 14px/1.45 var(--f-body); }
 [hidden] { display: none !important; }
+body { background: var(--bg); color: var(--ink); font: 15px/1.4 var(--f-body); letter-spacing: -.01em; -webkit-font-smoothing: antialiased; }
 .app > * { min-width: 0; }
-.app { max-width: 1480px; margin: 0 auto; padding-inline: 16px; padding-block: 20px 60px; display: grid; gap: 18px; }
+.app { max-width: 1440px; margin: 0 auto; padding-inline: 20px; padding-block: 0 64px; display: grid; gap: 20px; }
 h1, h2, h3 { font-family: var(--f-display); text-wrap: balance; margin: 0; }
-h1 { font-size: 28px; font-weight: 800; font-stretch: 80%; letter-spacing: -.01em; }
-h2 { font-size: 19px; font-weight: 700; font-stretch: 85%; }
-h3 { font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: var(--ink-2); }
-.mono, .num { font-family: var(--f-mono); font-variant-numeric: tabular-nums; }
+h1 { font-size: 34px; font-weight: 700; letter-spacing: -.025em; line-height: 1.1; }
+h2 { font-size: 20px; font-weight: 600; letter-spacing: -.02em; }
+h3 { font-size: 13px; font-weight: 400; text-transform: uppercase; letter-spacing: .02em; color: var(--ink-3); }
+.mono, .num { font-variant-numeric: tabular-nums; }
+.mono { font-family: var(--f-mono); font-size: .92em; letter-spacing: 0; }
 .muted { color: var(--ink-3); }
-button, select, input, textarea { font: inherit; color: inherit; }
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+button, select, input, textarea { font: inherit; color: inherit; letter-spacing: inherit; }
 button { cursor: pointer; }
-:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+:focus-visible { outline: 3px solid var(--accent-soft); outline-offset: 1px; box-shadow: 0 0 0 1px var(--accent); }
 
-.btn { border: 1px solid var(--line); background: var(--surface); padding: 7px 12px; border-radius: var(--r); font-weight: 600; font-size: 13px; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
-.btn:hover { border-color: var(--ink-3); }
-.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+.btn { border: 0; background: var(--fill); color: var(--accent); padding: 7px 14px; border-radius: 999px; font-weight: 600; font-size: 14px; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; transition: filter .15s, background .15s; }
+.btn:hover { filter: brightness(.96); }
+.btn:active { filter: brightness(.9); }
+.btn.primary { background: var(--accent); color: var(--on-accent); }
 .btn.primary:hover { filter: brightness(1.08); }
 .btn.ghost { background: transparent; }
+.btn.ghost:hover { background: var(--fill); }
 .btn.danger { color: var(--crit); }
-.btn.small { padding: 4px 9px; font-size: 12px; }
-.btn:disabled { opacity: .45; cursor: not-allowed; }
+.btn.small { padding: 5px 11px; font-size: 13px; }
+.btn:disabled { opacity: .4; cursor: not-allowed; }
 input[type=text], input[type=search], input[type=date], input[type=number], input[type=email], input[type=tel], select, textarea {
-  background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 7px 9px; min-width: 0; }
+  background: var(--fill); border: 0; border-radius: var(--r); padding: 8px 11px; min-width: 0; font-size: 14px; }
+input[type=search] { padding-left: 32px; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16'%3E%3Ccircle cx='7' cy='7' r='5' fill='none' stroke='%238E8E93' stroke-width='1.8'/%3E%3Cpath d='M11 11l3.5 3.5' stroke='%238E8E93' stroke-width='1.8' stroke-linecap='round'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: 10px center; }
+select { appearance: none; -webkit-appearance: none; padding-right: 28px; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='14' viewBox='0 0 10 14'%3E%3Cpath d='M2 5l3-3 3 3M2 9l3 3 3-3' fill='none' stroke='%238E8E93' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 10px center; }
 textarea { width: 100%; resize: vertical; }
-label.field { display: grid; gap: 4px; font-size: 12px; color: var(--ink-2); font-weight: 600; }
+input[type=checkbox] { accent-color: var(--accent); width: 16px; height: 16px; }
+label.field { display: grid; gap: 5px; font-size: 12px; color: var(--ink-3); font-weight: 500; }
 
 /* header */
-.top { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 14px; border-bottom: 2px solid var(--ink); padding-bottom: 14px; }
-.top p { margin: 4px 0 0; color: var(--ink-2); max-width: 60ch; }
+.top { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 10; margin-inline: -20px; padding: 18px 20px 14px; display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 14px; background: var(--bar); -webkit-backdrop-filter: saturate(180%) blur(20px); backdrop-filter: saturate(180%) blur(20px); border-bottom: .5px solid var(--line); }
+.top p { margin: 4px 0 0; color: var(--ink-3); max-width: 62ch; font-size: 14px; }
 .top .actions { display: flex; gap: 8px; flex-wrap: wrap; }
-.banner { border: 1px solid var(--line); background: var(--surface); border-radius: var(--r); padding: 10px 14px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; justify-content: space-between; }
-.banner.example { background: var(--warn-soft); border-color: transparent; color: var(--ink); }
-.banner.ro { background: var(--surface-2); }
+.banner { background: var(--surface); border-radius: var(--r-lg); padding: 12px 16px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; justify-content: space-between; font-size: 14px; }
+.banner.example { background: var(--warn-soft); }
+.banner.ro { background: var(--surface); }
 
 /* summary */
-.summary { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 18px; }
+.summary { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: 20px; align-items: start; }
 @media (max-width: 900px) { .summary { grid-template-columns: minmax(0, 1fr); } }
-.kpis { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: var(--r); overflow: hidden; }
-@media (max-width: 520px) { .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-.kpi { background: var(--surface); padding: 12px 14px; display: grid; gap: 2px; text-align: left; border: 0; border-radius: 0; }
-.kpi:hover { background: var(--surface-2); }
-.kpi .v { font-family: var(--f-display); font-weight: 800; font-size: 30px; font-stretch: 78%; font-variant-numeric: tabular-nums; line-height: 1.05; }
-.kpi .l { font-size: 12px; color: var(--ink-2); font-weight: 600; }
-.kpi .s { font-size: 11.5px; color: var(--ink-3); }
+.kpis { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+@media (max-width: 520px) { .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; } }
+.kpi { background: var(--surface); padding: 14px 16px; display: grid; gap: 2px; text-align: left; border: 0; border-radius: var(--r-lg); transition: transform .15s; }
+.kpi:hover { transform: translateY(-1px); }
+.kpi:active { transform: scale(.98); }
+.kpi .v { font-family: var(--f-display); font-weight: 700; font-size: 30px; letter-spacing: -.03em; font-variant-numeric: tabular-nums; line-height: 1.1; order: 2; }
+.kpi .l { font-size: 13px; color: var(--ink-2); font-weight: 600; order: 1; }
+.kpi .s { font-size: 12px; color: var(--ink-3); order: 3; }
 .kpi.good .v { color: var(--good); }
 .kpi.warn .v { color: var(--warn); }
-.funnel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 12px 14px; display: grid; gap: 6px; align-content: start; }
-.funnel-head { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; margin-bottom: 4px; flex-wrap: wrap; }
-.frow { display: grid; grid-template-columns: 128px minmax(0, 1fr) 44px; gap: 10px; align-items: center; font-size: 12.5px; border: 0; background: none; padding: 1px 0; text-align: left; }
-.frow:hover .fl { color: var(--ink); text-decoration: underline; }
+.funnel { background: var(--surface); border-radius: var(--r-lg); padding: 14px 16px; display: grid; gap: 4px; align-content: start; }
+.funnel-head { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; margin-bottom: 6px; flex-wrap: wrap; }
+.frow { display: grid; grid-template-columns: 136px minmax(0, 1fr) 44px; gap: 10px; align-items: center; font-size: 13px; border: 0; background: none; padding: 3px 6px; margin-inline: -6px; border-radius: 8px; text-align: left; }
+.frow:hover { background: var(--fill); }
 .fl { color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.ftrack { height: 12px; background: transparent; position: relative; }
-.ftrack i { position: absolute; inset: 0 auto 0 0; border-radius: 0 4px 4px 0; min-width: 2px; }
-.fv { text-align: right; font-family: var(--f-mono); font-variant-numeric: tabular-nums; }
-.g-queue { --c: var(--ink-3); --cs: var(--surface-2); }
-.g-open  { --c: var(--accent); --cs: var(--accent-soft); }
-.g-hot   { --c: var(--warn); --cs: var(--warn-soft); }
-.g-won   { --c: var(--good); --cs: var(--good-soft); }
-.g-lost  { --c: var(--ink-3); --cs: transparent; }
-.g-dnc   { --c: var(--crit); --cs: var(--crit-soft); }
+.ftrack { height: 8px; background: var(--fill); border-radius: 4px; position: relative; overflow: hidden; }
+.ftrack i { position: absolute; inset: 0 auto 0 0; border-radius: 4px; min-width: 4px; }
+.fv { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
+.g-queue { --c: #8E8E93; --t: var(--ink-2); --cs: var(--fill); }
+.g-open  { --c: var(--accent); --t: var(--accent); --cs: var(--accent-soft); }
+.g-hot   { --c: var(--warn-mark); --t: var(--warn); --cs: var(--warn-soft); }
+.g-won   { --c: var(--good-mark); --t: var(--good); --cs: var(--good-soft); }
+.g-lost  { --c: #AEAEB2; --t: var(--ink-3); --cs: var(--fill); }
+.g-dnc   { --c: var(--crit-mark); --t: var(--crit); --cs: var(--crit-soft); }
 .ftrack i { background: var(--c); }
-.legend { display: flex; gap: 12px; flex-wrap: wrap; font-size: 11.5px; color: var(--ink-3); margin-top: 6px; }
-.legend span { display: inline-flex; gap: 5px; align-items: center; }
-.legend b { width: 9px; height: 9px; border-radius: 2px; background: var(--c); display: inline-block; }
+.legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12px; color: var(--ink-3); margin-top: 8px; }
+.legend span { display: inline-flex; gap: 6px; align-items: center; }
+.legend b { width: 8px; height: 8px; border-radius: 50%; background: var(--c); display: inline-block; }
 
-/* tabs + filters */
-.tabs { display: flex; gap: 2px; border-bottom: 1px solid var(--line); overflow-x: auto; }
-.tab { border: 0; background: none; padding: 10px 14px; font-weight: 600; color: var(--ink-2); border-bottom: 3px solid transparent; margin-bottom: -1px; white-space: nowrap; }
-.tab[aria-selected=true] { color: var(--ink); border-bottom-color: var(--accent); }
-.tab .num { font-size: 11px; color: var(--ink-3); margin-left: 4px; }
+/* segmented control + filters */
+.tabs { display: flex; gap: 2px; padding: 2px; background: var(--fill); border-radius: 9px; overflow-x: auto; justify-self: start; max-width: 100%; }
+.tab { border: 0; background: none; padding: 6px 16px; font-weight: 500; font-size: 13.5px; color: var(--ink); border-radius: 7px; white-space: nowrap; transition: background .15s, box-shadow .15s; }
+.tab[aria-selected=true] { background: var(--surface); font-weight: 600; box-shadow: 0 1px 3px rgba(0,0,0,.12), 0 0 0 .5px rgba(0,0,0,.04); }
+:root[data-theme="dark"] .tab[aria-selected=true] { background: #636366; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .tab[aria-selected=true] { background: #636366; } }
+.tab .num { font-size: 12px; color: var(--ink-3); margin-left: 5px; font-weight: 500; }
 .filters { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
-.filters input[type=search] { flex: 1 1 220px; }
-.filters .check { display: inline-flex; gap: 6px; align-items: center; font-size: 12.5px; color: var(--ink-2); }
-.selbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; background: var(--accent-soft); border-radius: var(--r); padding: 8px 12px; }
+.filters input[type=search] { flex: 1 1 240px; }
+.check { display: inline-flex; gap: 7px; align-items: center; font-size: 13px; color: var(--ink-2); }
+.selbar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; background: var(--accent-soft); border-radius: var(--r-lg); padding: 9px 14px; font-size: 14px; }
 
 /* pills */
-.pill { display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; font-weight: 600; padding: 2px 8px; border-radius: 999px; color: var(--c); background: var(--cs); border: 1px solid transparent; white-space: nowrap; }
-.pill.g-lost { border-color: var(--line); }
+.pill { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 600; padding: 3px 9px; border-radius: 999px; color: var(--t); background: var(--cs); white-space: nowrap; }
 .pill::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--c); }
-.tag { font-size: 11px; font-weight: 600; padding: 1px 6px; border-radius: 4px; background: var(--surface-2); color: var(--ink-2); white-space: nowrap; }
+.tag { font-size: 11.5px; font-weight: 600; padding: 2px 8px; border-radius: 999px; background: var(--fill); color: var(--ink-2); white-space: nowrap; }
 .tag.due { background: var(--warn-soft); color: var(--warn); }
-.tag.off { background: var(--crit-soft); color: var(--crit); }
+.tag.off { background: var(--fill); color: var(--ink-3); }
 
 /* board */
-.board-wrap { overflow-x: auto; padding-bottom: 8px; }
-.board { display: grid; grid-auto-flow: column; grid-auto-columns: 236px; gap: 10px; align-items: start; }
-.col { background: var(--surface-2); border-radius: var(--r); padding: 8px; display: grid; gap: 8px; min-height: 120px; align-content: start; }
-.col.drop { outline: 2px dashed var(--accent); outline-offset: -2px; }
-.col-head { display: flex; justify-content: space-between; align-items: center; gap: 6px; padding: 2px 2px 4px; border-bottom: 2px solid var(--c); }
-.col-head b { font-family: var(--f-display); font-stretch: 85%; font-size: 14px; }
-.col-hint { font-size: 11px; color: var(--ink-3); padding: 0 2px; }
-.card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 9px 10px; display: grid; gap: 3px; cursor: pointer; text-align: left; }
-.card:hover { border-color: var(--ink-3); }
-.card.dragging { opacity: .4; }
-.card .a { font-weight: 700; font-size: 13px; }
-.card .b { font-size: 12px; color: var(--ink-2); }
-.card .c { font-size: 12px; }
-.card .d { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; align-items: center; }
-.initials { font-family: var(--f-mono); font-size: 10.5px; font-weight: 500; background: var(--ink); color: var(--bg); border-radius: 3px; padding: 1px 5px; }
-.more { font-size: 12px; color: var(--ink-3); text-align: center; padding: 4px; border: 0; background: none; }
+.board-wrap { overflow-x: auto; padding-bottom: 10px; margin-inline: -20px; padding-inline: 20px; scroll-padding-inline: 20px; }
+.board { display: grid; grid-auto-flow: column; grid-auto-columns: 248px; gap: 12px; align-items: start; }
+.col { background: var(--fill); border-radius: 16px; padding: 10px; display: grid; gap: 8px; min-height: 120px; align-content: start; transition: background .15s; }
+.col.drop { background: var(--accent-soft); box-shadow: inset 0 0 0 2px var(--accent); }
+.col-head { display: flex; justify-content: space-between; align-items: center; gap: 6px; padding: 2px 4px 0; }
+.col-head b { font-size: 14px; font-weight: 600; display: inline-flex; align-items: center; gap: 7px; }
+.col-head b::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--c); }
+.col-head .num { font-size: 13px; color: var(--ink-3); font-weight: 500; }
+.col-hint { font-size: 11.5px; color: var(--ink-3); padding: 0 4px 2px; }
+.card { background: var(--surface); border-radius: 12px; padding: 10px 12px; display: grid; gap: 3px; cursor: pointer; text-align: left; box-shadow: 0 1px 2px rgba(0,0,0,.06); transition: transform .12s, box-shadow .12s; }
+.card:hover { box-shadow: 0 4px 14px rgba(0,0,0,.1); transform: translateY(-1px); }
+.card.dragging { opacity: .45; }
+.card .a { font-weight: 600; font-size: 14px; }
+.card .b { font-size: 12.5px; color: var(--ink-3); }
+.card .c { font-size: 12.5px; color: var(--ink-2); }
+.card .d { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 5px; align-items: center; }
+.initials { font-size: 10.5px; font-weight: 700; background: var(--accent); color: var(--on-accent); border-radius: 50%; width: 22px; height: 22px; display: inline-grid; place-items: center; letter-spacing: 0; }
+.more { font-size: 13px; color: var(--accent); text-align: center; padding: 6px; border: 0; background: none; font-weight: 500; }
 
 /* table */
-.tbl-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: var(--r); background: var(--surface); }
-table { border-collapse: collapse; width: 100%; font-size: 13px; }
-th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--ink-3); font-weight: 600; padding: 9px 10px; border-bottom: 1px solid var(--line); white-space: nowrap; background: var(--surface); position: sticky; top: 0; }
-td { padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+.tbl-wrap { overflow-x: auto; border-radius: var(--r-lg); background: var(--surface); }
+table { border-collapse: collapse; width: 100%; font-size: 14px; }
+th { text-align: left; font-size: 12px; color: var(--ink-3); font-weight: 500; padding: 10px 12px; border-bottom: .5px solid var(--line); white-space: nowrap; background: var(--surface); position: sticky; top: 0; }
+td { padding: 10px 12px; border-bottom: .5px solid var(--line); vertical-align: top; }
+tbody tr:last-child td { border-bottom: 0; }
 tr.row { cursor: pointer; }
 tr.row:hover td { background: var(--surface-2); }
 tr.row.sel td { background: var(--accent-soft); }
-td .sub { font-size: 12px; color: var(--ink-3); }
-td.n { text-align: right; font-family: var(--f-mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+td .sub { font-size: 12.5px; color: var(--ink-3); }
+td.n { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
 
 /* sheets & agents */
-.grid-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 330px), 1fr)); gap: 12px; }
-.sheet { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 14px; display: grid; gap: 10px; }
+.grid-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 330px), 1fr)); gap: 14px; }
+.sheet { background: var(--surface); border-radius: var(--r-lg); padding: 16px; display: grid; gap: 10px; }
 .sheet-no { font-family: var(--f-mono); font-size: 12px; color: var(--ink-3); }
-.stack { display: flex; height: 10px; gap: 2px; }
-.stack i { background: var(--c); border-radius: 2px; min-width: 3px; }
-.stack .empty { flex: 1; background: var(--surface-2); }
-.row-actions { display: flex; flex-wrap: wrap; gap: 6px; }
-.panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 16px; display: grid; gap: 12px; }
+.stack { display: flex; height: 8px; gap: 2px; border-radius: 4px; overflow: hidden; }
+.stack i { background: var(--c); min-width: 3px; }
+.stack .empty { flex: 1; background: var(--fill); }
+.row-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.panel { background: var(--surface); border-radius: var(--r-lg); padding: 18px; display: grid; gap: 12px; }
 .form-row { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; }
 .form-row > * { flex: 1 1 160px; }
 .form-row > .btn { flex: 0 0 auto; }
 
 /* empty */
-.empty-state { background: var(--surface); border: 1px dashed var(--line); border-radius: var(--r); padding: 28px 22px; display: grid; gap: 10px; justify-items: start; }
+.empty-state { background: var(--surface); border-radius: var(--r-lg); padding: 32px 24px; display: grid; gap: 12px; justify-items: start; }
 .empty-state p { margin: 0; max-width: 62ch; color: var(--ink-2); }
 .empty-state ol { margin: 0; padding-left: 20px; color: var(--ink-2); display: grid; gap: 4px; }
 
 /* import */
 .import-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; }
 @media (max-width: 900px) { .import-grid { grid-template-columns: minmax(0, 1fr); } }
-.drop-zone { border: 2px dashed var(--line); border-radius: var(--r); padding: 22px; text-align: center; display: grid; gap: 8px; justify-items: center; color: var(--ink-2); }
+.drop-zone { border: 1.5px dashed var(--line); border-radius: var(--r-lg); padding: 26px; text-align: center; display: grid; gap: 8px; justify-items: center; color: var(--ink-2); background: var(--surface-2); }
 .drop-zone.over { border-color: var(--accent); background: var(--accent-soft); }
-.map-tbl td, .map-tbl th { padding: 6px 8px; }
+.map-tbl td, .map-tbl th { padding: 7px 10px; }
 .map-tbl select { width: 100%; }
-.progress { height: 8px; background: var(--surface-2); border-radius: 4px; overflow: hidden; }
-.progress i { display: block; height: 100%; background: var(--accent); width: 0; transition: width .2s; }
+.progress { height: 6px; background: var(--fill); border-radius: 3px; overflow: hidden; }
+.progress i { display: block; height: 100%; background: var(--accent); width: 0; transition: width .2s; border-radius: 3px; }
 
-/* drawer */
-.scrim { position: fixed; inset: 0; background: rgba(10, 15, 12, .35); z-index: 20; }
-.drawer { position: fixed; top: 0; right: 0; bottom: 0; width: min(520px, 100%); background: var(--bg); z-index: 21; box-shadow: var(--shadow); display: flex; flex-direction: column; padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
-.drawer-head { padding: 16px 18px 12px; border-bottom: 1px solid var(--line); display: grid; gap: 6px; background: var(--surface); }
-.drawer-head .x { justify-self: end; }
-.drawer-body { overflow-y: auto; padding: 16px 18px 40px; display: grid; gap: 18px; align-content: start; }
-.kv { display: grid; grid-template-columns: 130px minmax(0, 1fr); gap: 6px 12px; font-size: 13px; }
+/* detail sheet */
+.scrim { position: fixed; inset: 0; background: rgba(0, 0, 0, .28); z-index: 20; }
+.drawer { position: fixed; top: 10px; right: 10px; bottom: 10px; width: min(500px, calc(100% - 20px)); background: var(--bg); z-index: 21; box-shadow: var(--shadow); display: flex; flex-direction: column; border-radius: 18px; overflow: hidden; margin-top: env(safe-area-inset-top, 0px); margin-bottom: env(safe-area-inset-bottom, 0px); }
+.drawer-head { padding: 18px 20px 14px; display: grid; gap: 8px; background: var(--bar); -webkit-backdrop-filter: saturate(180%) blur(20px); backdrop-filter: saturate(180%) blur(20px); border-bottom: .5px solid var(--line); }
+.drawer-head h2 { font-size: 22px; font-weight: 700; }
+.drawer-body { overflow-y: auto; padding: 18px 20px 40px; display: grid; gap: 22px; align-content: start; }
+.drawer-body > section { background: var(--surface); border-radius: var(--r-lg); padding: 14px 16px; }
+.drawer-body > section > h3 { margin: -2px 0 2px; }
+.kv { display: grid; grid-template-columns: 128px minmax(0, 1fr); gap: 0; font-size: 14px; margin: 0; }
+.kv dt, .kv dd { padding: 7px 0; border-bottom: .5px solid var(--line); }
+.kv dt:last-of-type, .kv dd:last-of-type { border-bottom: 0; }
 .kv dt { color: var(--ink-3); }
 .kv dd { margin: 0; overflow-wrap: anywhere; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 .outcomes { display: flex; flex-wrap: wrap; gap: 6px; }
-.log { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
-.log li { display: grid; grid-template-columns: 92px minmax(0, 1fr); gap: 10px; font-size: 12.5px; border-top: 1px solid var(--line); padding-top: 8px; }
-.log time { font-family: var(--f-mono); font-size: 11px; color: var(--ink-3); }
-.log .who { color: var(--ink-3); font-size: 11.5px; }
-.modal { position: fixed; inset: 0; z-index: 30; display: grid; place-items: center; padding: 16px; background: rgba(10, 15, 12, .4); }
-.modal-card { background: var(--bg); border-radius: 10px; box-shadow: var(--shadow); width: min(980px, 100%); max-height: calc(100% - 20px); display: flex; flex-direction: column; overflow: hidden; }
-.modal-head { padding: 16px 18px; border-bottom: 1px solid var(--line); background: var(--surface); display: flex; justify-content: space-between; gap: 10px; align-items: center; }
-.modal-body { padding: 16px 18px; overflow-y: auto; display: grid; gap: 14px; }
-.modal-foot { padding: 12px 18px; border-top: 1px solid var(--line); background: var(--surface); display: flex; gap: 10px; justify-content: space-between; align-items: center; flex-wrap: wrap; }
-.toast { position: fixed; left: 50%; bottom: calc(20px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: var(--ink); color: var(--bg); padding: 9px 16px; border-radius: 999px; font-weight: 600; font-size: 13px; z-index: 40; max-width: calc(100% - 32px); }
-.confirm { display: inline-flex; gap: 6px; align-items: center; flex-wrap: wrap; font-size: 12.5px; }
+.log { list-style: none; margin: 0; padding: 0; display: grid; gap: 0; }
+.log li { display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: 10px; font-size: 13.5px; border-bottom: .5px solid var(--line); padding: 8px 0; }
+.log li:last-child { border-bottom: 0; }
+.log time { font-size: 12px; color: var(--ink-3); font-variant-numeric: tabular-nums; }
+.log .who { color: var(--ink-3); font-size: 12px; }
+.modal { position: fixed; inset: 0; z-index: 30; display: grid; place-items: center; padding: 16px; background: rgba(0, 0, 0, .32); }
+.modal-card { background: var(--bg); border-radius: 18px; box-shadow: var(--shadow); width: min(980px, 100%); max-height: calc(100% - 20px); display: flex; flex-direction: column; overflow: hidden; }
+.modal-head { padding: 16px 20px; border-bottom: .5px solid var(--line); background: var(--bar); display: flex; justify-content: space-between; gap: 10px; align-items: center; }
+.modal-body { padding: 18px 20px; overflow-y: auto; display: grid; gap: 14px; }
+.modal-foot { padding: 12px 20px; border-top: .5px solid var(--line); background: var(--bar); display: flex; gap: 10px; justify-content: space-between; align-items: center; flex-wrap: wrap; }
+.toast { position: fixed; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: var(--bar); -webkit-backdrop-filter: saturate(180%) blur(20px); backdrop-filter: saturate(180%) blur(20px); color: var(--ink); box-shadow: var(--shadow); padding: 11px 18px; border-radius: 14px; font-weight: 600; font-size: 14px; z-index: 40; max-width: calc(100% - 32px); }
+.confirm { display: inline-flex; gap: 6px; align-items: center; flex-wrap: wrap; font-size: 13px; }
 @media (prefers-reduced-motion: no-preference) {
-  .drawer { animation: slide .18s ease-out; }
-  @keyframes slide { from { transform: translateX(24px); opacity: .6; } }
+  .drawer { animation: slide .28s cubic-bezier(.2, .9, .3, 1); }
+  .modal-card { animation: pop .24s cubic-bezier(.2, .9, .3, 1); }
+  @keyframes slide { from { transform: translateX(40px); opacity: .4; } }
+  @keyframes pop { from { transform: scale(.96); opacity: .5; } }
 }
 @media (max-width: 600px) {
-  .frow { grid-template-columns: 104px minmax(0, 1fr) 36px; }
+  .app { padding-inline: 16px; }
+  .top { margin-inline: -16px; padding-inline: 16px; position: static; }
+  .board-wrap { margin-inline: -16px; padding-inline: 16px; }
+  .frow { grid-template-columns: 110px minmax(0, 1fr) 36px; }
   .kv { grid-template-columns: 104px minmax(0, 1fr); }
-  h1 { font-size: 24px; }
+  h1 { font-size: 28px; }
+  .drawer { top: 0; right: 0; bottom: 0; width: 100%; border-radius: 0; margin: 0; padding-top: env(safe-area-inset-top, 0px); }
 }
 </style>
 
@@ -252,7 +283,7 @@ td.n { text-align: right; font-family: var(--f-mono); font-variant-numeric: tabu
     <select id="f-stage" aria-label="Stage"></select>
     <select id="f-agent" aria-label="Agent"></select>
     <select id="f-sheet" aria-label="Contact sheet"></select>
-    <label class="check"><input type="checkbox" id="f-offline"> Include offline listings</label>
+    <label class="check"><input type="checkbox" id="f-offline"> Include off-market listings</label>
     <button class="btn ghost small" data-act="clear-filters" id="f-clear">Clear</button>
   </div>
 
@@ -299,26 +330,34 @@ const OUTCOMES = [
 
 // [key, label, header synonyms]
 const FIELDS = [
-  ["address", "Street address", ["address", "street address", "property address", "street", "property", "full address"]],
+  ["address", "Street address", ["street address", "address", "property address", "street", "property", "full address"]],
   ["suburb", "Suburb", ["suburb", "locality", "town", "city", "area", "region"]],
   ["postcode", "Postcode", ["postcode", "post code", "zip", "zip code", "postal code"]],
   ["propertyType", "Property type", ["type", "property type", "dwelling", "dwelling type"]],
   ["beds", "Beds", ["beds", "bed", "bedrooms", "br"]],
   ["baths", "Baths", ["baths", "bath", "bathrooms"]],
   ["cars", "Car spaces", ["cars", "car", "parking", "garage", "car spaces"]],
-  ["rent", "Rent", ["rent", "price", "weekly rent", "rent pw", "rent per week", "asking rent", "rental price"]],
-  ["listedDate", "Date listed", ["listed", "date listed", "listed date", "first listed", "listing date", "date"]],
-  ["managingAgency", "Managing agency", ["agency", "managing agency", "listing agency", "listing agent", "property manager", "agent"]],
-  ["listingUrl", "Listing link", ["url", "link", "listing url", "listing link", "web link"]],
+  ["rent", "Rent", ["last rental price", "rent", "price", "weekly rent", "rent pw", "rent per week", "asking rent", "rental price"]],
+  ["listedDate", "Date listed", ["first rental date", "listed", "date listed", "listed date", "first listed", "listing date", "date"]],
+  ["managingAgency", "Managing agency", ["agency", "managing agency", "listing agency", "property manager"]],
+  ["listingUrl", "Listing link", ["url", "link", "listing url", "listing link", "web link", "open in rpdata"]],
+  ["active", "Listing active (True/False)", ["active listing", "active", "listing status", "status"]],
+  ["daysOnMarket", "Days on market", ["days on market", "dom"]],
+  ["listingAgent", "Listing agent", ["agent", "listing agent", "agent name"]],
+  ["state", "State", ["state"]],
+  ["council", "Council area", ["council area", "council", "lga"]],
+  ["landSize", "Land size (m²)", ["land size m", "land size", "land area"]],
+  ["ownerType", "Owner type", ["owner type", "occupancy"]],
+  ["parcel", "Lot / plan", ["parcel details", "parcel", "lot plan", "lot dp", "title"]],
   ["source", "Source", ["source", "portal", "site", "website"]],
   ["ownerName", "Landlord name", ["owner", "owner name", "owners", "landlord", "landlord name", "owner names", "vendor"]],
   ["ownerPhone", "Landlord phone", ["phone", "mobile", "owner phone", "owner mobile", "landlord phone", "contact number", "ph", "phone number"]],
   ["ownerEmail", "Landlord email", ["email", "owner email", "landlord email", "e-mail", "email address"]],
   ["ownerMailing", "Landlord postal address", ["mailing address", "postal address", "owner address", "landlord address", "owner postal address"]],
-  ["idRef", "ID lookup ref", ["id", "id ref", "reference", "ref", "lookup id", "record id", "title ref", "id number"]],
+  ["idRef", "ID lookup ref", ["id", "id ref", "reference", "ref", "lookup id", "record id", "id number"]],
 ];
 const FIELD_LABEL = Object.fromEntries(FIELDS.map(f => [f[0], f[1]]));
-const LISTING_KEYS = ["suburb", "postcode", "propertyType", "beds", "baths", "cars", "rent", "listedDate", "managingAgency", "listingUrl", "source"];
+const LISTING_KEYS = ["suburb", "postcode", "propertyType", "beds", "baths", "cars", "rent", "listedDate", "managingAgency", "listingUrl", "source", "active", "daysOnMarket", "listingAgent", "state", "council", "landSize", "ownerType", "parcel"];
 const OWNER_KEYS = ["ownerName", "ownerPhone", "ownerEmail", "ownerMailing", "idRef"];
 const LOG_CAP = 200;
 
@@ -366,10 +405,13 @@ function parseDay(s) {
   const t = Date.parse(s); return isNaN(t) ? null : new Date(t);
 }
 function daysListed(p) {
+  if (p.offline && p.daysOnMarket != null && p.daysOnMarket !== "" && !isNaN(+p.daysOnMarket)) return +p.daysOnMarket;
   const d = parseDay(p.listedDate) || parseDay(p.firstSeen);
   if (!d) return null;
   return Math.max(0, Math.floor((Date.now() - d.getTime()) / 864e5));
 }
+const isInactive = v => /^(false|no|n|0|inactive|leased|off market|withdrawn)$/i.test(String(v).trim());
+function niceCase(v) { v = String(v).replace(/\s+/g, " ").trim(); return /[a-z]/.test(v) ? v : v.toLowerCase().replace(/(^|[\s\-\/(])([a-z])/g, (m, a, b) => a + b.toUpperCase()); }
 const isDue = p => !!p.nextFollowUp && p.nextFollowUp <= today() && !CLOSED.has(p.stage);
 const fmtDate = iso => { if (!iso) return ""; const d = parseDay(iso.slice(0, 10)); return d ? d.toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" }) : iso; };
 const fmtStamp = iso => { const d = new Date(iso); return isNaN(d) ? "" : d.toLocaleDateString(undefined, { day: "numeric", month: "short" }) + " " + d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" }); };
@@ -400,7 +442,7 @@ async function withRetry(fn) {
 function onWriteError(e) {
   const code = e && e.code;
   if (code === "invalid_argument" && S.readOnly === false && S.canWriteUnknown) { S.readOnly = true; schedule(); toast("You have view access only, so changes can't be saved."); return; }
-  if (code === "quota_exceeded") { toast("Storage is full. Remove old offline properties, then try again."); return; }
+  if (code === "quota_exceeded") { toast("Storage is full. Remove old off-market properties, then try again."); return; }
   toast("That change didn't save. Check your connection and try again.");
 }
 const chains = new Map();
@@ -523,7 +565,7 @@ function renderSummary() {
   const offline = all.length - online.length;
   const k = (v, l, s, act, cls = "") => `<button class="kpi ${cls}" data-act="kpi" data-k="${act}"><span class="v">${v}</span><span class="l">${esc(l)}</span><span class="s">${esc(s)}</span></button>`;
   $("#kpis").innerHTML =
-    k(online.length, "Rentals online", offline ? offline + " gone offline" : "In the latest imports", "online") +
+    k(online.length, "Rentals online", offline ? offline + " off market (no longer active)" : "In the latest imports", "online") +
     k(count("new"), "Not on a sheet yet", "Ready to hand out", "new") +
     k(worked, "Being worked", "On a sheet, not closed", "_working") +
     k(due, "Follow-ups due", "Today or overdue", "_due", due ? "warn" : "") +
@@ -547,7 +589,7 @@ function emptyProps() {
   if (!S.loaded) return `<div class="empty-state"><h2>Loading leads</h2><p>Fetching the shared lead list.</p></div>`;
   return `<div class="empty-state">
     <h2>No rental listings yet</h2>
-    <p>Start by importing the rental listings for the region. A CSV or Excel export works. Then add your associate agents and build contact sheets for them.</p>
+    <p>Start by importing the rental listings for the region. An RP Data export (Excel) or any CSV works. Then add your associate agents and build contact sheets for them.</p>
     <ol><li>Import listings (address, suburb, rent, agency, listing date).</li><li>Import or type in landlord details from the ID lookup. They match on address.</li><li>Add agents, then make a contact sheet and download it.</li><li>Agents log each call here, and the lead moves through the pipeline.</li></ol>
     <div class="row-actions"><button class="btn primary" data-act="tab" data-tab="import">Import listings</button>${S.example ? "" : `<button class="btn" data-act="example">Preview with example rows</button>`}</div>
   </div>`;
@@ -559,7 +601,7 @@ function cardHTML(id, p) {
   if (ag) tags.push(`<span class="initials" title="${esc(ag)}">${esc(initials(ag))}</span>`);
   if (isDue(p)) tags.push(`<span class="tag due">Follow up ${p.nextFollowUp === today() ? "today" : fmtDate(p.nextFollowUp)}</span>`);
   if (p.attempts) tags.push(`<span class="tag">${p.attempts} call${p.attempts === 1 ? "" : "s"}</span>`);
-  if (p.offline) tags.push(`<span class="tag off">Offline</span>`);
+  if (p.offline) tags.push(`<span class="tag off">Off market</span>`);
   const dl = daysListed(p);
   const b = [p.suburb, specs(p), p.rent].filter(Boolean).join(" · ");
   return `<article class="card" draggable="${canWrite()}" data-open="${esc(id)}" data-id="${esc(id)}" tabindex="0">
@@ -615,8 +657,8 @@ function viewProperties() {
       const dl = daysListed(p); const sh = S.sheets.get(p.sheetId);
       return `<tr class="row${S.selected.has(id) ? " sel" : ""}" data-open="${esc(id)}">
         <td><input type="checkbox" data-sel="${esc(id)}" aria-label="Select ${esc(p.address)}" ${S.selected.has(id) ? "checked" : ""}></td>
-        <td><b>${esc(p.address)}</b>${p.offline ? ` <span class="tag off">Offline</span>` : ""}<div class="sub">${esc([p.suburb, p.postcode].filter(Boolean).join(" "))}${specs(p) ? " · " + esc(specs(p)) : ""}</div></td>
-        <td class="mono">${esc(p.rent || "")}</td>
+        <td><b>${esc(p.address)}</b>${p.offline ? ` <span class="tag off">Off market</span>` : ""}<div class="sub">${esc([p.suburb, p.postcode].filter(Boolean).join(" "))}${specs(p) ? " · " + esc(specs(p)) : ""}</div></td>
+        <td style="white-space:nowrap">${esc(p.rent || "")}</td>
         <td class="n">${dl != null ? dl + "d" : ""}</td>
         <td>${p.ownerName ? esc(p.ownerName) : `<span class="muted">Missing</span>`}<div class="sub mono">${esc(p.ownerPhone || "")}</div></td>
         <td>${pillHTML(p.stage)}</td>
@@ -714,7 +756,7 @@ function viewImport() {
     <div class="panel">
       <h2>2. Match the columns</h2>
       ${I.rows ? `<div class="tbl-wrap"><table class="map-tbl"><thead><tr><th>Dashboard field</th><th>Column in your file</th><th>First values</th></tr></thead><tbody>${mapRows}</tbody></table></div>
-      <label class="check"><input type="checkbox" id="opt-offline" ${I.markOffline ? "checked" : ""}> This file is the full current list of rentals online. Mark properties missing from it as offline.</label>
+      <label class="check"><input type="checkbox" id="opt-offline" ${I.markOffline ? "checked" : ""}> This file is the full current list of rentals. Mark properties missing from it as off market.</label>
       <label class="check"><input type="checkbox" id="opt-owner" ${I.overwriteOwner ? "checked" : ""}> Overwrite landlord details that are already filled in</label>
       ${I.running || I.result ? `<div class="progress"><i style="width:${I.total ? (I.done / I.total * 100).toFixed(1) : 0}%"></i></div>` : ""}
       ${I.result ? `<p style="margin:0">${esc(I.result)}</p>` : ""}
@@ -766,13 +808,17 @@ function renderDrawer() {
     <section style="display:grid;gap:8px">
       <h3>Listing</h3>
       <dl class="kv">
-        <dt>Rent</dt><dd class="mono">${esc(p.rent || "")}</dd>
+        <dt>Rent</dt><dd>${esc(p.rent || "")}</dd>
         <dt>Property</dt><dd>${esc(specs(p))}</dd>
-        <dt>Managing agency</dt><dd>${esc(p.managingAgency || "")}</dd>
+        <dt>Managing agency</dt><dd>${esc(p.managingAgency || "")}${p.listingAgent ? ` <span class="muted">${esc(p.listingAgent)}</span>` : ""}</dd>
+        <dt>Owner type</dt><dd>${esc(p.ownerType || "")}</dd>
+        <dt>Lot / plan</dt><dd class="mono">${esc(p.parcel || "")}</dd>
+        <dt>Land size</dt><dd>${p.landSize ? esc(p.landSize) + " m²" : ""}</dd>
+        <dt>Council</dt><dd>${esc(p.council || "")}</dd>
         <dt>Listed</dt><dd>${esc(p.listedDate || "")}${dl != null ? ` <span class="muted">(${dl} days)</span>` : ""}</dd>
-        <dt>Online</dt><dd>${p.offline ? `<span class="tag off">Offline since ${esc(fmtDate(p.offlineSince))}</span>` : "Yes"}${p.lastSeen ? ` <span class="muted">seen ${esc(fmtDate(p.lastSeen))}</span>` : ""}</dd>
+        <dt>Listing active</dt><dd>${p.offline ? `<span class="tag off">Off market${p.offlineSince ? " since " + esc(fmtDate(p.offlineSince)) : ""}</span>` : "Yes"}${p.lastSeen ? ` <span class="muted">seen ${esc(fmtDate(p.lastSeen))}</span>` : ""}</dd>
         <dt>Source</dt><dd>${esc(p.source || "")}</dd>
-        <dt>Link</dt><dd>${/^https?:\/\//i.test(p.listingUrl || "") ? `<a href="${esc(p.listingUrl)}" target="_blank" rel="noopener">Open listing</a>` : esc(p.listingUrl || "")}</dd>
+        <dt>Link</dt><dd>${/^https?:\/\//i.test(p.listingUrl || "") ? `<a href="${esc(p.listingUrl)}" target="_blank" rel="noopener">${/corelogic/i.test(p.listingUrl) ? "Open in RP Data" : "Open listing"}</a>` : esc(p.listingUrl || "")}</dd>
       </dl>
       ${w ? `<div class="row-actions"><button class="btn small" data-act="edit">Edit details</button></div>` : ""}
     </section>
@@ -822,11 +868,11 @@ async function resolveNames(ids) {
 }
 
 /* ---------- modal: new contact sheet ---------- */
-const M = { open: false, agentId: "", suburb: "", stage: "new", max: 25, sort: "listed", picked: null, note: "", busy: false, done: null };
+const M = { includeOff: false, open: false, agentId: "", suburb: "", stage: "new", max: 25, sort: "listed", picked: null, note: "", busy: false, done: null };
 function sheetCandidates() {
   const rows = [];
   for (const [id, p] of S.props) {
-    if (p.offline || CLOSED.has(p.stage)) continue;
+    if ((p.offline && !M.includeOff) || CLOSED.has(p.stage)) continue;
     if (M.suburb && p.suburb !== M.suburb) continue;
     if (M.stage === "new" && p.stage !== "new") continue;
     if (M.stage === "nosheet" && p.sheetId) continue;
@@ -866,6 +912,7 @@ function renderModal() {
         <label class="field">Order<select id="m-sort"><option value="listed"${M.sort === "listed" ? " selected" : ""}>Longest listed first</option><option value="address"${M.sort === "address" ? " selected" : ""}>Suburb, then address</option></select></label>
         <label class="field">How many<input type="number" id="m-max" min="1" max="500" value="${M.max}"></label>`}
       </div>
+      ${M.fromSel ? "" : `<label class="check"><input type="checkbox" id="m-off" ${M.includeOff ? "checked" : ""}> Include off-market properties (listing no longer active)</label>`}
       <label class="field">Note on the sheet (optional)<input type="text" id="m-note" value="${esc(M.note)}" placeholder="For example: north side, call after 5pm"></label>
       <div class="muted" style="font-size:12.5px">${picked.length} picked from ${cands.length} available${already ? ` · ${already} already on another sheet and will move to this one` : ""}. ${cands.filter(([, p]) => !p.ownerPhone && !p.ownerEmail).length ? "Some have no landlord contact yet." : ""}</div>
       <div class="tbl-wrap" style="max-height:46vh;overflow:auto"><table>
@@ -918,9 +965,9 @@ async function createSheet() {
 const CSV_COLS = [
   ["#", null], ["Address", "address"], ["Suburb", "suburb"], ["Postcode", "postcode"], ["Property", p => specs(p)], ["Rent", "rent"],
   ["Listed", "listedDate"], ["Days listed", p => daysListed(p) ?? ""], ["Managing agency", "managingAgency"],
-  ["Landlord", "ownerName"], ["Phone", "ownerPhone"], ["Email", "ownerEmail"], ["Postal address", "ownerMailing"], ["ID ref", "idRef"],
+  ["Owner type", "ownerType"], ["Lot / plan", "parcel"], ["Landlord", "ownerName"], ["Phone", "ownerPhone"], ["Email", "ownerEmail"], ["Postal address", "ownerMailing"], ["ID ref", "idRef"],
   ["Stage", p => (STAGE[p.stage] || STAGE.new).label], ["Call attempts", p => p.attempts || 0], ["Next follow-up", "nextFollowUp"],
-  ["Outcome", () => ""], ["Notes", () => ""], ["Lead ID", "_id"],
+  ["Outcome", () => ""], ["Notes", () => ""], ["RP Data", "listingUrl"], ["Lead ID", "_id"],
 ];
 const csvCell = v => { v = String(v ?? ""); return /[",\n\r]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; };
 function toCSV(rows, head = []) {
@@ -954,7 +1001,7 @@ th{background:#eee;font-size:10px;text-transform:uppercase}
 ${rows.map(([id, p], i) => `<tr><td>${i + 1}</td>
 <td><b>${esc(p.address)}</b><br>${esc([p.suburb, p.postcode].filter(Boolean).join(" "))}<br>${esc(specs(p))}</td>
 <td>${esc(p.rent || "")}<br>${esc(p.managingAgency || "")}<br>${daysListed(p) != null ? daysListed(p) + " days listed" : ""}</td>
-<td>${esc(p.ownerName || "")}<br><span class="mono">${esc(p.idRef || "")}</span></td>
+<td>${esc(p.ownerName || "")}<br><span class="mono">${esc(p.parcel || "")}${p.idRef ? " · " + esc(p.idRef) : ""}</span><br>${esc(p.ownerType || "")}</td>
 <td class="mono">${esc(p.ownerPhone || "")}<br>${esc(p.ownerEmail || "")}<br>${esc(p.ownerMailing || "")}</td>
 <td>${outcomes.map(o => `<span class="box"><i></i>${o}</span>`).join("")}<div class="notes"></div><span style="color:#777">Ref ${esc(id.slice(-8))}</span></td></tr>`).join("")}
 </tbody></table></body></html>`;
@@ -1010,9 +1057,11 @@ function autoMap(headers) {
 }
 function loadRows(rows, name) {
   I.error = ""; I.result = null;
-  if (!rows || rows.length < 2) { I.error = "That file needs a heading row and at least one row of data."; I.rows = null; schedule(); return; }
-  I.headers = rows[0].map(h => String(h ?? "").trim());
-  I.rows = rows.slice(1).map(r => r.map(x => String(x ?? "")));
+  if (!rows || rows.length < 2 || false) { I.error = "That file needs a heading row and at least one row of data."; I.rows = null; schedule(); return; }
+  let hi = 0;
+  for (let i = 0; i < Math.min(rows.length, 20); i++) { const m = autoMap(rows[i]); if (m.address != null && Object.keys(m).length >= 3) { hi = i; break; } }
+  I.headers = rows[hi].map(h => String(h ?? "").trim());
+  I.rows = rows.slice(hi + 1).map(r => r.map(x => String(x ?? ""))).filter(r => r.some(x => x.trim() !== ""));
   I.map = autoMap(I.headers); I.fileName = name;
   schedule();
 }
@@ -1033,6 +1082,7 @@ async function readFile(file) {
       const X = await loadXLSX();
       const wb = X.read(await file.arrayBuffer(), { type: "array" });
       const ws = wb.Sheets[wb.SheetNames[0]];
+      for (const key in ws) { const c = ws[key]; if (key[0] === "!" || !c) continue; const m = c.f && String(c.f).match(/HYPERLINK\("([^"]+)"/i); const link = m ? m[1] : (c.l && c.l.Target); if (link) { c.v = link; c.w = link; c.t = "s"; } }
       loadRows(X.utils.sheet_to_json(ws, { header: 1, raw: false, defval: "" }), file.name);
     } else loadRows(parseDelimited(await file.text()), file.name);
   } catch (e) { I.error = "Couldn't read that file. Save it as CSV and try again."; schedule(); }
@@ -1045,7 +1095,10 @@ async function runImport() {
   let created = 0, refreshed = 0, skipped = 0, back = 0, off = 0;
   for (const r of I.rows) {
     const rec = {};
-    for (const [k] of FIELDS) { const ci = I.map[k]; if (ci !== "" && ci != null) { const v = String(r[ci] ?? "").trim(); if (v) rec[k] = v; } }
+    for (const [k] of FIELDS) { const ci = I.map[k]; if (ci !== "" && ci != null) { const v = String(r[ci] ?? "").trim(); if (v && v !== "-") rec[k] = v; } }
+    if (rec.address) rec.address = niceCase(rec.address);
+    if (rec.suburb) rec.suburb = niceCase(rec.suburb);
+    if (rec.council) rec.council = niceCase(rec.council);
     if (!rec.address) { skipped++; continue; }
     const id = propId(rec.address, rec.suburb || "");
     if (seen.has(id)) { skipped++; continue; }
@@ -1055,21 +1108,22 @@ async function runImport() {
       const patch = { lastSeen: t, updatedAt: now };
       for (const k of LISTING_KEYS) if (rec[k] && rec[k] !== cur[k]) patch[k] = rec[k];
       for (const k of OWNER_KEYS) if (rec[k] && (I.overwriteOwner || !cur[k])) patch[k] = rec[k];
-      if (cur.offline) { patch.offline = false; patch.offlineSince = null; patch.log = withLog(cur, { kind: "system", text: "Listed online again" }); back++; }
+      if (cur.offline && !(rec.active && isInactive(rec.active))) { patch.offline = false; patch.offlineSince = null; patch.log = withLog(cur, { kind: "system", text: "Listed online again" }); back++; }
+      if (rec.active && isInactive(rec.active) && !cur.offline) { patch.offline = true; patch.log = withLog(cur, { kind: "system", text: "Listing no longer active" }); }
       jobs.push(() => writeProp(id, patch)); refreshed++;
     } else {
-      const doc = { ...rec, stage: "new", attempts: 0, firstSeen: t, lastSeen: t, offline: false, createdAt: now, updatedAt: now,
+      const doc = { ...rec, stage: "new", attempts: 0, firstSeen: t, lastSeen: t, offline: !!(rec.active && isInactive(rec.active)), createdAt: now, updatedAt: now,
         log: [{ t: now, by: S.uid || null, kind: "system", text: "Imported" + (I.fileName ? " from " + I.fileName : "") }] };
       jobs.push(() => writeProp(id, doc, "set")); created++;
     }
   }
   if (I.markOffline) for (const [id, p] of S.props) if (!seen.has(id) && !p.offline) {
-    off++; jobs.push(() => writeProp(id, { offline: true, offlineSince: t, updatedAt: now, log: withLog(p, { kind: "system", text: "Not in the latest import, marked offline" }) }));
+    off++; jobs.push(() => writeProp(id, { offline: true, offlineSince: t, updatedAt: now, log: withLog(p, { kind: "system", text: "Not in the latest import, marked off market" }) }));
   }
   I.total = jobs.length; schedule();
   const failed = await pool(jobs, S.example ? 8 : 4, (d) => { I.done = d; schedule(); });
   I.running = false;
-  I.result = `${created} new, ${refreshed} updated${back ? ` (${back} back online)` : ""}${off ? `, ${off} marked offline` : ""}${skipped ? `, ${skipped} rows skipped (no address or repeated)` : ""}.` + (failed ? ` ${failed} didn't save; run the import again to retry them.` : "");
+  I.result = `${created} new, ${refreshed} updated${back ? ` (${back} back online)` : ""}${off ? `, ${off} marked off market` : ""}${skipped ? `, ${skipped} rows skipped (no address or repeated)` : ""}.` + (failed ? ` ${failed} didn't save; run the import again to retry them.` : "");
   schedule();
 }
 
@@ -1225,6 +1279,7 @@ document.addEventListener("change", e => {
   if (t.id === "m-agent") { M.agentId = t.value; renderModal(); return; }
   if (t.id === "m-suburb") { M.suburb = t.value; M.picked = null; renderModal(); return; }
   if (t.id === "m-stage") { M.stage = t.value; M.picked = null; renderModal(); return; }
+  if (t.id === "m-off") { M.includeOff = t.checked; M.picked = null; renderModal(); return; }
   if (t.id === "m-sort") { M.sort = t.value; M.picked = null; renderModal(); return; }
   if (t.dataset.pick) { t.checked ? M.picked.add(t.dataset.pick) : M.picked.delete(t.dataset.pick); renderModal(); return; }
   if (t.id === "d-stage") { setStage(S.openId, t.value, "changed in detail"); return; }
