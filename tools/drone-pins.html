@@ -125,7 +125,7 @@ svg.i { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-widt
 .prominent.sm { height: 30px; padding: 0 16px; font-weight: 500; box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3); }
 
 /* Search */
-.search { position: relative; height: 38px; width: min(300px, 32vw); border-radius: 999px; display: flex; align-items: center; gap: 7px; padding: 0 12px; flex: 0 1 auto; transition: width .3s ease, box-shadow .2s; }
+.search { position: relative; height: 38px; width: min(280px, 26vw); border-radius: 999px; display: flex; align-items: center; gap: 7px; padding: 0 12px; flex: 0 1 auto; transition: width .3s ease, box-shadow .2s; }
 .search:focus-within { width: min(380px, 40vw); box-shadow: var(--glass-shadow), 0 0 0 3.5px var(--accent-soft), inset 0 0 0 1px var(--accent); }
 .search > svg { color: var(--ink2); }
 .search input { flex: 1; min-width: 0; height: 100%; border: 0; background: transparent; outline: 0; font-size: 13px; text-overflow: ellipsis; }
@@ -195,6 +195,15 @@ svg.i { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-widt
 .hud button:hover { background: rgba(255, 255, 255, 0.28); }
 .drop-veil { position: fixed; inset: var(--gap); border-radius: 22px; background: var(--accent-soft); box-shadow: inset 0 0 0 2.5px var(--accent); z-index: 50; pointer-events: none; display: grid; place-items: center; animation: fadein .2s ease; }
 .drop-veil div { background: var(--accent); color: #fff; padding: 10px 20px; border-radius: 999px; font-weight: 600; box-shadow: 0 10px 30px -6px rgba(0, 122, 255, 0.6); }
+
+/* Map view */
+#map { display: block; border-radius: 16px; touch-action: none; cursor: crosshair; box-shadow: 0 0 0 0.5px rgba(0, 0, 0, 0.12), 0 2px 6px rgba(0, 0, 0, 0.08), 0 30px 70px -24px rgba(0, 0, 0, 0.45); animation: fadein .35s ease; }
+#map.move { cursor: move; }
+#map.point { cursor: pointer; }
+.viewcap { padding: 0 3px; }
+.seg-tb { background: transparent; padding: 0; }
+.seg-tb button { height: 30px; padding: 0 14px; font-size: 13px; }
+.seg-tb button:disabled { opacity: 0.35; }
 
 /* Inspector */
 .insp-head { flex: none; padding: 14px 14px 10px; }
@@ -352,6 +361,12 @@ dialog.sheet::backdrop { background: rgba(0, 0, 0, 0.18); }
         <svg class="i" viewBox="0 0 24 24"><rect x="3" y="4.5" width="18" height="15" rx="3.5"/><path d="M9.5 4.5v15"/></svg>
       </button>
     </div>
+    <div class="cap glass viewcap">
+      <div class="seg seg-tb" id="viewSeg" role="tablist" aria-label="View">
+        <button data-view="photo" aria-pressed="true" title="Photo with pins">Photo</button>
+        <button data-view="map" aria-pressed="false" title="Top-down map: turn the camera and see what is in view (M)">Map</button>
+      </div>
+    </div>
     <div class="search glass" id="search">
       <svg class="i" viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m20 20-4.8-4.8"/></svg>
       <input id="addr" type="text" placeholder="Property address" autocomplete="off" spellcheck="false" aria-label="Property address">
@@ -382,6 +397,7 @@ dialog.sheet::backdrop { background: rgba(0, 0, 0, 0.18); }
       <p class="fine">Original DJI JPGs work best.</p>
     </div>
     <canvas id="view" hidden></canvas>
+    <canvas id="map" hidden></canvas>
     <div class="hud" id="hud" hidden></div>
   </main>
 
@@ -403,8 +419,8 @@ dialog.sheet::backdrop { background: rgba(0, 0, 0, 0.18); }
           <div class="row"><span class="lbl">Range</span>
             <div class="seg" id="rangeSeg"><button data-v="1000">1 km</button><button data-v="3000">3 km</button><button data-v="8000">8 km</button></div>
           </div>
-          <div class="row"><span class="lbl">Pins per photo</span>
-            <div class="stepper"><button id="pinsMinus" aria-label="Fewer pins">−</button><span id="pinsVal">6</span><button id="pinsPlus" aria-label="More pins">+</button></div>
+          <div class="row"><span class="lbl">Places in shot</span>
+            <button class="btn small" id="showAll">Show all</button><button class="btn small" id="hideAll">Hide all</button>
           </div>
         </div>
       </section>
@@ -570,10 +586,10 @@ const state = {
   address: store.get("address", null),
   places: [], placesKey: "", placesStatus: "idle", placesError: "",
   names: {}, selected: null, addMode: false,
-  settings: Object.assign({ range: 3000, maxPins: 6, cats: Object.fromEntries(Object.keys(CATS).map(k => [k, true])) }, store.get("settings", {})),
+  settings: Object.assign({ range: 3000, cats: Object.fromEntries(Object.keys(CATS).map(k => [k, true])) }, store.get("settings", {})),
   brands: store.get("brands", null) || BUILTIN_BRANDS.map(b => ({ ...b })),
   brandId: store.get("brandId", "classic"),
-  showAll: false,
+  view: "photo",
 };
 state.brands = state.brands.map(b => ({ ...BRAND_DEFAULTS, ...b }));
 if (!state.brands.some(b => b.id === state.brandId)) state.brandId = state.brands[0].id;
@@ -696,77 +712,6 @@ function project(c, aspect, lat, lon, B = basis(c)) {
   const xr = e * B.r[0] + n * B.r[1] + up * B.r[2], yu = e * B.u[0] + n * B.u[1] + up * B.u[2];
   return { x: 0.5 + c.f * xr / z, y: 0.5 - c.f * aspect * yu / z, z, dist: Math.sqrt(d2) };
 }
-function nelderMead(fn, x0, step, iters) {
-  const n = x0.length;
-  let P = [x0.slice()];
-  for (let i = 0; i < n; i++) { const p = x0.slice(); p[i] += step; P.push(p); }
-  let F = P.map(fn);
-  for (let it = 0; it < iters; it++) {
-    const idx = [...F.keys()].sort((a, b) => F[a] - F[b]);
-    P = idx.map(i => P[i]); F = idx.map(i => F[i]);
-    if (F[n] - F[0] < 1e-9 * (1 + Math.abs(F[0]))) break;
-    const c = new Array(n).fill(0);
-    for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) c[j] += P[i][j] / n;
-    const xr = c.map((v, j) => 2 * v - P[n][j]), fr = fn(xr);
-    if (fr < F[0]) {
-      const xe = c.map((v, j) => 3 * v - 2 * P[n][j]), fe = fn(xe);
-      if (fe < fr) { P[n] = xe; F[n] = fe; } else { P[n] = xr; F[n] = fr; }
-    } else if (fr < F[n - 1]) { P[n] = xr; F[n] = fr; }
-    else {
-      const xc = fr < F[n] ? c.map((v, j) => v + 0.5 * (xr[j] - v)) : c.map((v, j) => v + 0.5 * (P[n][j] - v));
-      const fc = fn(xc);
-      if (fc < Math.min(fr, F[n])) { P[n] = xc; F[n] = fc; }
-      else for (let i = 1; i <= n; i++) { P[i] = P[i].map((v, j) => P[0][j] + 0.5 * (v - P[0][j])); F[i] = fn(P[i]); }
-    }
-  }
-  let b = 0; for (let i = 1; i <= n; i++) if (F[i] < F[b]) b = i;
-  return { x: P[b], f: F[b] };
-}
-/* Fit the camera to the pins the user dragged. Each parameter has a prior from
-   the photo's metadata, so one dragged pin mostly corrects heading and tilt,
-   and more pins also settle height, lens and position. */
-function solveCamera(ph, quick) {
-  const base = ph.base;
-  const anchors = Object.values(ph.anchors);
-  if (!base || base.lat == null) { ph.cam = base ? { ...base } : null; return; }
-  if (!anchors.length) { ph.cam = { ...base }; ph.solX = null; return; }
-  const h = ph.has;
-  const sig = [h.gps ? 8 : 400, h.gps ? 8 : 400, h.h ? 10 : 80, h.yaw ? 8 : 120, h.pitch ? 4 : 30, h.pitch ? 1.5 : 4, h.f ? 0.06 : 0.35];
-  const aspect = ph.w / ph.h;
-  const cosLat = Math.cos(base.lat * D);
-  const toCam = x => ({
-    lat: base.lat + x[1] * sig[1] / (R_EARTH * D),
-    lon: base.lon + x[0] * sig[0] / (R_EARTH * D * cosLat),
-    h: Math.max(2, base.h + x[2] * sig[2]),
-    yaw: base.yaw + x[3] * sig[3],
-    pitch: clamp(base.pitch + x[4] * sig[4], -90, 25),
-    roll: base.roll + x[5] * sig[5],
-    f: base.f * Math.exp(x[6] * sig[6]),
-  });
-  const px = 0.004;
-  const cost = x => {
-    let c = 0;
-    for (const v of x) c += v * v;
-    const cam = toCam(x), B = basis(cam);
-    for (const a of anchors) {
-      const p = project(cam, aspect, a.lat, a.lon, B);
-      if (!p) { c += 1e6; continue; }
-      const dx = p.x - a.x, dy = (p.y - a.y) / aspect;
-      c += (dx * dx + dy * dy) / (px * px);
-    }
-    return c;
-  };
-  let best = { x: ph.solX || new Array(7).fill(0), f: Infinity };
-  best.f = cost(best.x);
-  const starts = quick ? [best.x] : [best.x, new Array(7).fill(0)];
-  for (const s of starts) {
-    let r = nelderMead(cost, s, quick ? 0.35 : 0.9, quick ? 260 : 700);
-    r = nelderMead(cost, r.x, 0.15, quick ? 200 : 500);
-    if (r.f < best.f) best = r;
-  }
-  ph.solX = best.x;
-  ph.cam = toCam(best.x);
-}
 // Camera for a photo with no GPS: hover south of the property, looking north.
 function placeholderCamera(ph) {
   if (!state.address) return null;
@@ -777,7 +722,13 @@ function rebase(ph) {
   if (ph.has.gps) ph.base = { ...ph.base0 };
   else { const c = placeholderCamera(ph); ph.base = c ? { ...c, ...(ph.manual || {}) } : null; }
   if (ph.base && ph.manual && ph.has.gps) Object.assign(ph.base, ph.manual);
-  solveCamera(ph);
+  ph.cam = ph.base ? { ...ph.base } : null;
+}
+// Change the camera from a slider or the map, keeping the change through a rebase.
+function setCam(ph, patch) {
+  const now = ph.cam || ph.base; if (!now) return;
+  ph.manual = { ...(ph.manual || {}), ...patch };
+  ph.base = { ...now, ...patch }; ph.cam = { ...ph.base };
 }
 
 /* ------------------------------------------------------------------ network */
@@ -971,7 +922,8 @@ function refPoint(ph) {
 }
 function placeName(p) { return state.names[p.id] ?? p.name; }
 function heroName() { return state.names.hero ?? (state.address?.short || "The Property"); }
-// Everything the inspector and renderer need for one photo.
+// Everything the inspector and renderer need for one photo. Every place in
+// view starts switched on; a pin that has been dragged keeps its own spot.
 function computePins(ph) {
   const res = { pins: [], inView: [], hero: null };
   const cam = ph.cam; if (!cam || cam.lat == null) return res;
@@ -979,42 +931,26 @@ function computePins(ph) {
   for (const pl of state.places) {
     if (!state.settings.cats[pl.cat]) continue;
     const pr = project(cam, aspect, pl.lat, pl.lon, B);
-    const anchored = ph.anchors[pl.id];
-    if (!anchored && (!pr || pr.x < 0.02 || pr.x > 0.98 || pr.y < 0.035 || pr.y > 0.985)) continue;
+    const mv = ph.moved[pl.id];
+    if (!mv && (!pr || pr.x < 0.02 || pr.x > 0.98 || pr.y < 0.035 || pr.y > 0.985)) continue;
     const d = ref ? haversine(ref, pl) : pr?.dist || 0;
-    res.inView.push({ pl, x: pr ? pr.x : anchored.x, y: pr ? pr.y : anchored.y, d, rank: pl.score - Math.min(3, d / 1500) });
+    res.inView.push({ pl, x: mv ? mv.x : pr.x, y: mv ? mv.y : pr.y, d, moved: !!mv, rank: pl.score - Math.min(3, d / 1500) });
   }
   res.inView.sort((a, b) => b.rank - a.rank);
-  let auto = ph.frozenAuto;
-  if (!auto) {
-    auto = new Set(); const picked = [];
-    for (const c of res.inView) {
-      if (picked.length >= state.settings.maxPins) break;
-      if (picked.some(o => Math.hypot(o.x - c.x, (o.y - c.y) / aspect) < 0.075)) continue;
-      picked.push(c); auto.add(c.pl.id);
-    }
-  }
-  res.auto = auto;
   for (const c of res.inView) {
-    c.on = ph.overrides[c.pl.id] ?? auto.has(c.pl.id);
-    if (!c.on) continue;
-    const a = ph.anchors[c.pl.id];
-    res.pins.push({ id: c.pl.id, kind: "place", cat: c.pl.cat, icon: c.pl.icon, name: placeName(c.pl), sub: ref ? fmtDist(c.d) : "", x: c.x, y: c.y, anchored: !!a });
+    c.on = ph.overrides[c.pl.id] ?? true;
+    if (c.on) res.pins.push({ id: c.pl.id, kind: "place", cat: c.pl.cat, icon: c.pl.icon, name: placeName(c.pl), sub: ref ? fmtDist(c.d) : "", x: c.x, y: c.y, moved: c.moved });
   }
   if (state.address) {
     const pr = project(cam, aspect, state.address.lat, state.address.lon, B);
-    const a = ph.anchors.hero;
-    const vis = a || (pr && pr.x > -0.05 && pr.x < 1.05 && pr.y > -0.05 && pr.y < 1.05);
-    res.hero = { visible: !!vis };
+    const mv = ph.moved.hero;
+    const vis = mv || (pr && pr.x > -0.05 && pr.x < 1.05 && pr.y > -0.05 && pr.y < 1.05);
+    res.hero = { visible: !!vis, moved: !!mv };
     if (vis && brand().heroOn && ph.overrides.hero !== false) {
-      res.pins.unshift({ id: "hero", kind: "hero", cat: "home", icon: "home", name: heroName(), sub: "", x: pr ? pr.x : a.x, y: pr ? pr.y : a.y, anchored: !!a });
+      res.pins.unshift({ id: "hero", kind: "hero", cat: "home", icon: "home", name: heroName(), sub: "", x: mv ? mv.x : pr.x, y: mv ? mv.y : pr.y, moved: !!mv });
     }
   }
   for (const c of ph.custom) res.pins.push({ id: c.id, kind: "custom", cat: "custom", icon: "custom", name: c.name, sub: "", x: c.x, y: c.y });
-  if (ph.drag) {
-    const p = res.pins.find(p => p.id === ph.drag.id);
-    if (p) { p.x = ph.drag.x; p.y = ph.drag.y; }
-  }
   return res;
 }
 
@@ -1254,7 +1190,7 @@ async function addFiles(files) {
       pv.getContext("2d").drawImage(img, 0, 0, pv.width, pv.height);
       const th = document.createElement("canvas"); const ts = 160 / w; th.width = 160; th.height = Math.round(h * ts);
       th.getContext("2d").drawImage(pv, 0, 0, th.width, th.height);
-      const ph = { id: uid(), name: file.name, img, preview: pv, thumb: th, w, h, meta, has, base0: cam, base: null, cam: null, anchors: {}, overrides: {}, custom: [], solX: null, manual: null };
+      const ph = { id: uid(), name: file.name, img, preview: pv, thumb: th, w, h, meta, has, base0: cam, base: null, cam: null, moved: {}, overrides: {}, custom: [], manual: null };
       rebase(ph);
       state.photos.push(ph);
       if (!state.current) state.current = ph.id;
@@ -1289,19 +1225,20 @@ function sizeView(ph) {
   view.style.width = cw + "px"; view.style.height = ch + "px";
 }
 let raf = 0;
-function drawView() { cancelAnimationFrame(raf); raf = requestAnimationFrame(() => { const ph = cur(); if (!ph) return; sizeView(ph); lastLayout = drawScene(vctx, view.width, view.height, ph, ph.preview); }); }
+function drawView() { cancelAnimationFrame(raf); raf = requestAnimationFrame(() => { const ph = cur(); if (!ph) return; if (state.view === "map") { paintMap(); return; } sizeView(ph); lastLayout = drawScene(vctx, view.width, view.height, ph, ph.preview); }); }
 function renderHud() {
   const hud = $("#hud"), ph = cur();
   let html = "";
   if (flashMsg) html = `<span>${esc(flashMsg)}</span>`;
   else if (!ph) html = "";
   else if (state.addMode) html = `<span>Click the photo where the new pin goes</span><button data-act="cancelAdd">Cancel</button>`;
+  else if (state.view === "map" && state.placesStatus !== "loading" && state.placesStatus !== "error" && !mapState.hintSeen) html = `<span>Drag on the map to turn the camera. Drag the drone to move it. Click a place to show or hide it.</span><button data-act="okMap">OK</button>`;
   else if (!ph.base) html = `<span>No location in this photo. Add the property address to place pins.</span>`;
   else if (state.placesStatus === "loading") html = `<span class="spinner"></span><span>Finding nearby places…</span>`;
   else if (state.placesStatus === "error") html = `<span>Couldn't load places (${esc(state.placesError || "no answer")})</span><button data-act="retry">Try again</button>`;
   else if (state.placesStatus === "ready" && !ph.hintShown) {
     const n = computePins(ph).inView.length;
-    html = n ? `<span>${n} place${n === 1 ? "" : "s"} in view. Drag any pin onto its real spot and the rest follow.</span><button data-act="okHint">OK</button>` : `<span>No mapped places in this view. Try a wider range.</span><button data-act="okHint">OK</button>`;
+    html = n ? `<span>${n} place${n === 1 ? "" : "s"} in view. Drag a pin to move it, and switch off the ones you don't want.</span><button data-act="okHint">OK</button>` : `<span>No mapped places in this view. Try a wider range, or turn the camera on the map.</span><button data-act="okHint">OK</button>`;
   }
   hud.innerHTML = html; hud.hidden = !html; hud.classList.toggle("solo", !html.includes("<button"));
 }
@@ -1309,6 +1246,7 @@ $("#hud").addEventListener("click", e => {
   const a = e.target.closest("button")?.dataset.act; if (!a) return;
   if (a === "retry") { state.placesKey = ""; ensurePlaces(); }
   if (a === "cancelAdd") setAddMode(false);
+  if (a === "okMap") { mapState.hintSeen = true; renderHud(); }
   if (a === "okHint") { const ph = cur(); if (ph) ph.hintShown = true; renderHud(); }
 });
 
@@ -1343,8 +1281,8 @@ $("#cats").addEventListener("click", e => {
 });
 
 function placeRow(o) {
-  const { id, name, sub, icon, color, on, anchored, kind } = o;
-  const anch = anchored ? `<button class="anch" data-unanchor="${id}" title="Release this pin">${svgPath("M12 17v5 M8 3h8l-1 6 3 4H6l3-4-1-6Z")}Placed</button>` : "";
+  const { id, name, sub, icon, color, on, moved, kind } = o;
+  const anch = moved ? `<button class="anch" data-reset="${id}" title="Put this pin back where Pinpoint placed it">${svgPath("M4 12a8 8 0 1 0 2.5-5.8 M4 4v4.5h4.5")}Reset</button>` : "";
   const right = kind === "custom" ? `<button class="del" data-del="${id}" aria-label="Delete pin">${svgPath("M5 7h14 M10 7V4.5h4V7 M7 7l1 13h8l1-13")}</button>` : `<input class="switch" type="checkbox" data-toggle="${id}" ${on ? "checked" : ""} aria-label="Show ${esc(name)}">`;
   return `<div class="place${state.selected === id ? " sel" : ""}" data-id="${id}"><span class="tile" style="background:${color}">${svgIcon(icon)}</span><div style="min-width:0"><input class="nm" data-name="${id}" value="${esc(name)}" aria-label="Pin label"><div class="sub">${esc(sub)}${anch}</div></div>${right}</div>`;
 }
@@ -1354,14 +1292,11 @@ function renderPlaces() {
   if (!ph.base) { el.innerHTML = `<div class="list-empty">This photo has no GPS. Add the property address and Pinpoint will start from there.</div>`; $("#placeCount").textContent = ""; return; }
   const res = computePins(ph);
   const rows = [];
-  if (state.address && res.hero?.visible) rows.push(placeRow({ id: "hero", kind: "hero", name: heroName(), sub: "Property", icon: "home", color: brand().accent, on: brand().heroOn && ph.overrides.hero !== false, anchored: !!ph.anchors.hero }));
-  const list = res.inView.slice().sort((a, b) => (b.on - a.on) || b.rank - a.rank);
-  const limit = state.showAll ? list.length : Math.max(12, list.filter(c => c.on).length);
-  for (const c of list.slice(0, limit)) rows.push(placeRow({ id: c.pl.id, kind: "place", name: placeName(c.pl), sub: `${CATS[c.pl.cat].one} · ${fmtDist(c.d)}`, icon: c.pl.icon, color: CATS[c.pl.cat].color, on: c.on, anchored: !!ph.anchors[c.pl.id] }));
+  if (state.address && res.hero?.visible) rows.push(placeRow({ id: "hero", kind: "hero", name: heroName(), sub: "Property", icon: "home", color: brand().accent, on: brand().heroOn && ph.overrides.hero !== false, moved: res.hero.moved }));
+  const list = res.inView;
+  for (const c of list) rows.push(placeRow({ id: c.pl.id, kind: "place", name: placeName(c.pl), sub: `${CATS[c.pl.cat].one} · ${fmtDist(c.d)}`, icon: c.pl.icon, color: CATS[c.pl.cat].color, on: c.on, moved: c.moved }));
   for (const c of ph.custom) rows.push(placeRow({ id: c.id, kind: "custom", name: c.name, sub: "Your pin", icon: "custom", color: "#636366", on: true }));
   let html = rows.join("");
-  if (list.length > limit) html += `<button class="more" data-act="all">Show all ${list.length}</button>`;
-  else if (state.showAll && list.length > 12) html += `<button class="more" data-act="fewer">Show fewer</button>`;
   if (!rows.length) html = `<div class="list-empty">${state.placesStatus === "loading" ? "Finding nearby places…" : state.placesStatus === "error" ? "Couldn't load places." : "No mapped places in view. Try a wider range or more categories."}</div>`;
   const focused = document.activeElement?.dataset?.name;
   el.innerHTML = html;
@@ -1374,7 +1309,6 @@ $("#placeList").addEventListener("change", e => {
   const t = e.target;
   if (t.dataset.toggle) {
     ph.overrides[t.dataset.toggle] = t.checked;
-    if (!t.checked && ph.anchors[t.dataset.toggle]) { delete ph.anchors[t.dataset.toggle]; solveCamera(ph); }
     render();
   }
 });
@@ -1387,24 +1321,28 @@ $("#placeList").addEventListener("input", e => {
 $("#placeList").addEventListener("keydown", e => { if (e.key === "Enter" && e.target.dataset.name) e.target.blur(); });
 $("#placeList").addEventListener("click", e => {
   const ph = cur(); if (!ph) return;
-  const un = e.target.closest("[data-unanchor]"), del = e.target.closest("[data-del]"), more = e.target.closest("[data-act]");
-  if (un) { delete ph.anchors[un.dataset.unanchor]; solveCamera(ph); render(); return; }
+  const reset = e.target.closest("[data-reset]"), del = e.target.closest("[data-del]");
+  if (reset) { delete ph.moved[reset.dataset.reset]; render(); return; }
   if (del) { ph.custom = ph.custom.filter(c => c.id !== del.dataset.del); render(); return; }
-  if (more) { state.showAll = more.dataset.act === "all"; renderPlaces(); return; }
   const row = e.target.closest(".place");
   if (row && !e.target.closest("input")) { state.selected = row.dataset.id; render(); }
 });
 
 function renderSettings() {
   document.querySelectorAll("#rangeSeg button").forEach(b => b.setAttribute("aria-pressed", String(+b.dataset.v === state.settings.range)));
-  $("#pinsVal").textContent = state.settings.maxPins;
 }
 $("#rangeSeg").addEventListener("click", e => {
   const b = e.target.closest("button"); if (!b) return;
   state.settings.range = +b.dataset.v; saveSettings(); renderSettings(); ensurePlaces();
 });
-$("#pinsMinus").onclick = () => { state.settings.maxPins = Math.max(0, state.settings.maxPins - 1); saveSettings(); render(); };
-$("#pinsPlus").onclick = () => { state.settings.maxPins = Math.min(20, state.settings.maxPins + 1); saveSettings(); render(); };
+// Show or hide every place in this shot at once; the property pin is left alone.
+function setAllPlaces(on) {
+  const ph = cur(); if (!ph) return;
+  for (const c of computePins(ph).inView) ph.overrides[c.pl.id] = on;
+  render();
+}
+$("#showAll").onclick = () => setAllPlaces(true);
+$("#hideAll").onclick = () => setAllPlaces(false);
 
 /* Brand editor */
 function renderBrand() {
@@ -1530,12 +1468,11 @@ function renderCamera() {
   $("#camSec").hidden = !ph; $("#camEmpty").hidden = !!ph;
   if (!ph) return;
   const c = ph.cam || ph.base || ph.base0, aspect = ph.w / ph.h;
-  const nA = Object.keys(ph.anchors).length;
-  $("#camSrc").textContent = nA ? `Aligned to ${nA} pin${nA > 1 ? "s" : ""}` : ph.has.gps ? "From photo data" : "Estimated";
+  $("#camSrc").textContent = ph.manual ? "Adjusted" : ph.has.gps ? "From photo data" : "Estimated";
   const missing = [!ph.has.gps && "location", !ph.has.yaw && "heading", !ph.has.pitch && "tilt", !ph.has.h && "height"].filter(Boolean);
   const hint = $("#camHint");
-  if (missing.length && !nA) { hint.className = "hint warn"; hint.textContent = `This photo has no ${missing.join(", ")} data. Set the sliders roughly, then drag ${ph.has.gps ? "one or two pins" : "two or three pins"} onto their real spots.`; }
-  else { hint.className = "hint"; hint.textContent = "Pins come from the drone's position and angle. Drag any pin onto its real spot and the rest follow."; }
+  if (missing.length && !ph.manual) { hint.className = "hint warn"; hint.textContent = `This photo has no ${missing.join(", ")} data. Open the map to ${ph.has.gps ? "" : "place the drone and "}turn the camera, then fine-tune here.`; }
+  else { hint.className = "hint"; hint.textContent = "Pins come from the drone's position and angle. These move every pin together; drag a pin on the photo to move just that one."; }
   const yaw = ((c.yaw + 540) % 360) - 180;
   $("#cYaw").value = yaw; $("#cYawV").textContent = `${Math.round((yaw + 360) % 360)}°`;
   $("#cPitch").value = c.pitch; $("#cPitchV").textContent = `${Math.round(c.pitch)}°`;
@@ -1546,17 +1483,13 @@ function camSlider(id, key, map) {
   $(id).addEventListener("input", e => {
     const ph = cur(); if (!ph || !(ph.cam || ph.base)) return;
     const v = +e.target.value, aspect = ph.w / ph.h;
-    const now = { ...(ph.cam || ph.base) };
-    const patch = map ? map(v, aspect) : { [key]: v };
-    ph.manual = { ...(ph.manual || {}), ...patch };
-    // Moving a slider starts again from what you see now, with that one value changed.
-    ph.base = { ...now, ...patch }; ph.anchors = {}; ph.solX = null; ph.cam = { ...ph.base };
+    setCam(ph, map ? map(v, aspect) : { [key]: v });
     render();
   });
 }
 camSlider("#cYaw", "yaw"); camSlider("#cPitch", "pitch"); camSlider("#cH", "h");
 camSlider("#cFov", "f", (v, a) => ({ f: fovToF(v, a) }));
-$("#resetCam").onclick = () => { const ph = cur(); if (!ph) return; ph.manual = null; ph.anchors = {}; ph.solX = null; rebase(ph); render(); };
+$("#resetCam").onclick = () => { const ph = cur(); if (!ph) return; ph.manual = null; rebase(ph); render(); };
 
 /* ------------------------------------------------------------------ interaction on the photo */
 let drag = null;
@@ -1584,7 +1517,6 @@ view.addEventListener("pointerdown", e => {
   view.setPointerCapture(e.pointerId);
   const pin = L.pin;
   drag = { id: pin.id, kind: pin.kind, start: n, offX: n.x - pin.x, offY: n.y - pin.y, moved: false };
-  ph.frozenAuto = computePins(ph).auto;
   state.selected = pin.id;
   view.className = "grabbing";
 });
@@ -1595,20 +1527,15 @@ view.addEventListener("pointermove", e => {
   if (!drag.moved && Math.hypot((n.x - drag.start.x) * view.width, (n.y - drag.start.y) * view.height) < 4) return;
   drag.moved = true;
   const x = clamp(n.x - drag.offX, 0, 1), y = clamp(n.y - drag.offY, 0, 1);
+  // Only the pin being dragged moves; nothing else changes.
   if (drag.kind === "custom") { const c = ph.custom.find(c => c.id === drag.id); if (c) { c.x = x; c.y = y; } }
-  else {
-    const g = drag.kind === "hero" ? state.address : state.places.find(p => p.id === drag.id);
-    if (g) { ph.anchors[drag.id] = { x, y, lat: g.lat, lon: g.lon }; ph.overrides[drag.id] = true; solveCamera(ph, true); }
-    ph.drag = { id: drag.id, x, y };
-  }
+  else { ph.moved[drag.id] = { x, y }; ph.overrides[drag.id] = true; }
   drawView();
 });
 function endDrag() {
   const ph = cur(); if (!drag || !ph) return;
-  const moved = drag.moved;
-  drag = null; ph.drag = null;
-  if (moved) { solveCamera(ph); ph.hintShown = true; }
-  ph.frozenAuto = null;
+  if (drag.moved) ph.hintShown = true;
+  drag = null;
   view.className = "grab";
   render();
 }
@@ -1629,12 +1556,13 @@ document.addEventListener("keydown", e => {
   if (typing) return;
   const ph = cur();
   if (e.key === "Escape") { if (state.addMode) setAddMode(false); else if (state.selected) { state.selected = null; render(); } }
-  if ((e.key === "p" || e.key === "P") && ph) setAddMode(!state.addMode);
+  if ((e.key === "p" || e.key === "P") && ph && state.view !== "map") setAddMode(!state.addMode);
+  if ((e.key === "m" || e.key === "M") && ph) setView(state.view === "map" ? "photo" : "map");
   if ((e.key === "Backspace" || e.key === "Delete") && ph && state.selected) {
     e.preventDefault();
     const id = state.selected;
     if (ph.custom.some(c => c.id === id)) ph.custom = ph.custom.filter(c => c.id !== id);
-    else { ph.overrides[id] = false; if (ph.anchors[id]) { delete ph.anchors[id]; solveCamera(ph); } }
+    else ph.overrides[id] = false;
     state.selected = null; render();
   }
   if ((e.key === "ArrowRight" || e.key === "ArrowDown" || e.key === "ArrowLeft" || e.key === "ArrowUp") && state.photos.length > 1) {
@@ -1642,6 +1570,274 @@ document.addEventListener("keydown", e => {
     state.current = state.photos[(i + d + state.photos.length) % state.photos.length].id; state.selected = null; render();
   }
 });
+
+/* ------------------------------------------------------------------ map view
+   A top-down OpenStreetMap view around the drone: distance rings, the patch of
+   ground the camera can see, and every place. Drag on the map to turn the
+   camera, drag the drone to move it, click a place to show or hide it. Tiles
+   are fetched and drawn to a canvas, so no image URLs are needed. */
+const mapCv = $("#map"), mctx = mapCv.getContext("2d");
+const TILE = 256;
+const mapState = { zoom: 0, tiles: new Map(), dots: [], hold: null, drag: null, hintSeen: false };
+const lon2x = (lon, z) => (lon + 180) / 360 * TILE * 2 ** z;
+const lat2y = (lat, z) => { const s = Math.sin(clamp(lat, -85, 85) * D); return (0.5 - Math.log((1 + s) / (1 - s)) / (4 * Math.PI)) * TILE * 2 ** z; };
+function mapTile(z, x, y) {
+  const key = `${z}/${x}/${y}`;
+  let t = mapState.tiles.get(key);
+  if (!t) {
+    t = { bmp: null };
+    mapState.tiles.set(key, t);
+    if (mapState.tiles.size > 600) mapState.tiles.delete(mapState.tiles.keys().next().value);
+    fetch(`https://tile.openstreetmap.org/${key}.png`)
+      .then(r => { if (!r.ok) throw new Error("HTTP " + r.status); return r.blob(); })
+      .then(b => createImageBitmap(b))
+      .then(b => { t.bmp = b; drawView(); })
+      .catch(() => {});
+  }
+  return t;
+}
+function mapCentre(ph) { const c = ph.cam || ph.base; return c && c.lat != null ? c : state.address; }
+function mapFrame(ph, W, H) {
+  const c = mapState.hold || mapCentre(ph);
+  const k = Math.min(2, window.devicePixelRatio || 1);
+  // Fit the range circle, then apply the user's zoom.
+  const fit = state.settings.range / (0.43 * Math.min(W, H));
+  const zf = clamp(Math.log2(156543.034 * Math.cos(c.lat * D) / fit) + mapState.zoom, 2, 19.5);
+  const z = Math.min(19, Math.floor(zf)), scale = 2 ** (zf - z);
+  const cx = lon2x(c.lon, z), cy = lat2y(c.lat, z);
+  const ppm = 2 ** zf / (156543.034 * Math.cos(c.lat * D));
+  const toPx = (lat, lon) => [W / 2 + (lon2x(lon, z) - cx) * scale, H / 2 + (lat2y(lat, z) - cy) * scale];
+  const toGeo = (x, y) => {
+    const n = TILE * 2 ** z, tx = cx + (x - W / 2) / scale, ty = cy + (y - H / 2) / scale;
+    return { lon: tx / n * 360 - 180, lat: Math.atan(Math.sinh(Math.PI * (1 - 2 * ty / n))) / D };
+  };
+  return { c, k, z, scale, cx, cy, ppm, toPx, toGeo };
+}
+// Ground the camera sees: cast a ray through points round the image edge onto
+// flat ground, stopping at distance L for anything at or above the horizon.
+function footprint(ph, cam, L) {
+  const B = basis(cam), aspect = ph.w / ph.h, N = 24, edge = [], pts = [];
+  for (let i = 0; i <= N; i++) edge.push([i / N, 0]);
+  for (let i = 1; i <= N; i++) edge.push([1, i / N]);
+  for (let i = N - 1; i >= 0; i--) edge.push([i / N, 1]);
+  for (let i = N - 1; i >= 1; i--) edge.push([0, i / N]);
+  for (const [u, v] of edge) {
+    const a = (u - 0.5) / cam.f, b = -(v - 0.5) / (cam.f * aspect);
+    const d = [0, 1, 2].map(i => B.f[i] + B.r[i] * a + B.u[i] * b);
+    let e, n;
+    if (d[2] < -1e-6) {
+      const t = cam.h / -d[2]; e = d[0] * t; n = d[1] * t;
+      const dist = Math.hypot(e, n); if (dist > L) { e *= L / dist; n *= L / dist; }
+    } else { const hz = Math.hypot(d[0], d[1]) || 1e-9; e = d[0] / hz * L; n = d[1] / hz * L; }
+    pts.push([e, n]);
+  }
+  return pts;
+}
+const COMPASS = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"];
+const headingText = yaw => { const y = ((yaw % 360) + 360) % 360; return `${COMPASS[Math.round(y / 45) % 8]} ${Math.round(y)}°`; };
+function sizeMap() {
+  const st = $("#stage"), cs = getComputedStyle(st);
+  const aw = st.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+  const stacked = window.matchMedia("(max-width: 900px)").matches;
+  const ah = stacked ? Math.min(window.innerHeight * 0.7, aw * 1.1) : st.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
+  const cw = Math.max(200, Math.floor(aw)), ch = Math.max(200, Math.floor(ah));
+  const dpr = Math.min(2, window.devicePixelRatio || 1);
+  if (mapCv.width !== Math.round(cw * dpr) || mapCv.height !== Math.round(ch * dpr)) { mapCv.width = Math.round(cw * dpr); mapCv.height = Math.round(ch * dpr); }
+  mapCv.style.width = cw + "px"; mapCv.style.height = ch + "px";
+}
+function pill(ctx, text, x, y, k, dark, align = "center") {
+  ctx.font = `600 ${11 * k}px ${FONTS.system.stack}`;
+  const w = ctx.measureText(text).width + 14 * k, h = 20 * k;
+  const left = align === "center" ? x - w / 2 : x;
+  ctx.fillStyle = dark ? "rgba(44,44,48,0.88)" : "rgba(255,255,255,0.9)";
+  rrect(ctx, left, y - h / 2, w, h, h / 2); ctx.fill();
+  ctx.fillStyle = dark ? "#f5f5f7" : "#1d1d1f"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  ctx.fillText(text, left + w / 2, y + 0.5 * k);
+  return { x: left, y: y - h / 2, w, h };
+}
+function paintMap() {
+  const ph = cur(); if (!ph) return;
+  sizeMap();
+  const W = mapCv.width, H = mapCv.height, ctx = mctx;
+  const dark = getComputedStyle(document.documentElement).colorScheme === "dark";
+  const ink = dark ? "255,255,255" : "0,0,0";
+  const accent = getComputedStyle(document.documentElement).getPropertyValue("--accent").trim() || "#007aff";
+  ctx.setLineDash([]); ctx.filter = "none";
+  ctx.fillStyle = dark ? "#1c1c1e" : "#ececef"; ctx.fillRect(0, 0, W, H);
+  mapState.dots = [];
+  if (!mapCentre(ph)) {
+    const k = Math.min(2, window.devicePixelRatio || 1);
+    ctx.fillStyle = `rgba(${ink},0.55)`; ctx.font = `500 ${14 * k}px ${FONTS.system.stack}`; ctx.textAlign = "center";
+    ctx.fillText("This photo has no location. Add the property address to place the drone.", W / 2, H / 2);
+    return;
+  }
+  const F = mapFrame(ph, W, H), k = F.k, range = state.settings.range;
+
+  // Street map, greyed so the overlays carry the colour.
+  const n = 2 ** F.z, size = TILE * F.scale;
+  const x0 = Math.floor((F.cx - W / 2 / F.scale) / TILE), x1 = Math.floor((F.cx + W / 2 / F.scale) / TILE);
+  const y0 = Math.max(0, Math.floor((F.cy - H / 2 / F.scale) / TILE)), y1 = Math.min(n - 1, Math.floor((F.cy + H / 2 / F.scale) / TILE));
+  ctx.save();
+  ctx.filter = dark ? "grayscale(1) invert(1) brightness(0.8) contrast(0.9)" : "grayscale(0.85) brightness(1.05) contrast(0.9)";
+  for (let ty = y0; ty <= y1; ty++) for (let tx = x0; tx <= x1; tx++) {
+    const t = mapTile(F.z, ((tx % n) + n) % n, ty);
+    if (t.bmp) ctx.drawImage(t.bmp, W / 2 + (tx * TILE - F.cx) * F.scale, H / 2 + (ty * TILE - F.cy) * F.scale, size + 0.6, size + 0.6);
+  }
+  ctx.restore();
+
+  const cam = ph.cam || ph.base;
+  const [dx, dy] = F.toPx(cam.lat, cam.lon);
+  const toMap = (e, nn) => [dx + e * F.ppm, dy - nn * F.ppm];
+
+  // What the camera can see, out to the range.
+  const fp = footprint(ph, cam, range).map(([e, nn]) => toMap(e, nn));
+  ctx.save();
+  ctx.beginPath(); fp.forEach(([x, y], i) => i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)); ctx.closePath();
+  ctx.fillStyle = withAlpha(accent, dark ? 0.26 : 0.2); ctx.fill();
+  ctx.strokeStyle = withAlpha(accent, 0.85); ctx.lineWidth = 1.6 * k; ctx.lineJoin = "round"; ctx.stroke();
+  ctx.restore();
+
+  // Distance rings around the drone.
+  const step = range <= 1000 ? 250 : range <= 3000 ? 1000 : 2000;
+  ctx.save();
+  for (let m = step; m <= range + 1; m += step) {
+    const outer = m >= range - 1;
+    ctx.setLineDash(outer ? [] : [4 * k, 5 * k]);
+    ctx.strokeStyle = `rgba(${ink},${outer ? 0.42 : 0.24})`; ctx.lineWidth = (outer ? 1.6 : 1.1) * k;
+    ctx.beginPath(); ctx.arc(dx, dy, m * F.ppm, 0, 7); ctx.stroke();
+  }
+  ctx.setLineDash([]);
+  for (let m = step; m <= range + 1; m += step) {
+    const r = m * F.ppm, a = -Math.PI / 4;
+    if (dx + r * Math.cos(a) < W - 20 * k && dy + r * Math.sin(a) > 20 * k) pill(ctx, fmtDist(m), dx + r * Math.cos(a), dy + r * Math.sin(a), k, dark);
+  }
+  ctx.restore();
+
+  // Places: faint dots outside the view, coloured dots with names inside it.
+  const res = computePins(ph), inView = new Set(res.inView.map(c => c.pl.id));
+  for (const pl of state.places) {
+    if (!state.settings.cats[pl.cat] || inView.has(pl.id)) continue;
+    const [x, y] = F.toPx(pl.lat, pl.lon); if (x < -10 || y < -10 || x > W + 10 || y > H + 10) continue;
+    ctx.fillStyle = `rgba(${ink},0.3)`; ctx.beginPath(); ctx.arc(x, y, 2.6 * k, 0, 7); ctx.fill();
+  }
+  const taken = [];
+  const free = r => !taken.some(o => r.x < o.x + o.w && r.x + r.w > o.x && r.y < o.y + o.h && r.y + r.h > o.y);
+  for (const c of res.inView) {
+    const [x, y] = F.toPx(c.pl.lat, c.pl.lon), col = CATS[c.pl.cat].color;
+    mapState.dots.push({ id: c.pl.id, x, y });
+    ctx.save();
+    ctx.shadowColor = "rgba(0,0,0,0.3)"; ctx.shadowBlur = 4 * k;
+    ctx.beginPath(); ctx.arc(x, y, (c.on ? 6.5 : 5.5) * k, 0, 7);
+    ctx.fillStyle = c.on ? col : (dark ? "#2c2c2e" : "#ffffff"); ctx.fill();
+    ctx.shadowBlur = 0; ctx.lineWidth = 2 * k; ctx.strokeStyle = c.on ? "#ffffff" : col; ctx.stroke();
+    ctx.restore();
+    ctx.font = `600 ${11.5 * k}px ${FONTS.system.stack}`;
+    const label = placeName(c.pl), tw = ctx.measureText(label).width;
+    const r = { x: x + 10 * k, y: y - 8 * k, w: tw + 4 * k, h: 16 * k };
+    if (!free(r)) continue;
+    taken.push(r);
+    ctx.globalAlpha = c.on ? 1 : 0.55;
+    ctx.textAlign = "left"; ctx.textBaseline = "middle"; ctx.lineJoin = "round";
+    ctx.lineWidth = 3.5 * k; ctx.strokeStyle = dark ? "rgba(0,0,0,0.75)" : "rgba(255,255,255,0.92)";
+    ctx.strokeText(label, x + 10 * k, y); ctx.fillStyle = dark ? "#f5f5f7" : "#1d1d1f"; ctx.fillText(label, x + 10 * k, y);
+    ctx.globalAlpha = 1;
+  }
+
+  // The property.
+  if (state.address) {
+    const [x, y] = F.toPx(state.address.lat, state.address.lon);
+    ctx.save(); ctx.shadowColor = "rgba(0,0,0,0.35)"; ctx.shadowBlur = 6 * k;
+    ctx.fillStyle = brand().accent; ctx.beginPath(); ctx.arc(x, y, 11 * k, 0, 7); ctx.fill(); ctx.restore();
+    ctx.lineWidth = 2 * k; ctx.strokeStyle = "#fff"; ctx.beginPath(); ctx.arc(x, y, 11 * k, 0, 7); ctx.stroke();
+    drawIcon(ctx, "home", x, y, 13 * k, "#ffffff", 2.4);
+  }
+
+  // Heading line and handle.
+  const yr = cam.yaw * D, hr = range * F.ppm * 0.86;
+  const hx = dx + Math.sin(yr) * hr, hy = dy - Math.cos(yr) * hr;
+  ctx.save();
+  ctx.setLineDash([5 * k, 5 * k]); ctx.strokeStyle = withAlpha(accent, 0.9); ctx.lineWidth = 1.6 * k;
+  ctx.beginPath(); ctx.moveTo(dx, dy); ctx.lineTo(hx, hy); ctx.stroke(); ctx.setLineDash([]);
+  ctx.shadowColor = "rgba(0,0,0,0.3)"; ctx.shadowBlur = 6 * k;
+  ctx.fillStyle = "#ffffff"; ctx.beginPath(); ctx.arc(hx, hy, 11 * k, 0, 7); ctx.fill();
+  ctx.shadowBlur = 0; ctx.strokeStyle = accent; ctx.lineWidth = 2.5 * k; ctx.stroke();
+  // Notched arrow pointing along the heading, so it reads one way at any angle.
+  const fx = Math.sin(yr), fy = -Math.cos(yr), sx = -fy, sy = fx;
+  const pt = (a, c) => [hx + fx * a * k + sx * c * k, hy + fy * a * k + sy * c * k];
+  ctx.fillStyle = accent; ctx.beginPath(); ctx.moveTo(...pt(6.5, 0)); ctx.lineTo(...pt(-4.5, 5)); ctx.lineTo(...pt(-1.8, 0)); ctx.lineTo(...pt(-4.5, -5)); ctx.closePath(); ctx.fill();
+  ctx.restore();
+  pill(ctx, headingText(cam.yaw), hx, hy + 22 * k, k, dark);
+
+  // The drone.
+  ctx.save();
+  ctx.shadowColor = "rgba(0,0,0,0.35)"; ctx.shadowBlur = 8 * k;
+  ctx.fillStyle = accent; ctx.beginPath(); ctx.arc(dx, dy, 9 * k, 0, 7); ctx.fill();
+  ctx.shadowBlur = 0; ctx.strokeStyle = "#fff"; ctx.lineWidth = 3 * k; ctx.stroke();
+  ctx.restore();
+  pill(ctx, `Drone · ${Math.round(cam.h)} m`, dx, dy + 24 * k, k, dark);
+
+  // North arrow and the credit the tile licence asks for.
+  const nx = W - 30 * k, ny = 30 * k;
+  ctx.save();
+  ctx.fillStyle = dark ? "rgba(44,44,48,0.88)" : "rgba(255,255,255,0.9)"; ctx.beginPath(); ctx.arc(nx, ny, 17 * k, 0, 7); ctx.fill();
+  ctx.fillStyle = "#ff3b30"; ctx.beginPath(); ctx.moveTo(nx, ny - 13 * k); ctx.lineTo(nx + 4 * k, ny - 6 * k); ctx.lineTo(nx - 4 * k, ny - 6 * k); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = dark ? "#f5f5f7" : "#1d1d1f"; ctx.font = `700 ${11 * k}px ${FONTS.system.stack}`; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText("N", nx, ny + 3 * k);
+  ctx.restore();
+  ctx.save();
+  ctx.font = `500 ${10 * k}px ${FONTS.system.stack}`;
+  const credit = "© OpenStreetMap contributors", cw = ctx.measureText(credit).width + 12 * k;
+  ctx.fillStyle = dark ? "rgba(0,0,0,0.55)" : "rgba(255,255,255,0.8)"; ctx.fillRect(W - cw, H - 18 * k, cw, 18 * k);
+  ctx.fillStyle = `rgba(${ink},0.7)`; ctx.textAlign = "right"; ctx.textBaseline = "middle"; ctx.fillText(credit, W - 6 * k, H - 9 * k);
+  ctx.restore();
+}
+function mapPoint(e) { const r = mapCv.getBoundingClientRect(); return { x: (e.clientX - r.left) * mapCv.width / r.width, y: (e.clientY - r.top) * mapCv.height / r.height }; }
+function mapHit(ph, P) {
+  const F = mapFrame(ph, mapCv.width, mapCv.height), cam = ph.cam || ph.base;
+  const [dx, dy] = F.toPx(cam.lat, cam.lon);
+  if (Math.hypot(P.x - dx, P.y - dy) < 16 * F.k) return { mode: "move" };
+  const dot = mapState.dots.find(d => Math.hypot(P.x - d.x, P.y - d.y) < 10 * F.k);
+  return dot ? { mode: "dot", id: dot.id } : { mode: "turn" };
+}
+function aimAt(ph, P) {
+  const F = mapFrame(ph, mapCv.width, mapCv.height), cam = ph.cam || ph.base;
+  const [dx, dy] = F.toPx(cam.lat, cam.lon);
+  if (Math.hypot(P.x - dx, P.y - dy) < 4 * F.k) return;
+  setCam(ph, { yaw: Math.round(Math.atan2(P.x - dx, -(P.y - dy)) / D * 2) / 2 });
+}
+function mapLiveUpdate() { drawView(); renderCamera(); }
+mapCv.addEventListener("pointerdown", e => {
+  const ph = cur(); if (!ph || !(ph.cam || ph.base)) return;
+  const P = mapPoint(e), hit = mapHit(ph, P);
+  mapCv.setPointerCapture(e.pointerId);
+  mapState.drag = { ...hit, start: P, moved: false };
+  if (hit.mode === "move") { const c = mapCentre(ph); mapState.hold = { lat: c.lat, lon: c.lon }; }
+  if (hit.mode === "turn") { aimAt(ph, P); mapLiveUpdate(); }
+  mapState.hintSeen = true;
+});
+mapCv.addEventListener("pointermove", e => {
+  const ph = cur(); if (!ph || !(ph.cam || ph.base)) return;
+  const P = mapPoint(e), d = mapState.drag;
+  if (!d) { const h = mapHit(ph, P); mapCv.className = h.mode === "move" ? "move" : h.mode === "dot" ? "point" : ""; return; }
+  if (Math.hypot(P.x - d.start.x, P.y - d.start.y) > 4) d.moved = true;
+  if (d.mode === "dot" && d.moved) d.mode = "turn";
+  if (d.mode === "turn") aimAt(ph, P);
+  if (d.mode === "move") { const g = mapFrame(ph, mapCv.width, mapCv.height).toGeo(P.x, P.y); setCam(ph, { lat: g.lat, lon: g.lon }); }
+  mapLiveUpdate();
+});
+function endMapDrag() {
+  const ph = cur(), d = mapState.drag; if (!d) return;
+  mapState.drag = null; mapState.hold = null;
+  if (ph && d.mode === "dot" && !d.moved) {
+    const c = computePins(ph).inView.find(c => c.pl.id === d.id);
+    if (c) ph.overrides[d.id] = !c.on;
+  }
+  render();
+}
+mapCv.addEventListener("pointerup", endMapDrag);
+mapCv.addEventListener("pointercancel", endMapDrag);
+mapCv.addEventListener("wheel", e => { e.preventDefault(); mapState.zoom = clamp(mapState.zoom - e.deltaY * 0.0025, -2.5, 3.5); drawView(); }, { passive: false });
+function setView(v) { state.view = v; if (v === "map") setAddMode(false); render(); }
+$("#viewSeg").addEventListener("click", e => { const b = e.target.closest("[data-view]"); if (b && !b.disabled) setView(b.dataset.view); });
 
 /* ------------------------------------------------------------------ address search */
 const addr = $("#addr"), sug = $("#suggest");
@@ -1689,12 +1885,12 @@ function pickAddress(r) {
   addr.value = state.address.label; $("#addrClear").hidden = false;
   showSuggest([]); addr.blur();
   delete state.names.hero;
-  state.photos.forEach(p => { delete p.anchors.hero; if (!p.has.gps) { p.anchors = {}; p.solX = null; } rebase(p); });
+  state.photos.forEach(p => { delete p.moved.hero; rebase(p); });
   render(); ensurePlaces();
 }
 $("#addrClear").onclick = () => {
   addr.value = ""; $("#addrClear").hidden = true; state.address = null; store.set("address", null);
-  state.photos.forEach(p => { delete p.anchors.hero; rebase(p); });
+  state.photos.forEach(p => { delete p.moved.hero; rebase(p); });
   render(); ensurePlaces(); addr.focus();
 };
 
@@ -1774,8 +1970,10 @@ function render() {
   $("#subtitle").textContent = ph ? (n > 1 ? `${ph.name} · ${i + 1} of ${n}` : ph.name) : "Drone photo pins";
   $("#sideCount").textContent = n ? `${n} photo${n === 1 ? "" : "s"}` : "No photos";
   $("#lightClose").disabled = !ph;
-  $("#empty").hidden = !!ph; view.hidden = !ph;
-  $("#exportBtn").disabled = !ph; $("#addPinBtn").disabled = !ph;
+  const mapMode = !!ph && state.view === "map";
+  $("#empty").hidden = !!ph; view.hidden = !ph || mapMode; mapCv.hidden = !mapMode;
+  document.querySelectorAll("#viewSeg [data-view]").forEach(b => { b.setAttribute("aria-pressed", String(b.dataset.view === (mapMode ? "map" : "photo"))); b.disabled = !ph; });
+  $("#exportBtn").disabled = !ph; $("#addPinBtn").disabled = !ph || mapMode;
   renderPhotos(); renderPlaces(); renderCamera(); renderHud();
   if (ph) drawView();
 }
@@ -1800,7 +1998,7 @@ renderCats(); renderSettings(); renderBrand(); render(); loadFont();
 document.fonts?.ready.then(() => { renderStyleTiles(); drawView(); });
 
 // Hooks for scripted checks.
-window.pinpoint = { state, project, basis, solveCamera, computePins, readMeta, cameraFromMeta, parsePlaces, addFiles, pickAddress, fovToF, fToFov };
+window.pinpoint = { state, project, basis, setCam, setView, footprint, computePins, readMeta, cameraFromMeta, parsePlaces, addFiles, pickAddress, fovToF, fToFov };
 </script>
 </body>
 </html>

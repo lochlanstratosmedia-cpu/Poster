@@ -86,20 +86,23 @@ That link always serves the latest version on this branch. You can also open
 
 1. Drop one or more drone photos on the window.
 2. Type the property address in the search field and pick the match.
-3. Pins appear on the schools, beaches, parks, stations, shopping centres,
-   hospitals, sport grounds, landmarks and suburbs in the shot. Toggle any of
-   them in the Places tab, rename them inline, or press P and click to add
-   your own.
+3. Every school, beach, park, station, shopping centre, hospital, sport
+   ground, landmark and suburb in the shot gets a pin. Switch off the ones
+   you don't want in the Places tab (Hide all, then switch a few back on, is
+   quickest), rename them inline, or press P and click to add your own.
+   Drag any pin to move just that one; Reset in the list puts it back.
 4. Export (Cmd+E) at full resolution, one photo or all of them as a zip.
 
 Pins are placed from the camera data DJI drones write into each JPG: GPS
 position, height above takeoff, gimbal heading and tilt, and focal length.
 Upload the original file, not one exported from Lightroom or a phone app,
 because those usually strip it. Compass heading is the value most often off
-by a few degrees. Drag the property pin (or any pin) onto its real spot and
-the camera re-solves so every other pin moves with it. Two or three dragged
-pins fix height and lens error too. Photos with no location data start from
-the address with a guessed camera, and need two or three dragged pins.
+by a few degrees. Switch to Map (or press M) for a top-down street map with
+distance rings and the patch of ground the camera can see. Drag on the map
+to turn the camera, drag the drone to move it, and click a place to show or
+hide it. The Camera tab has sliders for heading, tilt, height and lens.
+Photos with no location data start from the address with a guessed camera;
+place the drone on the map first.
 
 Brand styles live in the Style tab: six pin designs (Classic, Glass,
 Beacon, Editorial, Bold, Tag), colours, font, size, line length, capitals,
