@@ -46,8 +46,8 @@ FIELDS = {
 
 # Header words that suggest a field. Checked in order; first match wins.
 HINTS = {
-    "listed_date": ["date listed", "listed date", "listing date", "list date", "date on market",
-                    "first listed", "listed on", "listed"],
+    "listed_date": ["first listed date", "date listed", "listed date", "listing date", "list date",
+                    "date on market", "first listed", "listed on", "listed"],
     "days_on_market": ["days on market", "dom", "days listed", "days on site", "days"],
     "address": ["property address", "street address", "full address", "address line 1",
                 "address1", "street", "address"],
@@ -56,7 +56,7 @@ HINTS = {
     "postcode": ["postcode", "post code", "postal code", "zip"],
     "agency": ["listing agency", "agency name", "agency", "office", "brand"],
     "agent": ["listing agent", "agent name", "agent"],
-    "price": ["price guide", "asking price", "price"],
+    "price": ["last listed price", "current price", "price guide", "asking price", "price"],
     "property_type": ["property type", "type"],
     "bedrooms": ["bedrooms", "beds", "bed"],
     "url": ["listing url", "listing link", "url", "link", "web"],
@@ -81,10 +81,27 @@ def read_table(filename, data):
     """Return (headers, rows) from CSV or XLSX bytes. Rows are lists of strings."""
     name = (filename or "").lower()
     if name.endswith((".xlsx", ".xlsm")) or data[:2] == b"PK":
-        return _read_xlsx(data)
-    if name.endswith(".xls"):
+        table = _read_xlsx(data)
+    elif name.endswith(".xls"):
         raise ImportError_("Old .xls files can't be read. In Excel use File > Save As > CSV or .xlsx, then upload that.")
-    return _read_csv(data)
+    else:
+        table = _read_csv(data)
+    return _split_header(table)
+
+
+def _split_header(table):
+    """Find the real heading row. Exports such as RP Data put a few lines of
+    search settings above it, so pick the row in the first 20 with the most
+    filled cells, and pad every row to the widest one."""
+    if not table:
+        raise ImportError_("The file is empty.")
+    width = max(len(r) for r in table)
+    table = [(r + [""] * width)[:width] for r in table]
+    filled = [sum(1 for c in r if c.strip()) for r in table[:20]]
+    at = filled.index(max(filled))
+    headers = [h.strip() for h in table[at]]
+    rows = [r for r in table[at + 1:] if any(c.strip() for c in r)]
+    return headers, rows
 
 
 def _read_csv(data):
@@ -102,8 +119,7 @@ def _read_csv(data):
     rows = [r for r in csv.reader(io.StringIO(text), dialect) if any(c.strip() for c in r)]
     if not rows:
         raise ImportError_("The file is empty.")
-    headers = [h.strip() for h in rows[0]]
-    return headers, [[c.strip() for c in r] for r in rows[1:]]
+    return [[c.strip() for c in r] for r in rows]
 
 
 def _read_xlsx(data):
@@ -153,9 +169,7 @@ def _read_xlsx(data):
     table = [r for r in table if any(r)]
     if not table:
         raise ImportError_("The first sheet is empty.")
-    headers = table[0]
-    width = len(headers)
-    return headers, [(r + [""] * width)[:width] for r in table[1:]]
+    return table
 
 
 def _col_index(letters):

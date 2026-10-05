@@ -70,6 +70,17 @@ class ImporterTests(unittest.TestCase):
                                          importer.guess_mapping("listings", headers), TODAY)
         self.assertEqual(recs[0]["listed_date"], TODAY - timedelta(days=75))
 
+    def test_search_settings_above_headings_are_skipped(self):
+        data = csv_bytes([["Search String", "Shape"], ["Listing Date", "05 Apr 2026 - 05 Oct 2026"], [""],
+                          ["Street Address", "Suburb", "First Listed Date", "Last Listed Date", "Last Listed Price", "Days on Market", "Agency"],
+                          ["26 Bendigo Road", "Barnsley", "18 Sep 2026", "19 Sep 2026", "$1,350,000", "17", "Some Agency"]])
+        headers, rows = importer.read_table("export.csv", data)
+        self.assertEqual(headers[0], "Street Address")
+        self.assertEqual(len(rows), 1)
+        m = importer.guess_mapping("listings", headers)
+        self.assertEqual(headers[m["listed_date"]], "First Listed Date")
+        self.assertEqual(headers[m["price"]], "Last Listed Price")
+
     def test_phone_format(self):
         self.assertEqual(importer.clean_phone("+61412345678"), "0412 345 678")
         self.assertEqual(importer.clean_phone("0298765432"), "(02) 9876 5432")
