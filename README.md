@@ -107,9 +107,10 @@ position, height above takeoff, gimbal heading and tilt, and focal length.
 Upload the original file, not one exported from Lightroom or a phone app,
 because those usually strip it. Compass heading is the value most often off
 by a few degrees. Switch to Satellite (or press M) for a top-down aerial view with
-distance rings and the patch of ground the camera can see. Drag on it
-to turn the camera, drag the drone to move it, and click a place to show or
-hide it. The Camera tab has sliders for heading, tilt, height and lens.
+distance rings and the patch of ground the camera can see. Drag to move
+around, scroll or pinch to zoom (double-click zooms in), and Re-centre jumps
+back to the drone. Drag the arrow handle to turn the camera, drag the drone
+to move it, and click a place to show or hide it. The Camera tab has sliders for heading, tilt, height and lens.
 Photos with no location data start from the address with a guessed camera;
 place the drone on the map first.
 

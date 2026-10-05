@@ -197,8 +197,13 @@ svg.i { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-widt
 .drop-veil div { background: var(--accent); color: #fff; padding: 10px 20px; border-radius: 999px; font-weight: 600; box-shadow: 0 10px 30px -6px rgba(0, 122, 255, 0.6); }
 
 /* Map view */
-#map { display: block; border-radius: 16px; touch-action: none; cursor: crosshair; box-shadow: 0 0 0 0.5px rgba(0, 0, 0, 0.12), 0 2px 6px rgba(0, 0, 0, 0.08), 0 30px 70px -24px rgba(0, 0, 0, 0.45); animation: fadein .35s ease; }
+#map { display: block; border-radius: 16px; touch-action: none; box-shadow: 0 0 0 0.5px rgba(0, 0, 0, 0.12), 0 2px 6px rgba(0, 0, 0, 0.08), 0 30px 70px -24px rgba(0, 0, 0, 0.45); animation: fadein .35s ease; }
+#map { cursor: grab; }
+#map.panning { cursor: grabbing; }
+#map.turn { cursor: alias; }
 #map.move { cursor: move; }
+.recenter { position: absolute; z-index: 4; height: 32px; padding: 0 12px 0 9px; border: 0; border-radius: 999px; display: inline-flex; align-items: center; gap: 6px; font-weight: 600; font-size: 12.5px; color: var(--ink); }
+.recenter:hover { filter: brightness(1.04); }
 #map.point { cursor: pointer; }
 .viewcap { padding: 0 3px; }
 .seg-tb { background: transparent; padding: 0; }
@@ -407,6 +412,7 @@ dialog.sheet::backdrop { background: rgba(0, 0, 0, 0.18); }
     </div>
     <canvas id="view" hidden></canvas>
     <canvas id="map" hidden></canvas>
+    <button class="recenter glass" id="recenter" hidden title="Back to the drone"><svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/></svg>Re-centre</button>
     <div class="hud" id="hud" hidden></div>
   </main>
 
@@ -1497,7 +1503,7 @@ function renderHud() {
   if (flashMsg) html = `<span>${esc(flashMsg)}</span>`;
   else if (!ph) html = "";
   else if (state.addMode) html = `<span>Click the photo where the new pin goes</span><button data-act="cancelAdd">Cancel</button>`;
-  else if (state.view !== "photo" && state.placesStatus !== "loading" && state.placesStatus !== "error" && !mapState.hintSeen) html = `<span>Drag on the map to turn the camera. Drag the drone to move it. Click a place to show or hide it.</span><button data-act="okMap">OK</button>`;
+  else if (state.view !== "photo" && state.placesStatus !== "loading" && state.placesStatus !== "error" && !mapState.hintSeen) html = `<span>Drag to look around, scroll to zoom. Drag the arrow handle to turn the camera, or the drone to move it.</span><button data-act="okMap">OK</button>`;
   else if (!ph.base) html = `<span>No location in this photo. Add the property address to place pins.</span>`;
   else if (state.placesStatus === "loading") html = `<span class="spinner"></span><span>Finding nearby places…</span>`;
   else if (state.placesStatus === "error") html = `<span>Couldn't load places (${esc(state.placesError || "no answer")})</span><button data-act="retry">Try again</button>`;
@@ -1893,7 +1899,8 @@ document.addEventListener("keydown", e => {
    are fetched and drawn to a canvas, so no image URLs are needed. */
 const mapCv = $("#map"), mctx = mapCv.getContext("2d");
 const TILE = 256;
-const mapState = { zoom: 0, tiles: new Map(), dots: [], hold: null, drag: null, hintSeen: false };
+// center: where the user has moved the view to (null follows the drone).
+const mapState = { zoom: 0, center: null, forPhoto: null, tiles: new Map(), dots: [], hold: null, drag: null, hintSeen: false };
 const lon2x = (lon, z) => (lon + 180) / 360 * TILE * 2 ** z;
 const lat2y = (lat, z) => { const s = Math.sin(clamp(lat, -85, 85) * D); return (0.5 - Math.log((1 + s) / (1 - s)) / (4 * Math.PI)) * TILE * 2 ** z; };
 // Aerial imagery from Esri. (OpenStreetMap's own tile server refuses apps that
@@ -1921,11 +1928,14 @@ function mapTile(z, x, y, src, dark, hi) {
 }
 function mapCentre(ph) { const c = ph.cam || ph.base; return c && c.lat != null ? c : state.address; }
 function mapFrame(ph, W, H) {
-  const c = mapState.hold || mapCentre(ph);
+  if (mapState.forPhoto !== ph.id) { mapState.forPhoto = ph.id; mapState.center = null; mapState.zoom = 0; }
+  const c = mapState.hold || mapState.center || mapCentre(ph);
   const k = Math.min(2, window.devicePixelRatio || 1);
   // Fit the range circle, then apply the user's zoom.
   const fit = state.settings.range / (0.43 * Math.min(W, H));
-  const zf = clamp(Math.log2(156543.034 * Math.cos(c.lat * D) / fit) + mapState.zoom, 2, 19.5);
+  // Zoom is set from the drone's latitude so moving around the map never changes the scale.
+  const latRef = (mapCentre(ph) || c).lat;
+  const zf = clamp(Math.log2(156543.034 * Math.cos(latRef * D) / fit) + mapState.zoom, 2, 21);
   const z = Math.min(19, Math.floor(zf)), scale = 2 ** (zf - z);
   const cx = lon2x(c.lon, z), cy = lat2y(c.lat, z);
   const ppm = 2 ** zf / (156543.034 * Math.cos(c.lat * D));
@@ -1980,7 +1990,7 @@ function pill(ctx, text, x, y, k, dark, align = "center") {
 }
 function paintMap() {
   const ph = cur(); if (!ph) return;
-  sizeMap();
+  sizeMap(); showRecenter();
   const W = mapCv.width, H = mapCv.height, ctx = mctx;
   const dark = getComputedStyle(document.documentElement).colorScheme === "dark";
   const ink = dark ? "255,255,255" : "0,0,0";
@@ -2078,8 +2088,7 @@ function paintMap() {
   }
 
   // Heading line and handle.
-  const yr = cam.yaw * D, hr = range * F.ppm * 0.86;
-  const hx = dx + Math.sin(yr) * hr, hy = dy - Math.cos(yr) * hr;
+  const { yr, hx, hy } = headingHandle(F, cam, W, H);
   ctx.save();
   ctx.setLineDash([5 * k, 5 * k]); ctx.strokeStyle = withAlpha(accent, 0.9); ctx.lineWidth = 1.6 * k;
   ctx.beginPath(); ctx.moveTo(dx, dy); ctx.lineTo(hx, hy); ctx.stroke(); ctx.setLineDash([]);
@@ -2117,13 +2126,21 @@ function paintMap() {
   ctx.fillStyle = `rgba(${ink},0.7)`; ctx.textAlign = "right"; ctx.textBaseline = "middle"; ctx.fillText(credit, W - 6 * k, H - 9 * k);
   ctx.restore();
 }
+// Where the turn handle sits: along the heading, kept on screen when zoomed in.
+function headingHandle(F, cam, W, H) {
+  const [dx, dy] = F.toPx(cam.lat, cam.lon), yr = cam.yaw * D;
+  const hr = Math.min(state.settings.range * F.ppm * 0.86, Math.max(70 * F.k, 0.38 * Math.min(W, H)));
+  return { dx, dy, yr, hx: dx + Math.sin(yr) * hr, hy: dy - Math.cos(yr) * hr };
+}
 function mapPoint(e) { const r = mapCv.getBoundingClientRect(); return { x: (e.clientX - r.left) * mapCv.width / r.width, y: (e.clientY - r.top) * mapCv.height / r.height }; }
 function mapHit(ph, P) {
   const F = mapFrame(ph, mapCv.width, mapCv.height), cam = ph.cam || ph.base;
   const [dx, dy] = F.toPx(cam.lat, cam.lon);
   if (Math.hypot(P.x - dx, P.y - dy) < 16 * F.k) return { mode: "move" };
+  const hh = headingHandle(F, cam, mapCv.width, mapCv.height);
+  if (Math.hypot(P.x - hh.hx, P.y - hh.hy) < 18 * F.k) return { mode: "turn" };
   const dot = mapState.dots.find(d => Math.hypot(P.x - d.x, P.y - d.y) < 10 * F.k);
-  return dot ? { mode: "dot", id: dot.id } : { mode: "turn" };
+  return dot ? { mode: "dot", id: dot.id } : { mode: "pan" };
 }
 function aimAt(ph, P) {
   const F = mapFrame(ph, mapCv.width, mapCv.height), cam = ph.cam || ph.base;
@@ -2136,24 +2153,32 @@ mapCv.addEventListener("pointerdown", e => {
   const ph = cur(); if (!ph || !(ph.cam || ph.base)) return;
   const P = mapPoint(e), hit = mapHit(ph, P);
   mapCv.setPointerCapture(e.pointerId);
-  mapState.drag = { ...hit, start: P, moved: false };
-  if (hit.mode === "move") { const c = mapCentre(ph); mapState.hold = { lat: c.lat, lon: c.lon }; }
-  if (hit.mode === "turn") { aimAt(ph, P); mapLiveUpdate(); }
+  mapState.drag = { ...hit, start: P, moved: false, F0: mapFrame(ph, mapCv.width, mapCv.height) };
+  if (hit.mode === "move") { const c = mapState.center || mapCentre(ph); mapState.hold = { lat: c.lat, lon: c.lon }; }
+  if (hit.mode === "pan") mapCv.className = "panning";
   mapState.hintSeen = true;
 });
 mapCv.addEventListener("pointermove", e => {
   const ph = cur(); if (!ph || !(ph.cam || ph.base)) return;
   const P = mapPoint(e), d = mapState.drag;
-  if (!d) { const h = mapHit(ph, P); mapCv.className = h.mode === "move" ? "move" : h.mode === "dot" ? "point" : ""; return; }
+  if (!d) { const h = mapHit(ph, P); mapCv.className = h.mode === "move" ? "move" : h.mode === "dot" ? "point" : h.mode === "turn" ? "turn" : ""; return; }
   if (Math.hypot(P.x - d.start.x, P.y - d.start.y) > 4) d.moved = true;
-  if (d.mode === "dot" && d.moved) d.mode = "turn";
+  if (d.mode === "dot" && d.moved) { d.mode = "pan"; mapCv.className = "panning"; }
+  if (d.mode === "pan") {
+    // Keep the point that was grabbed under the cursor.
+    const W = mapCv.width, H = mapCv.height;
+    mapState.center = d.F0.toGeo(W / 2 - (P.x - d.start.x), H / 2 - (P.y - d.start.y));
+    drawView(); showRecenter(); return;
+  }
   if (d.mode === "turn") aimAt(ph, P);
   if (d.mode === "move") { const g = mapFrame(ph, mapCv.width, mapCv.height).toGeo(P.x, P.y); setCam(ph, { lat: g.lat, lon: g.lon }); }
   mapLiveUpdate();
 });
 function endMapDrag() {
   const ph = cur(), d = mapState.drag; if (!d) return;
+  if (d.mode === "move" && !mapState.center) mapState.center = mapState.hold;
   mapState.drag = null; mapState.hold = null;
+  mapCv.className = "";
   if (ph && d.mode === "dot" && !d.moved) {
     const c = computePins(ph).inView.find(c => c.pl.id === d.id);
     if (c) ph.overrides[d.id] = !c.on;
@@ -2162,7 +2187,30 @@ function endMapDrag() {
 }
 mapCv.addEventListener("pointerup", endMapDrag);
 mapCv.addEventListener("pointercancel", endMapDrag);
-mapCv.addEventListener("wheel", e => { e.preventDefault(); mapState.zoom = clamp(mapState.zoom - e.deltaY * 0.0025, -2.5, 3.5); drawView(); }, { passive: false });
+// Zoom so the ground under the cursor stays under the cursor.
+function zoomAt(ph, P, dz) {
+  const W = mapCv.width, H = mapCv.height;
+  const g = mapFrame(ph, W, H).toGeo(P.x, P.y), before = mapState.zoom;
+  mapState.zoom = clamp(mapState.zoom + dz, -3, 9);
+  if (mapState.zoom === before) return;
+  const c0 = mapState.center || mapCentre(ph); mapState.center = { lat: c0.lat, lon: c0.lon };
+  const F1 = mapFrame(ph, W, H), [px, py] = F1.toPx(g.lat, g.lon);
+  mapState.center = F1.toGeo(W / 2 + (px - P.x), H / 2 + (py - P.y));
+  drawView(); showRecenter();
+}
+mapCv.addEventListener("wheel", e => {
+  e.preventDefault();
+  const ph = cur(); if (!ph || !mapCentre(ph)) return;
+  // Pinch on a trackpad arrives as a wheel event with ctrlKey and small deltas.
+  zoomAt(ph, mapPoint(e), -e.deltaY * (e.ctrlKey ? 0.012 : 0.0025));
+}, { passive: false });
+mapCv.addEventListener("dblclick", e => { const ph = cur(); if (ph && mapCentre(ph)) zoomAt(ph, mapPoint(e), 1); });
+function showRecenter() {
+  const b = $("#recenter"), on = state.view !== "photo" && !!cur() && (!!mapState.center || Math.abs(mapState.zoom) > 0.01);
+  b.hidden = !on;
+  if (on) { b.style.left = mapCv.offsetLeft + 14 + "px"; b.style.top = mapCv.offsetTop + 14 + "px"; }
+}
+$("#recenter").onclick = () => { mapState.center = null; mapState.zoom = 0; drawView(); showRecenter(); };
 function setView(v) { state.view = v; if (v !== "photo") setAddMode(false); render(); }
 $("#viewSeg").addEventListener("click", e => { const b = e.target.closest("[data-view]"); if (b && !b.disabled) setView(b.dataset.view); });
 
@@ -2298,6 +2346,7 @@ function render() {
   $("#sideCount").textContent = n ? `${n} photo${n === 1 ? "" : "s"}` : "No photos";
   $("#lightClose").disabled = !ph;
   const mapMode = !!ph && state.view !== "photo";
+  if (!mapMode) $("#recenter").hidden = true;
   $("#empty").hidden = !!ph; view.hidden = !ph || mapMode; mapCv.hidden = !mapMode;
   document.querySelectorAll("#viewSeg [data-view]").forEach(b => { b.setAttribute("aria-pressed", String(b.dataset.view === (ph ? state.view : "photo"))); b.disabled = !ph; });
   $("#exportBtn").disabled = !ph; $("#addPinBtn").disabled = !ph || mapMode;
@@ -2326,7 +2375,7 @@ renderCats(); renderSettings(); renderBrand(); render(); loadFont();
 document.fonts?.ready.then(() => { renderStyleTiles(); drawView(); });
 
 // Hooks for scripted checks.
-window.pinpoint = { state, project, basis, setCam, setView, footprint, computePins, smartPicks, schoolLevel, groundPoint, guessKind, readMeta, cameraFromMeta, parsePlaces, addFiles, pickAddress, fovToF, fToFov };
+window.pinpoint = { state, project, basis, setCam, setView, footprint, mapState, mapFrame, computePins, smartPicks, schoolLevel, groundPoint, guessKind, readMeta, cameraFromMeta, parsePlaces, addFiles, pickAddress, fovToF, fToFov };
 </script>
 </body>
 </html>
