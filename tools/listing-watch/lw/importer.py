@@ -40,6 +40,7 @@ FIELDS = {
         ("state", "State", False),
         ("postcode", "Postcode", False),
         ("do_not_contact", "Do not contact flag", False),
+        ("tags", "Tags", False),
         ("notes", "Notes", False),
     ],
 }
@@ -49,8 +50,8 @@ HINTS = {
     "listed_date": ["first listed date", "date listed", "listed date", "listing date", "list date",
                     "date on market", "first listed", "listed on", "listed"],
     "days_on_market": ["days on market", "dom", "days listed", "days on site", "days"],
-    "address": ["property address", "street address", "full address", "address line 1",
-                "address1", "street", "address"],
+    "address": ["property address", "street address", "address physical", "physical address", "full address",
+                "address line 1", "address1", "street", "address"],
     "suburb": ["suburb", "locality", "city", "town"],
     "state": ["state"],
     "postcode": ["postcode", "post code", "postal code", "zip"],
@@ -65,9 +66,19 @@ HINTS = {
     "name": ["owner name", "full name", "contact name", "vendor name", "owner", "name"],
     "phone": ["mobile", "mobile phone", "cell", "phone 1", "phone", "contact number", "telephone"],
     "phone2": ["home phone", "work phone", "phone 2", "other phone", "landline"],
-    "email": ["email address", "e-mail", "email"],
+    "email": ["email", "e-mail", "email address"],
     "do_not_contact": ["do not contact", "do not call", "dnc", "opt out", "unsubscribed"],
     "notes": ["notes", "comments", "comment"],
+    "tags": ["tags", "tag", "categories", "groups"],
+}
+
+# Header words that rule a column out for a field, e.g. a CRM's "marketing
+# postcode" is where a buyer wants to live, not where the contact's property is.
+EXCLUDE = {
+    "postcode": ["marketing", "interest"], "suburb": ["marketing", "interest"],
+    "email": ["company", "secondary"], "phone": ["company", "fax"], "phone2": ["company", "fax"],
+    "address": ["email", "postal", "mailing"], "name": ["company", "legal", "salutation", "addressee", "formal"],
+    "notes": ["created", "by"],
 }
 
 
@@ -220,7 +231,7 @@ def guess_mapping(kind, headers):
             for hint in HINTS.get(field, []):
                 hit = None
                 for i, h in enumerate(normed):
-                    if i in used:
+                    if i in used or any(re.search(rf"\b{re.escape(x)}\b", h) for x in EXCLUDE.get(field, [])):
                         continue
                     if (h == hint) if exact else (re.search(rf"\b{re.escape(hint)}\b", h)):
                         hit = i
@@ -359,7 +370,9 @@ def build_records(kind, headers, rows, mapping, today, date_order="DMY"):
                 phone2 = ""
             if not phone:
                 phone, phone2 = phone2, ""
+            tags = get(row, "tags").lower()
+            tag_dnc = bool(re.search(r"do not (contact|call)|\bdnc\b", tags))
             rec.update(name=name, phone=phone, phone2=phone2, email=email,
-                       do_not_contact=truthy(get(row, "do_not_contact")), notes=get(row, "notes"))
+                       do_not_contact=truthy(get(row, "do_not_contact")) or tag_dnc, notes=get(row, "notes"))
         records.append(rec)
     return records, problems

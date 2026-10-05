@@ -81,6 +81,18 @@ class ImporterTests(unittest.TestCase):
         self.assertEqual(headers[m["listed_date"]], "First Listed Date")
         self.assertEqual(headers[m["price"]], "Last Listed Price")
 
+    def test_crm_columns_and_dnc_tag(self):
+        headers = ["id", "name", "name_salutation", "do_not_contact", "address.postal", "address.physical",
+                   "primary_info.phone", "primary_info.email", "marketing.postcode", "tags", "company.email_address"]
+        m = importer.guess_mapping("contacts", headers)
+        self.assertEqual(headers[m["address"]], "address.physical")
+        self.assertEqual(headers[m["email"]], "primary_info.email")
+        self.assertEqual(headers[m["name"]], "name")
+        self.assertNotIn("postcode", m)
+        rows = [["1", "Pat Owner", "", "", "", "12 Smith St Northvale NSW 2990", "0491570001", "", "", "Buyer, DO NOT CONTACT", ""]]
+        recs, _ = importer.build_records("contacts", headers, rows, m, TODAY)
+        self.assertTrue(recs[0]["do_not_contact"])
+
     def test_phone_format(self):
         self.assertEqual(importer.clean_phone("+61412345678"), "0412 345 678")
         self.assertEqual(importer.clean_phone("0298765432"), "(02) 9876 5432")

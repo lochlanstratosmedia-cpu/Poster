@@ -131,12 +131,12 @@ const FIELDS = {
   contacts: [["name", "Owner name", true], ["first_name", "First name", false], ["last_name", "Last name", false],
     ["phone", "Phone (mobile)", false], ["phone2", "Other phone", false], ["email", "Email", false],
     ["address", "Property address", true], ["suburb", "Suburb", false], ["state", "State", false], ["postcode", "Postcode", false],
-    ["do_not_contact", "Do not contact flag", false], ["notes", "Notes", false]],
+    ["do_not_contact", "Do not contact flag", false], ["tags", "Tags", false], ["notes", "Notes", false]],
 };
 const HINTS = {
   listed_date: ["first listed date", "date listed", "listed date", "listing date", "list date", "date on market", "first listed", "listed on", "listed"],
   days_on_market: ["days on market", "dom", "days listed", "days on site", "days"],
-  address: ["property address", "street address", "full address", "address line 1", "address1", "street", "address"],
+  address: ["property address", "street address", "address physical", "physical address", "full address", "address line 1", "address1", "street", "address"],
   suburb: ["suburb", "locality", "city", "town"], state: ["state"], postcode: ["postcode", "post code", "postal code", "zip"],
   agency: ["listing agency", "agency name", "agency", "office", "brand"], agent: ["listing agent", "agent name", "agent"],
   price: ["last listed price", "current price", "price guide", "asking price", "price"], property_type: ["property type", "type"], bedrooms: ["bedrooms", "beds", "bed"],
@@ -144,8 +144,14 @@ const HINTS = {
   last_name: ["last name", "lastname", "surname", "family name"],
   name: ["owner name", "full name", "contact name", "vendor name", "owner", "name"],
   phone: ["mobile", "mobile phone", "cell", "phone 1", "phone", "contact number", "telephone"],
-  phone2: ["home phone", "work phone", "phone 2", "other phone", "landline"], email: ["email address", "e-mail", "email"],
+  phone2: ["home phone", "work phone", "phone 2", "other phone", "landline"], email: ["email", "e-mail", "email address"],
   do_not_contact: ["do not contact", "do not call", "dnc", "opt out", "unsubscribed"], notes: ["notes", "comments", "comment"],
+  tags: ["tags", "tag", "categories", "groups"],
+};
+const EXCLUDE = {
+  postcode: ["marketing", "interest"], suburb: ["marketing", "interest"], email: ["company", "secondary"],
+  phone: ["company", "fax"], phone2: ["company", "fax"], address: ["email", "postal", "mailing"],
+  name: ["company", "legal", "salutation", "addressee", "formal"], notes: ["created", "by"],
 };
 
 function readCsv(text) {
@@ -186,7 +192,8 @@ function guessMapping(kind, headers) {
       if (field in mapping) continue;
       for (const hint of HINTS[field] || []) {
         const re = new RegExp(`\\b${reEsc(hint)}\\b`);
-        const hit = normed.findIndex((h, i) => !used.has(i) && (exact ? h === hint : re.test(h)));
+        const ruledOut = (h) => (EXCLUDE[field] || []).some((x) => new RegExp(`\\b${reEsc(x)}\\b`).test(h));
+        const hit = normed.findIndex((h, i) => !used.has(i) && !ruledOut(h) && (exact ? h === hint : re.test(h)));
         if (hit >= 0) { mapping[field] = hit; used.add(hit); break; }
       }
     }
@@ -262,7 +269,8 @@ function buildRecords(kind, headers, rows, mapping, today, order) {
       let phone = cleanPhone(get(row, "phone")), phone2 = cleanPhone(get(row, "phone2"));
       if (phone === phone2) phone2 = "";
       if (!phone) { phone = phone2; phone2 = ""; }
-      Object.assign(rec, { name, phone, phone2, email: get(row, "email"), do_not_contact: truthy(get(row, "do_not_contact")), notes: get(row, "notes") });
+      const tagDnc = /do not (contact|call)|\bdnc\b/.test(get(row, "tags").toLowerCase());
+      Object.assign(rec, { name, phone, phone2, email: get(row, "email"), do_not_contact: truthy(get(row, "do_not_contact")) || tagDnc, notes: get(row, "notes") });
     }
     records.push(rec);
   });
