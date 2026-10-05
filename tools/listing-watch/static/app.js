@@ -114,6 +114,21 @@ function confirmBox({ title, body, ok = "Yes, go ahead", danger = false }) {
   });
 }
 
+// Ask for one line of text in the page (browser prompt boxes are blocked in some places).
+function askText({ title, label, hint = "", value = "", ok = "Save" }) {
+  return new Promise((resolve) => {
+    showModal(`<h2>${esc(title)}</h2><form id="ask-form"><label class="field"><span>${esc(label)}</span>
+      <input class="input" id="ask-input" value="${esc(value)}" autocomplete="name" required autofocus></label>
+      ${hint ? `<p class="sub">${esc(hint)}</p>` : ""}
+      <div class="row end"><button type="button" class="btn ghost" data-answer="no">Cancel</button><button class="btn" type="submit">${esc(ok)}</button></div></form>`);
+    const input = $("#ask-input");
+    input.focus();
+    input.select();
+    $("#ask-form").addEventListener("submit", (e) => { e.preventDefault(); const v = input.value.trim(); if (!v) return; closeModal(); resolve(v); });
+    $("#modal-panel [data-answer=no]").addEventListener("click", () => { closeModal(); resolve(null); });
+  });
+}
+
 // ---------- chrome: person, counts, banners, notifications ----------
 
 async function loadAgents() {
@@ -130,11 +145,12 @@ async function loadAgents() {
   $("#person-wrap").classList.toggle("missing", !state.person);
 }
 
-$("#person").addEventListener("change", (e) => {
+$("#person").addEventListener("change", async (e) => {
   let v = e.target.value;
   if (v === "__other") {
-    v = (prompt("Type your name (for example the office manager):") || "").trim();
-    if (!v) { e.target.value = state.person; return; }
+    e.target.value = state.person;
+    v = await askText({ title: "Who are you?", label: "Your name", hint: "For example the office manager. It's saved with every change you make.", ok: "Continue" });
+    if (!v) return;
   }
   state.person = v;
   try { localStorage.setItem("lw-person", v); } catch {}
@@ -933,7 +949,7 @@ async function viewSettings() {
   $("#new-agent").addEventListener("keydown", (e) => { if (e.key === "Enter") $("#add-agent").click(); });
   $("#view").querySelectorAll("[data-rename]").forEach((b) => b.addEventListener("click", async () => {
     const a = state.agents.find((x) => String(x.id) === b.dataset.rename);
-    const name = (prompt("New name:", a.name) || "").trim();
+    const name = await askText({ title: `Rename ${a.name}`, label: "New name", value: a.name, ok: "Rename" });
     if (name && name !== a.name && (await act(() => api("/api/agents", { json: { id: a.id, name, phone: a.phone, active: !!a.active } }), "Renamed."))) viewSettings();
   }));
   $("#view").querySelectorAll("[data-toggle]").forEach((b) => b.addEventListener("click", async () => {

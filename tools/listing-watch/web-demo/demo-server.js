@@ -134,12 +134,12 @@ const FIELDS = {
     ["do_not_contact", "Do not contact flag", false], ["notes", "Notes", false]],
 };
 const HINTS = {
-  listed_date: ["date listed", "listed date", "listing date", "list date", "date on market", "first listed", "listed on", "listed"],
+  listed_date: ["first listed date", "date listed", "listed date", "listing date", "list date", "date on market", "first listed", "listed on", "listed"],
   days_on_market: ["days on market", "dom", "days listed", "days on site", "days"],
   address: ["property address", "street address", "full address", "address line 1", "address1", "street", "address"],
   suburb: ["suburb", "locality", "city", "town"], state: ["state"], postcode: ["postcode", "post code", "postal code", "zip"],
   agency: ["listing agency", "agency name", "agency", "office", "brand"], agent: ["listing agent", "agent name", "agent"],
-  price: ["price guide", "asking price", "price"], property_type: ["property type", "type"], bedrooms: ["bedrooms", "beds", "bed"],
+  price: ["last listed price", "current price", "price guide", "asking price", "price"], property_type: ["property type", "type"], bedrooms: ["bedrooms", "beds", "bed"],
   url: ["listing url", "listing link", "url", "link", "web"], first_name: ["first name", "firstname", "given name"],
   last_name: ["last name", "lastname", "surname", "family name"],
   name: ["owner name", "full name", "contact name", "vendor name", "owner", "name"],
@@ -166,9 +166,15 @@ function readCsv(text) {
     } else cell += c;
   }
   if (cell || row.length) { row.push(cell); rows.push(row); }
-  const kept = rows.filter((r) => r.some((c) => c.trim()));
+  const kept = rows.filter((r) => r.some((c) => c.trim())).map((r) => r.map((c) => c.trim()));
   if (!kept.length) throw new Problem("The file is empty.");
-  return [kept[0].map((h) => h.trim()), kept.slice(1).map((r) => r.map((c) => c.trim()))];
+  // Exports such as RP Data put search settings above the headings: take the
+  // fullest row in the first 20 as the headings and pad short rows.
+  const width = Math.max(...kept.map((r) => r.length));
+  const padded = kept.map((r) => r.concat(Array(width - r.length).fill("")));
+  const filled = padded.slice(0, 20).map((r) => r.filter((c) => c).length);
+  const at = filled.indexOf(Math.max(...filled));
+  return [padded[at], padded.slice(at + 1)];
 }
 const normHeader = (h) => h.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
 const reEsc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -312,7 +318,7 @@ let PENDING = null;
 function previewImport(kind, filename, bytes) {
   if (!FIELDS[kind]) throw new Problem("Unknown import type.");
   if (/\.(xlsx|xlsm|xls)$/i.test(filename) || (bytes[0] === 0x50 && bytes[1] === 0x4b))
-    throw new Problem("This online demo reads CSV files only. In Excel use File > Save As > CSV. The installed version reads .xlsx too.");
+    throw new Problem("The online version reads CSV files only. In Excel use File > Save As > CSV. The installed version reads .xlsx too.");
   const [headers, rows] = readCsv(new TextDecoder().decode(bytes));
   if (!rows.length) throw new Problem("The file has a header row but no data rows.");
   const mapping = guessMapping(kind, headers);
@@ -817,7 +823,21 @@ function route(method, path, qs, body, person) {
   return undefined;
 }
 
-loadDemo();
+// The real build embeds an export as window.LW_SEED; the demo build doesn't.
+function loadSeed(seed) {
+  S = freshState();
+  // Import as of the export's own date, then run today's check, so anything
+  // that reached the threshold since the export raises a notification.
+  TODAY_OVERRIDE = seed.date;
+  try {
+    const p = previewImport("listings", "seed.csv", new TextEncoder().encode(seed.csv));
+    commitImport(p.token, p.mapping, true, seed.source);
+    S.imports.forEach((i) => Object.assign(i, { imported_at: seed.imported_at, filename: seed.filename }));
+    S.notifications = [];
+  } finally { TODAY_OVERRIDE = null; }
+  dailyCheck();
+}
+if (window.LW_SEED) loadSeed(window.LW_SEED); else loadDemo();
 const realFetch = window.fetch ? window.fetch.bind(window) : null;
 window.fetch = async function (input, opts = {}) {
   const url = new URL(typeof input === "string" ? input : input.url, "http://demo.local");
@@ -855,7 +875,7 @@ document.addEventListener("click", (e) => {
     } catch (err) { console.error(err); }
   } else if (/^\/(sheet\/\d+\.csv|export\/)/.test(href)) {
     e.preventDefault(); e.stopPropagation();
-    if (typeof showModal === "function") showModal(`<h2>Spreadsheet downloads</h2><p>This online demo can't save files to your computer. In the installed version this button downloads the list as a spreadsheet that opens in Excel or Numbers.</p><div class="row end"><button class="btn" data-close>OK</button></div>`);
+    if (typeof showModal === "function") showModal(`<h2>Spreadsheet downloads</h2><p>The online version can't save files to your computer. In the installed version this button downloads the list as a spreadsheet that opens in Excel or Numbers.</p><div class="row end"><button class="btn" data-close>OK</button></div>`);
   }
 }, true);
 document.addEventListener("click", (e) => { if (e.target.closest && e.target.closest("[data-paper-close]")) document.getElementById("paper").hidden = true; });

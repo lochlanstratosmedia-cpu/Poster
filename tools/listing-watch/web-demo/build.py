@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Build the one-file online demo of Listing Watch.
 
-  python3 web-demo/build.py [output.html]
+  python3 web-demo/build.py [output.html] [--listings forSaleExport.xlsx]
 
 Bundles static/app.css, static/app.js and the page markup with
 web-demo/demo-server.js, which stands in for the Python back end. The demo
@@ -62,15 +62,56 @@ PAPER = """<div id="paper" class="paper" hidden role="dialog" aria-modal="true" 
 </div>"""
 
 
-def build(out):
+REAL_NOTE = """<div class="demo-note"><b>Online version.</b> For-sale list from the RP Data export of {when}. Changes you make last until you reload the page.</div>"""
+
+
+def seed_script(path):
+    """Embed a for-sale export (CSV or .xlsx) so the page opens on real data.
+    The result holds client data: never commit it."""
+    import csv
+    import io
+    import json
+    import re
+    sys.path.insert(0, ROOT)
+    from lw import importer
+    with open(path, "rb") as f:
+        headers, rows = importer.read_table(path, f.read())
+    keep = [i for i, h in enumerate(headers) if h and h.lower() != "property photo"]
+    buf = io.StringIO()
+    w = csv.writer(buf)
+    w.writerow([headers[i] for i in keep])
+    for r in rows:
+        w.writerow([r[i] for i in keep])
+    stamp = re.search(r"(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})", os.path.basename(path))
+    if stamp:
+        y, mo, d, hh, mi, ss = stamp.groups()
+        date, at = f"{y}-{mo}-{d}", f"{y}-{mo}-{d} {hh}:{mi}:{ss}"
+    else:
+        from datetime import datetime
+        t = datetime.fromtimestamp(os.path.getmtime(path))
+        date, at = t.date().isoformat(), t.strftime("%Y-%m-%d %H:%M:%S")
+    seed = {"filename": re.sub(r"^[0-9a-f]{8}-", "", os.path.basename(path)), "date": date, "imported_at": at,
+            "source": "RP Data export", "csv": buf.getvalue()}
+    from datetime import date as _d
+    when = _d.fromisoformat(date).strftime("%-d %B %Y")
+    return "<script>window.LW_SEED = " + json.dumps(seed).replace("</", "<\\/") + ";</script>", when, len(rows)
+
+
+def build(out, listings=None):
     index = read(ROOT, "static", "index.html")
     body = index[index.index("<body>") + len("<body>"):index.index('<script src="/static/app.js">')]
+    seed, note = "", NOTE
+    if listings:
+        seed, when, n = seed_script(listings)
+        note = REAL_NOTE.format(when=when)
+        print(f"Embedded {n} listings from {listings}")
     page = "\n".join([
         "<title>Listing Watch</title>",
         "<style>\n" + read(ROOT, "static", "app.css") + DEMO_CSS + "</style>",
-        NOTE,
+        note,
         body.strip(),
         PAPER,
+        seed,
         "<script>\n" + read(HERE, "demo-server.js") + "</script>",
         "<script>\n" + read(ROOT, "static", "app.js") + "</script>",
     ])
@@ -80,4 +121,9 @@ def build(out):
 
 
 if __name__ == "__main__":
-    build(sys.argv[1] if len(sys.argv) > 1 else os.path.join(HERE, "listing-watch-demo.html"))
+    import argparse
+    ap = argparse.ArgumentParser()
+    ap.add_argument("out", nargs="?", default=os.path.join(HERE, "listing-watch-demo.html"))
+    ap.add_argument("--listings", help="for-sale export to load instead of the made-up demo data (never commit the output)")
+    a = ap.parse_args()
+    build(a.out, a.listings)
