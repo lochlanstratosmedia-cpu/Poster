@@ -570,11 +570,12 @@ const FONTS = {
   gloock: { label: "Gloock", stack: "Gloock, serif", load: "Gloock" },
   cormorant: { label: "Cormorant", stack: '"Cormorant Garamond", serif', load: "Cormorant Garamond" },
 };
-const STYLE_NAMES = { classic: "Classic", glass: "Glass", beacon: "Beacon", editorial: "Editorial", bold: "Bold", tag: "Tag" };
+const STYLE_NAMES = { classic: "Classic", glass: "Glass", liquid: "Liquid", beacon: "Beacon", editorial: "Editorial", bold: "Bold", tag: "Tag" };
 const BRAND_DEFAULTS = { style: "classic", accent: "#007aff", labelBg: "#ffffff", text: "#1d1d1f", font: "system", weight: 600, upper: false, distance: true, icons: true, catColors: true, size: 1, stem: 1, radius: 0.6, heroOn: true, logo: null };
 const BUILTIN_BRANDS = [
   { id: "classic", name: "Classic", style: "classic" },
   { id: "glass", name: "Glass", style: "glass", labelBg: "#1c1c1e", text: "#ffffff", radius: 0.7 },
+  { id: "liquid", name: "Liquid glass", style: "liquid", labelBg: "#ffffff", text: "#ffffff", accent: "#0a84ff", catColors: false, radius: 1 },
   { id: "beacon", name: "Beacon", style: "beacon", accent: "#ff2d55", catColors: true },
   { id: "editorial", name: "Editorial", style: "editorial", text: "#ffffff", font: "montserrat", upper: true, icons: false, accent: "#ffffff" },
   { id: "bold", name: "Bold", style: "bold", accent: "#1f4d3a", text: "#ffffff", labelBg: "#ffffff", font: "montserrat", weight: 800, upper: true, icons: false, radius: 0.15 },
@@ -593,6 +594,7 @@ const state = {
   view: "photo",
 };
 state.brands = state.brands.map(b => ({ ...BRAND_DEFAULTS, ...b }));
+for (const bb of BUILTIN_BRANDS) if (!state.brands.some(b => b.id === bb.id)) state.brands.push({ ...bb });
 if (!state.brands.some(b => b.id === state.brandId)) state.brandId = state.brands[0].id;
 const brand = () => state.brands.find(b => b.id === state.brandId) || state.brands[0];
 const cur = () => state.photos.find(p => p.id === state.current) || null;
@@ -993,7 +995,7 @@ function measurePin(ctx, pin, b, u) {
   const lh1 = fs1 * 1.2, lh2 = sub ? fs2 * 1.3 : 0;
   const textW = Math.max(w1, w2), textH = lh1 + lh2;
   const logo = hero ? logoImg(b.logo) : null;
-  const padX = 12 * u * k, padY = 8 * u * k, gap = 8 * u * k;
+  const padX = (b.style === "liquid" ? 15 : 12) * u * k, padY = (b.style === "liquid" ? 9 : 8) * u * k, gap = 8 * u * k;
   const m = { hero, k, fs1, fs2, track, name, sub, lh1, lh2, textW, textH, logo, padX, padY, gap };
   if (st === "editorial") {
     m.logoH = logo ? textH * 1.4 : 0; m.logoW = logo ? m.logoH * logo.width / logo.height : 0;
@@ -1046,19 +1048,36 @@ function drawText(ctx, m, b, x, y, color, subColor, align) {
   if (LS) ctx.letterSpacing = "0px";
 }
 function withAlpha(hex, a) { const n = parseInt(hex.slice(1), 16); return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`; }
+// Average brightness (0 to 1) of the photo behind a box, read from a tiny copy.
+const probe = document.createElement("canvas"); probe.width = 8; probe.height = 4;
+const probeCtx = probe.getContext("2d", { willReadFrequently: true });
+function brightnessBehind(src, W, H, x, y, w, h) {
+  try {
+    const sx = src.width / W, sy = src.height / H;
+    probeCtx.drawImage(src, Math.max(0, x * sx), Math.max(0, y * sy), Math.max(1, w * sx), Math.max(1, h * sy), 0, 0, 8, 4);
+    const d = probeCtx.getImageData(0, 0, 8, 4).data; let t = 0;
+    for (let i = 0; i < d.length; i += 4) t += 0.2126 * d[i] + 0.7152 * d[i + 1] + 0.0722 * d[i + 2];
+    return t / (d.length / 4) / 255;
+  } catch { return 0.5; }
+}
 function drawPin(ctx, L, b, src, W, H, selected) {
   const { pin, m, box, px, py, u } = L, st = b.style, hero = m.hero;
-  const r = (st === "tag" ? m.h / 2 : 14 * u * m.k * b.radius);
+  const r = (st === "tag" || st === "liquid" ? m.h / 2 : 14 * u * m.k * b.radius);
   const stemTop = box.up ? box.y + box.h : box.y;
   const stemColor = st === "beacon" || st === "bold" ? b.accent : st === "editorial" ? b.text : "#ffffff";
   // stem
   ctx.save();
   ctx.shadowColor = "rgba(0,0,0,0.35)"; ctx.shadowBlur = 4 * u;
-  ctx.strokeStyle = stemColor; ctx.lineWidth = (st === "editorial" ? 1.4 : 2) * u * m.k; ctx.lineCap = "round";
+  ctx.strokeStyle = st === "liquid" ? "rgba(255,255,255,0.9)" : stemColor; ctx.lineWidth = (st === "editorial" || st === "liquid" ? 1.5 : 2) * u * m.k; ctx.lineCap = "round";
   ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(px, stemTop); ctx.stroke();
   // dot
   const dr = 5 * u * m.k;
-  if (st === "editorial") {
+  if (st === "liquid") {
+    // A glass bead: clear centre, bright rim, small accent core.
+    ctx.lineWidth = 1.6 * u; ctx.strokeStyle = "rgba(255,255,255,0.95)";
+    ctx.fillStyle = "rgba(255,255,255,0.28)"; ctx.beginPath(); ctx.arc(px, py, dr * 1.15, 0, 7); ctx.fill(); ctx.stroke();
+    ctx.shadowBlur = 0; ctx.fillStyle = hero ? b.accent : "#ffffff"; ctx.beginPath(); ctx.arc(px, py, dr * 0.42, 0, 7); ctx.fill();
+  } else if (st === "editorial") {
     ctx.lineWidth = 1.6 * u; ctx.beginPath(); ctx.arc(px, py, dr, 0, 7); ctx.stroke();
     ctx.shadowBlur = 0; ctx.fillStyle = stemColor; ctx.beginPath(); ctx.arc(px, py, dr * 0.35, 0, 7); ctx.fill();
   } else {
@@ -1091,6 +1110,39 @@ function drawPin(ctx, L, b, src, W, H, selected) {
     ctx.restore();
     rrect(ctx, x + 0.5 * u, y + 0.5 * u, w - u, h - u, r); ctx.strokeStyle = "rgba(255,255,255,0.32)"; ctx.lineWidth = u; ctx.stroke();
     if (hero) { ink = onColor(b.accent); sub = withAlpha(ink, 0.78); }
+  } else if (st === "liquid") {
+    // Liquid glass: the photo shows through almost clearly, slightly magnified
+    // like a lens, under a sheen and a rim that catches the light.
+    ctx.shadowColor = "rgba(0,0,0,0.22)"; ctx.shadowBlur = 18 * u; ctx.shadowOffsetY = 5 * u;
+    rrect(ctx, x, y, w, h, r); ctx.fillStyle = "#7f7f7f"; ctx.fill();   // casts the shadow; covered below
+    ctx.shadowColor = "transparent"; ctx.shadowBlur = 0; ctx.shadowOffsetY = 0;
+    ctx.save(); rrect(ctx, x, y, w, h, r); ctx.clip();
+    if (src) {
+      const sx = src.width / W, sy = src.height / H, mag = 1.08, pad = 8 * u;
+      const cx = x + w / 2, cy = y + h / 2, bw = w + 2 * pad, bh = h + 2 * pad, sw = Math.min(W, bw / mag), sh = Math.min(H, bh / mag);
+      const srx = clamp(cx - sw / 2, 0, W - sw), sry = clamp(cy - sh / 2, 0, H - sh);
+      if (FILTER) ctx.filter = `blur(${(2.2 * u).toFixed(1)}px) saturate(1.45) brightness(1.05)`;
+      ctx.drawImage(src, srx * sx, sry * sy, sw * sx, sh * sy, cx - bw / 2, cy - bh / 2, bw, bh);
+      ctx.filter = "none";
+    }
+    ctx.fillStyle = hero ? withAlpha(b.accent, 0.45) : withAlpha(b.labelBg, 0.1); ctx.fillRect(x, y, w, h);
+    // Like Apple's glass, shade a little more over bright backgrounds so white text still reads.
+    const lum = src ? brightnessBehind(src, W, H, x, y, w, h) : 0.5;
+    ctx.fillStyle = `rgba(0,0,0,${(0.07 + clamp((lum - 0.5) * 0.75, 0, 0.3)).toFixed(3)})`; ctx.fillRect(x, y, w, h);
+    const sheen = ctx.createLinearGradient(0, y, 0, y + h);
+    sheen.addColorStop(0, "rgba(255,255,255,0.4)"); sheen.addColorStop(0.45, "rgba(255,255,255,0.07)");
+    sheen.addColorStop(0.75, "rgba(255,255,255,0)"); sheen.addColorStop(1, "rgba(255,255,255,0.14)");
+    ctx.fillStyle = sheen; ctx.fillRect(x, y, w, h);
+    const gx = x + r * 0.9, gy = y + h * 0.22, glint = ctx.createRadialGradient(gx, gy, 0, gx, gy, r * 1.3);
+    glint.addColorStop(0, "rgba(255,255,255,0.42)"); glint.addColorStop(1, "rgba(255,255,255,0)");
+    ctx.fillStyle = glint; ctx.fillRect(x, y, w, h);
+    ctx.restore();
+    const rim = ctx.createLinearGradient(x, y, x + w, y + h);
+    rim.addColorStop(0, "rgba(255,255,255,0.95)"); rim.addColorStop(0.35, "rgba(255,255,255,0.35)");
+    rim.addColorStop(0.7, "rgba(255,255,255,0.14)"); rim.addColorStop(1, "rgba(255,255,255,0.7)");
+    rrect(ctx, x + 0.6 * u, y + 0.6 * u, w - 1.2 * u, h - 1.2 * u, r - 0.6 * u); ctx.strokeStyle = rim; ctx.lineWidth = 1.4 * u; ctx.stroke();
+    rrect(ctx, x + 2 * u, y + 2 * u, w - 4 * u, h - 4 * u, r - 2 * u); ctx.strokeStyle = "rgba(255,255,255,0.12)"; ctx.lineWidth = 0.8 * u; ctx.stroke();
+    ink = hero ? "#ffffff" : b.text; sub = withAlpha(ink, 0.84);
   } else if (st === "beacon") {
     rrect(ctx, x, y, w, h, h / 2 * Math.max(0.25, b.radius)); ctx.fillStyle = fill; ctx.fill();
   } else if (st === "bold") {
@@ -1105,6 +1157,8 @@ function drawPin(ctx, L, b, src, W, H, selected) {
     ctx.shadowColor = "rgba(0,0,0,0.55)"; ctx.shadowBlur = 10 * u; ctx.shadowOffsetY = 1 * u;
   }
   if (st !== "editorial") { ctx.shadowColor = "transparent"; ctx.shadowBlur = 0; ctx.shadowOffsetY = 0; }
+  // Clear glass needs a soft shadow under the text to read over any photo.
+  if (st === "liquid") { ctx.shadowColor = "rgba(0,0,0,0.45)"; ctx.shadowBlur = 6 * u; ctx.shadowOffsetY = 1 * u; }
 
   // contents
   if (st === "editorial") {
@@ -1128,7 +1182,7 @@ function drawPin(ctx, L, b, src, W, H, selected) {
     if (st === "tag") { ctx.fillStyle = hero ? onColor(b.accent) : b.accent; ctx.beginPath(); ctx.arc(x + m.padX + 2 * u, y + h / 2, 3.5 * u * m.k, 0, 7); ctx.fill(); }
     if (m.logo) { ctx.drawImage(m.logo, tx, y + m.padY, m.iconW, m.textH); tx += m.iconW + m.gap; }
     else if (m.iconW) {
-      const col = hero ? ink : st === "bold" || st === "glass" ? ink : iconColor(b, pin);
+      const col = hero ? ink : st === "bold" || st === "glass" || st === "liquid" ? ink : iconColor(b, pin);
       drawIcon(ctx, pin.icon, tx + m.iconW / 2, y + h / 2, m.iconW, col, 2.2);
       tx += m.iconW + m.gap;
     }
@@ -1387,7 +1441,7 @@ $("#styleTiles").addEventListener("click", e => {
   const preset = BUILTIN_BRANDS.find(z => z.style === s);
   // Switching style keeps the brand's colours unless the style needs dark text on light or the reverse.
   const patch = { style: s };
-  if (s === "glass" || s === "editorial") { patch.text = "#ffffff"; if (s === "glass") patch.labelBg = "#1c1c1e"; }
+  if (s === "glass" || s === "editorial" || s === "liquid") { patch.text = "#ffffff"; if (s === "glass") patch.labelBg = "#1c1c1e"; if (s === "liquid") patch.labelBg = "#ffffff"; }
   else if (brand().text === "#ffffff" && s !== "bold") { patch.text = preset.text; patch.labelBg = preset.labelBg; }
   editBrand(patch);
 });

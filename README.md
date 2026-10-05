@@ -104,8 +104,8 @@ hide it. The Camera tab has sliders for heading, tilt, height and lens.
 Photos with no location data start from the address with a guessed camera;
 place the drone on the map first.
 
-Brand styles live in the Style tab: six pin designs (Classic, Glass,
-Beacon, Editorial, Bold, Tag), colours, font, size, line length, capitals,
+Brand styles live in the Style tab: seven pin designs (Classic, Glass,
+Liquid, Beacon, Editorial, Bold, Tag), colours, font, size, line length, capitals,
 distances, icons and a logo for the property pin. Brands save in the browser.
 Use the ... menu to export a brand as a `.pinpoint.json` file and import it
 on another machine.
