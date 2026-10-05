@@ -279,6 +279,10 @@ input[type="range"]::-moz-range-progress { height: 4px; border-radius: 2px; back
 .place .del:hover { color: var(--danger); background: var(--fill); }
 #pinStyleCtrls.dim { opacity: 0.4; pointer-events: none; }
 .scope-on { display: flex; align-items: center; gap: 8px; justify-content: space-between; }
+.dchip { border: 0; background: var(--fill); color: var(--ink2); border-radius: 999px; height: 18px; padding: 0 7px; font-size: 11px; font-weight: 500; display: inline-flex; align-items: center; flex: none; }
+.dchip:hover { background: var(--accent-soft); color: var(--accent); }
+.dchip.own { background: var(--accent-soft); color: var(--accent); }
+.place .sub .subtxt { overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 .list-sub { font-size: 11px; font-weight: 600; color: var(--ink2); padding: 10px 0 4px; border-bottom: 0.5px solid var(--sep); }
 .list-sub:first-child { padding-top: 8px; }
 .place.off-shot { opacity: 0.7; grid-template-columns: 30px minmax(0, 1fr); }
@@ -441,7 +445,7 @@ dialog.sheet::backdrop { background: rgba(0, 0, 0, 0.18); }
             <div class="seg" id="rangeSeg"><button data-v="1000">1 km</button><button data-v="3000">3 km</button><button data-v="8000">8 km</button></div>
           </div>
           <div class="row"><span class="lbl">Distances</span>
-            <div class="seg" id="distSeg"><button data-v="km">km</button><button data-v="walk">Walk</button><button data-v="drive">Drive</button></div>
+            <div class="seg" id="distSeg" title="Sets every label; click a label's distance in the list to change just that one"><button data-v="km">km</button><button data-v="walk">Walk</button><button data-v="drive">Drive</button><button data-v="none">None</button></div>
           </div>
           <div class="row"><span class="lbl">Start with</span>
             <div class="seg" id="pickSeg"><button data-v="smart">Key places</button><button data-v="all">Everything</button></div>
@@ -625,7 +629,7 @@ const state = {
   settings: Object.assign({ range: 3000, pick: "smart", dist: "km", cats: Object.fromEntries(Object.keys(CATS).map(k => [k, true])) }, store.get("settings", {})),
   brands: store.get("brands", null) || BUILTIN_BRANDS.map(b => ({ ...b })),
   brandId: store.get("brandId", "classic"),
-  view: "photo", styleScope: "all",
+  view: "photo", styleScope: "all", distFor: {},
 };
 state.brands = state.brands.map(b => ({ ...BRAND_DEFAULTS, ...b }));
 for (const bb of BUILTIN_BRANDS) if (!state.brands.some(b => b.id === bb.id)) state.brands.push({ ...bb });
@@ -974,8 +978,12 @@ function fmtTime(sec) {
 }
 function estimateTime(mode, d) { return mode === "walk" ? d * 1.3 / 1.25 : d * 1.4 / 11 + 90; }
 // The label for a place: distance, or walk/drive time from the property.
-function distLabel(g, d, forList) {
-  const mode = state.settings.dist;
+// The distance mode for one label: its own choice if it has one, else the default for all.
+const distModeFor = id => (id && state.distFor[id]) || state.settings.dist;
+const DIST_NAMES = { km: "km", walk: "Walk", drive: "Drive", none: "None" };
+function distLabel(g, d, forList, id) {
+  const mode = distModeFor(id);
+  if (mode === "none") return "";
   if (mode === "km" || !state.address || !g) return fmtDist(d);
   const key = `${mode}|${geoKey(state.address)}|${geoKey(g)}`;
   let t = travel.cache.get(key);
@@ -1110,7 +1118,7 @@ function computePins(ph) {
   for (const c of res.inView) {
     c.why = picks.get(c.pl.id) || null;
     c.on = ph.overrides[c.pl.id] ?? (state.settings.pick === "all" || !!c.why);
-    if (c.on) res.pins.push({ id: c.pl.id, kind: "place", cat: c.pl.cat, icon: c.pl.icon, name: placeName(c.pl), sub: ref ? distLabel(c.pl, c.d) : "", x: c.x, y: c.y, moved: c.moved });
+    if (c.on) res.pins.push({ id: c.pl.id, kind: "place", cat: c.pl.cat, icon: c.pl.icon, name: placeName(c.pl), sub: ref ? distLabel(c.pl, c.d, false, c.pl.id) : "", x: c.x, y: c.y, moved: c.moved });
   }
   if (state.address) {
     // The property always gets a pin. If the maths puts it outside the frame
@@ -1129,8 +1137,8 @@ function computePins(ph) {
     // Distance from the real place when the name was found on the map, else from
     // the spot on the ground under the pin.
     const g = c.geo || groundPoint(ph, c.x, c.y);
-    c._d = ref && g && !c.noDist ? haversine(ref, g) : null; c._g = g;
-    res.pins.push({ id: c.id, kind: "custom", cat: c.cat || "custom", icon: c.icon || "custom", name: c.name, sub: c._d != null ? distLabel(g, c._d) : "", x: c.x, y: c.y });
+    c._d = ref && g ? haversine(ref, g) : null; c._g = g;
+    res.pins.push({ id: c.id, kind: "custom", cat: c.cat || "custom", icon: c.icon || "custom", name: c.name, sub: c._d != null ? distLabel(g, c._d, false, c.id) : "", x: c.x, y: c.y });
   }
   return res;
 }
@@ -1690,10 +1698,12 @@ $("#cats").addEventListener("click", e => {
 });
 
 function placeRow(o) {
-  const { id, name, sub, icon, color, on, moved, kind } = o;
+  const { id, name, sub, icon, color, on, moved, kind, dist } = o;
+  // The distance shown on this label, as a button that picks km, walk, drive or none for it alone.
+  const chip = dist ? `<button class="dchip${state.distFor[id] ? " own" : ""}" data-dmenu="${id}" title="Distance on this label">${esc(dist || "")}</button>` : "";
   const anch = moved ? `<button class="anch" data-reset="${id}" title="Put this pin back where Pinpoint placed it">${svgPath("M4 12a8 8 0 1 0 2.5-5.8 M4 4v4.5h4.5")}Reset</button>` : "";
   const right = kind === "custom" ? `<button class="del" data-del="${id}" aria-label="Delete pin">${svgPath("M5 7h14 M10 7V4.5h4V7 M7 7l1 13h8l1-13")}</button>` : `<input class="switch" type="checkbox" data-toggle="${id}" ${on ? "checked" : ""} aria-label="Show ${esc(name)}">`;
-  return `<div class="place${state.selected === id ? " sel" : ""}" data-id="${id}"><span class="tile${kind === "custom" ? " pick" : ""}" ${kind === "custom" ? `data-kindmenu="${id}" title="Choose the icon"` : ""} style="background:${color}">${svgIcon(icon)}</span><div style="min-width:0"><input class="nm" data-name="${id}" value="${esc(name)}" aria-label="Pin label"><div class="sub">${esc(sub)}${anch}</div></div>${right}</div>`;
+  return `<div class="place${state.selected === id ? " sel" : ""}" data-id="${id}"><span class="tile${kind === "custom" ? " pick" : ""}" ${kind === "custom" ? `data-kindmenu="${id}" title="Choose the icon"` : ""} style="background:${color}">${svgIcon(icon)}</span><div style="min-width:0"><input class="nm" data-name="${id}" value="${esc(name)}" aria-label="Pin label"><div class="sub"><span class="subtxt">${esc(sub)}</span>${chip}${anch}</div></div>${right}</div>`;
 }
 function renderPlaces() {
   const ph = cur(), el = $("#placeList");
@@ -1703,14 +1713,16 @@ function renderPlaces() {
   const rows = [];
   if (res.hero) rows.push(placeRow({ id: "hero", kind: "hero", name: heroName(), sub: res.hero.offscreen ? "Property · not found in frame, drag onto the house" : "Property", icon: "home", color: brand().accent, on: brand().heroOn && ph.overrides.hero !== false, moved: res.hero.moved }));
   const list = res.inView;
-  const row = c => placeRow({ id: c.pl.id, kind: "place", name: placeName(c.pl), sub: `${c.why || CATS[c.pl.cat].one} · ${distLabel(c.pl, c.d, true)}`, icon: c.pl.icon, color: CATS[c.pl.cat].color, on: c.on, moved: c.moved });
+  const chipText = (id, g, d, extra = "") => distLabel(g, d, true, id) + extra || "No distance";
+  const row = c => placeRow({ id: c.pl.id, kind: "place", name: placeName(c.pl), sub: c.why || CATS[c.pl.cat].one, dist: chipText(c.pl.id, c.pl, c.d), icon: c.pl.icon, color: CATS[c.pl.cat].color, on: c.on, moved: c.moved });
   const key = list.filter(c => c.why), more = list.filter(c => !c.why);
   if (key.length) rows.push(`<div class="list-sub">Key places for this address</div>`, ...key.map(row));
   if (more.length) rows.push(`<div class="list-sub">More in this shot</div>`, ...more.map(row));
   for (const c of ph.custom) rows.push(placeRow({ id: c.id, kind: "custom", name: c.name, icon: c.icon || "custom", color: CATS[c.cat]?.color || "#636366", on: true,
-    sub: `${CATS[c.cat] ? (c.icon === "ferry" ? "Ferry" : c.icon === "plane" ? "Airport" : CATS[c.cat].one) : "Your pin"}${c._d != null ? ` · ${distLabel(c._g, c._d, true)}${c.geo || state.settings.dist !== "km" ? "" : " (est.)"}` : ""}` }));
+    sub: CATS[c.cat] ? (c.icon === "ferry" ? "Ferry" : c.icon === "plane" ? "Airport" : CATS[c.cat].one) : "Your pin",
+    dist: c._d != null ? chipText(c.id, c._g, c._d, c.geo || distModeFor(c.id) !== "km" ? "" : " (est.)") : null }));
   if (res.keyOut?.length) rows.push(`<div class="list-sub">Key places not in this shot</div>`, ...res.keyOut.sort((a, b) => a.d - b.d).map(o =>
-    `<div class="place off-shot"><span class="tile" style="background:${CATS[o.pl.cat].color}">${svgIcon(o.pl.icon)}</span><div style="min-width:0"><div class="nm static">${esc(placeName(o.pl))}</div><div class="sub">${esc(o.why)} · ${esc(distLabel(o.pl, o.d, true))}</div></div></div>`));
+    `<div class="place off-shot"><span class="tile" style="background:${CATS[o.pl.cat].color}">${svgIcon(o.pl.icon)}</span><div style="min-width:0"><div class="nm static">${esc(placeName(o.pl))}</div><div class="sub">${esc(o.why)} · ${esc(distLabel(o.pl, o.d, true, o.pl.id) || "no distance")}</div></div></div>`));
   let html = rows.join("");
   if (!state.address && rows.length) html = `<div class="list-empty">Add the property address above to get the home pin.</div>` + html;
   if (!rows.length) html = `<div class="list-empty">${state.placesStatus === "loading" ? "Finding nearby places…" : state.placesStatus === "error" ? "Couldn't load places." : "No mapped places in view. Try a wider range or more categories."}</div>`;
@@ -1740,11 +1752,20 @@ $("#placeList").addEventListener("input", e => {
 $("#placeList").addEventListener("keydown", e => { if (e.key === "Enter" && e.target.dataset.name) e.target.blur(); });
 $("#placeList").addEventListener("click", e => {
   const ph = cur(); if (!ph) return;
+  const dm = e.target.closest("[data-dmenu]");
+  if (dm) {
+    const id = dm.dataset.dmenu, own = state.distFor[id], def = state.settings.dist;
+    const set = v => { if (v) state.distFor[id] = v; else delete state.distFor[id]; render(); };
+    openMenu(dm, [{ label: `${own ? "" : "✓ "}Default (${DIST_NAMES[def]})`, run: () => set(null) }, "-",
+      ...["km", "walk", "drive", "none"].map(v => ({ label: `${own === v ? "✓ " : ""}${{ km: "Kilometres", walk: "Walk time", drive: "Drive time", none: "No distance" }[v]}`, run: () => set(v) }))]);
+    if ((own === "walk" || own === "drive") && !state.address) flash("Travel times need the property address.");
+    return;
+  }
   const km = e.target.closest("[data-kindmenu]");
   if (km) {
     const c = ph.custom.find(c => c.id === km.dataset.kindmenu); if (!c) return;
     openMenu(km, [...KIND_MENU.map(([label, cat, icon]) => ({ label: (c.icon === icon && (c.cat || "custom") === cat ? "✓ " : "") + label, run: () => { c.cat = cat; c.icon = icon; c.auto = false; render(); } })),
-      "-", { label: c.noDist ? "Show distance" : "Hide distance", run: () => { c.noDist = !c.noDist; render(); } }]);
+    ]);
     return;
   }
   const reset = e.target.closest("[data-reset]"), del = e.target.closest("[data-del]");
@@ -1761,8 +1782,10 @@ function renderSettings() {
 }
 $("#distSeg").addEventListener("click", e => {
   const b = e.target.closest("button"); if (!b) return;
-  state.settings.dist = b.dataset.v; saveSettings(); renderSettings(); render();
-  if (b.dataset.v !== "km" && !state.address) flash("Travel times need the property address.");
+  const had = Object.keys(state.distFor).length;
+  state.settings.dist = b.dataset.v; state.distFor = {}; saveSettings(); renderSettings(); render();
+  if ((b.dataset.v === "walk" || b.dataset.v === "drive") && !state.address) flash("Travel times need the property address.");
+  else if (had) flash(`All labels set to ${DIST_NAMES[b.dataset.v]}.`);
 });
 $("#pickSeg").addEventListener("click", e => {
   const b = e.target.closest("button"); if (!b) return;

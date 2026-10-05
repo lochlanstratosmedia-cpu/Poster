@@ -99,7 +99,10 @@ That link always serves the latest version on this branch. You can also open
    its name: a place already found, a map search near the property, or else
    keywords in the name and the ground under the pin (marked est. in the
    list). Click its icon in the list to choose the type or hide the distance.
-   Distances can show as km, or as walk or drive times from the property
+   Distances can show as km, walk or drive times, or nothing. The Distances
+   switch sets every label; click a label's distance in the list to change
+   just that one (it follows the place across every photo). Walk and drive
+   times run from the property
    (OpenStreetMap routing by FOSSGIS at routing.openstreetmap.de; when it
    can't be reached the time is estimated and marked est. in the list).
 4. Property outline: Find lot draws the lot boundary from NSW Spatial
