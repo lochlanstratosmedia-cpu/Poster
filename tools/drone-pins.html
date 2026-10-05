@@ -364,7 +364,8 @@ dialog.sheet::backdrop { background: rgba(0, 0, 0, 0.18); }
     <div class="cap glass viewcap">
       <div class="seg seg-tb" id="viewSeg" role="tablist" aria-label="View">
         <button data-view="photo" aria-pressed="true" title="Photo with pins">Photo</button>
-        <button data-view="map" aria-pressed="false" title="Top-down map: turn the camera and see what is in view (M)">Map</button>
+        <button data-view="map" aria-pressed="false" title="Top-down street map: turn the camera and see what is in view (M)">Map</button>
+        <button data-view="satellite" aria-pressed="false" title="Top-down aerial imagery (M)">Satellite</button>
       </div>
     </div>
     <div class="search glass" id="search">
@@ -1225,14 +1226,14 @@ function sizeView(ph) {
   view.style.width = cw + "px"; view.style.height = ch + "px";
 }
 let raf = 0;
-function drawView() { cancelAnimationFrame(raf); raf = requestAnimationFrame(() => { const ph = cur(); if (!ph) return; if (state.view === "map") { paintMap(); return; } sizeView(ph); lastLayout = drawScene(vctx, view.width, view.height, ph, ph.preview); }); }
+function drawView() { cancelAnimationFrame(raf); raf = requestAnimationFrame(() => { const ph = cur(); if (!ph) return; if (state.view !== "photo") { paintMap(); return; } sizeView(ph); lastLayout = drawScene(vctx, view.width, view.height, ph, ph.preview); }); }
 function renderHud() {
   const hud = $("#hud"), ph = cur();
   let html = "";
   if (flashMsg) html = `<span>${esc(flashMsg)}</span>`;
   else if (!ph) html = "";
   else if (state.addMode) html = `<span>Click the photo where the new pin goes</span><button data-act="cancelAdd">Cancel</button>`;
-  else if (state.view === "map" && state.placesStatus !== "loading" && state.placesStatus !== "error" && !mapState.hintSeen) html = `<span>Drag on the map to turn the camera. Drag the drone to move it. Click a place to show or hide it.</span><button data-act="okMap">OK</button>`;
+  else if (state.view !== "photo" && state.placesStatus !== "loading" && state.placesStatus !== "error" && !mapState.hintSeen) html = `<span>Drag on the map to turn the camera. Drag the drone to move it. Click a place to show or hide it.</span><button data-act="okMap">OK</button>`;
   else if (!ph.base) html = `<span>No location in this photo. Add the property address to place pins.</span>`;
   else if (state.placesStatus === "loading") html = `<span class="spinner"></span><span>Finding nearby places…</span>`;
   else if (state.placesStatus === "error") html = `<span>Couldn't load places (${esc(state.placesError || "no answer")})</span><button data-act="retry">Try again</button>`;
@@ -1556,8 +1557,8 @@ document.addEventListener("keydown", e => {
   if (typing) return;
   const ph = cur();
   if (e.key === "Escape") { if (state.addMode) setAddMode(false); else if (state.selected) { state.selected = null; render(); } }
-  if ((e.key === "p" || e.key === "P") && ph && state.view !== "map") setAddMode(!state.addMode);
-  if ((e.key === "m" || e.key === "M") && ph) setView(state.view === "map" ? "photo" : "map");
+  if ((e.key === "p" || e.key === "P") && ph && state.view === "photo") setAddMode(!state.addMode);
+  if ((e.key === "m" || e.key === "M") && ph) setView(state.view === "photo" ? "map" : state.view === "map" ? "satellite" : "photo");
   if ((e.key === "Backspace" || e.key === "Delete") && ph && state.selected) {
     e.preventDefault();
     const id = state.selected;
@@ -1581,18 +1582,31 @@ const TILE = 256;
 const mapState = { zoom: 0, tiles: new Map(), dots: [], hold: null, drag: null, hintSeen: false };
 const lon2x = (lon, z) => (lon + 180) / 360 * TILE * 2 ** z;
 const lat2y = (lat, z) => { const s = Math.sin(clamp(lat, -85, 85) * D); return (0.5 - Math.log((1 + s) / (1 - s)) / (4 * Math.PI)) * TILE * 2 ** z; };
-function mapTile(z, x, y) {
-  const key = `${z}/${x}/${y}`;
+// Tile sources. OpenStreetMap's own tile server refuses apps that can't send a
+// website address (the Claude panel can't), so streets come from CARTO, which
+// is built on the same OpenStreetMap data, and aerial imagery from Esri.
+const MAP_SOURCES = {
+  map: {
+    url: (z, x, y, dark, hi) => `https://${"abcd"[(x + y) % 4]}.basemaps.cartocdn.com/${dark ? "dark_all" : "light_all"}/${z}/${x}/${y}${hi ? "@2x" : ""}.png`,
+    credit: "© OpenStreetMap contributors © CARTO",
+  },
+  satellite: {
+    url: (z, x, y) => `https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/${z}/${y}/${x}`,
+    credit: "Imagery © Esri, Maxar, Earthstar Geographics",
+  },
+};
+function mapTile(z, x, y, src, dark, hi) {
+  const key = `${state.view}/${dark ? "d" : "l"}/${z}/${x}/${y}`;
   let t = mapState.tiles.get(key);
   if (!t) {
-    t = { bmp: null };
+    t = { bmp: null, failed: false };
     mapState.tiles.set(key, t);
     if (mapState.tiles.size > 600) mapState.tiles.delete(mapState.tiles.keys().next().value);
-    fetch(`https://tile.openstreetmap.org/${key}.png`)
+    fetch(src.url(z, x, y, dark, hi))
       .then(r => { if (!r.ok) throw new Error("HTTP " + r.status); return r.blob(); })
       .then(b => createImageBitmap(b))
       .then(b => { t.bmp = b; drawView(); })
-      .catch(() => {});
+      .catch(() => { t.failed = true; drawView(); });
   }
   return t;
 }
@@ -1677,13 +1691,15 @@ function paintMap() {
   const n = 2 ** F.z, size = TILE * F.scale;
   const x0 = Math.floor((F.cx - W / 2 / F.scale) / TILE), x1 = Math.floor((F.cx + W / 2 / F.scale) / TILE);
   const y0 = Math.max(0, Math.floor((F.cy - H / 2 / F.scale) / TILE)), y1 = Math.min(n - 1, Math.floor((F.cy + H / 2 / F.scale) / TILE));
-  ctx.save();
-  ctx.filter = dark ? "grayscale(1) invert(1) brightness(0.8) contrast(0.9)" : "grayscale(0.85) brightness(1.05) contrast(0.9)";
+  const src = MAP_SOURCES[state.view] || MAP_SOURCES.map;
+  let loaded = 0, failed = 0;
   for (let ty = y0; ty <= y1; ty++) for (let tx = x0; tx <= x1; tx++) {
-    const t = mapTile(F.z, ((tx % n) + n) % n, ty);
-    if (t.bmp) ctx.drawImage(t.bmp, W / 2 + (tx * TILE - F.cx) * F.scale, H / 2 + (ty * TILE - F.cy) * F.scale, size + 0.6, size + 0.6);
+    const t = mapTile(F.z, ((tx % n) + n) % n, ty, src, dark, k > 1);
+    if (t.bmp) { loaded++; ctx.drawImage(t.bmp, W / 2 + (tx * TILE - F.cx) * F.scale, H / 2 + (ty * TILE - F.cy) * F.scale, size + 0.6, size + 0.6); }
+    else if (t.failed) failed++;
   }
-  ctx.restore();
+  // Soften aerial imagery a touch so the overlays stay readable.
+  if (state.view === "satellite" && loaded) { ctx.fillStyle = dark ? "rgba(0,0,0,0.25)" : "rgba(255,255,255,0.12)"; ctx.fillRect(0, 0, W, H); }
 
   const cam = ph.cam || ph.base;
   const [dx, dy] = F.toPx(cam.lat, cam.lon);
@@ -1776,6 +1792,8 @@ function paintMap() {
   ctx.restore();
   pill(ctx, `Drone · ${Math.round(cam.h)} m`, dx, dy + 24 * k, k, dark);
 
+  if (failed && !loaded) pill(ctx, state.view === "satellite" ? "Aerial imagery couldn't load here" : "Street map couldn't load here", W / 2, 24 * k, k, dark);
+
   // North arrow and the credit the tile licence asks for.
   const nx = W - 30 * k, ny = 30 * k;
   ctx.save();
@@ -1785,7 +1803,7 @@ function paintMap() {
   ctx.restore();
   ctx.save();
   ctx.font = `500 ${10 * k}px ${FONTS.system.stack}`;
-  const credit = "© OpenStreetMap contributors", cw = ctx.measureText(credit).width + 12 * k;
+  const credit = src.credit, cw = ctx.measureText(credit).width + 12 * k;
   ctx.fillStyle = dark ? "rgba(0,0,0,0.55)" : "rgba(255,255,255,0.8)"; ctx.fillRect(W - cw, H - 18 * k, cw, 18 * k);
   ctx.fillStyle = `rgba(${ink},0.7)`; ctx.textAlign = "right"; ctx.textBaseline = "middle"; ctx.fillText(credit, W - 6 * k, H - 9 * k);
   ctx.restore();
@@ -1836,7 +1854,7 @@ function endMapDrag() {
 mapCv.addEventListener("pointerup", endMapDrag);
 mapCv.addEventListener("pointercancel", endMapDrag);
 mapCv.addEventListener("wheel", e => { e.preventDefault(); mapState.zoom = clamp(mapState.zoom - e.deltaY * 0.0025, -2.5, 3.5); drawView(); }, { passive: false });
-function setView(v) { state.view = v; if (v === "map") setAddMode(false); render(); }
+function setView(v) { state.view = v; if (v !== "photo") setAddMode(false); render(); }
 $("#viewSeg").addEventListener("click", e => { const b = e.target.closest("[data-view]"); if (b && !b.disabled) setView(b.dataset.view); });
 
 /* ------------------------------------------------------------------ address search */
@@ -1970,9 +1988,9 @@ function render() {
   $("#subtitle").textContent = ph ? (n > 1 ? `${ph.name} · ${i + 1} of ${n}` : ph.name) : "Drone photo pins";
   $("#sideCount").textContent = n ? `${n} photo${n === 1 ? "" : "s"}` : "No photos";
   $("#lightClose").disabled = !ph;
-  const mapMode = !!ph && state.view === "map";
+  const mapMode = !!ph && state.view !== "photo";
   $("#empty").hidden = !!ph; view.hidden = !ph || mapMode; mapCv.hidden = !mapMode;
-  document.querySelectorAll("#viewSeg [data-view]").forEach(b => { b.setAttribute("aria-pressed", String(b.dataset.view === (mapMode ? "map" : "photo"))); b.disabled = !ph; });
+  document.querySelectorAll("#viewSeg [data-view]").forEach(b => { b.setAttribute("aria-pressed", String(b.dataset.view === (ph ? state.view : "photo"))); b.disabled = !ph; });
   $("#exportBtn").disabled = !ph; $("#addPinBtn").disabled = !ph || mapMode;
   renderPhotos(); renderPlaces(); renderCamera(); renderHud();
   if (ph) drawView();

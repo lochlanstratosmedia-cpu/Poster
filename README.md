@@ -97,7 +97,7 @@ Pins are placed from the camera data DJI drones write into each JPG: GPS
 position, height above takeoff, gimbal heading and tilt, and focal length.
 Upload the original file, not one exported from Lightroom or a phone app,
 because those usually strip it. Compass heading is the value most often off
-by a few degrees. Switch to Map (or press M) for a top-down street map with
+by a few degrees. Switch to Map or Satellite (M cycles through) for a top-down view with
 distance rings and the patch of ground the camera can see. Drag on the map
 to turn the camera, drag the drone to move it, and click a place to show or
 hide it. The Camera tab has sliders for heading, tilt, height and lens.
@@ -113,7 +113,11 @@ on another machine.
 Place data and address search come from OpenStreetMap through Photon
 (photon.komoot.io). The public Overpass servers are the fallback for places,
 and Nominatim for addresses, so the tool needs internet access. Results are
-cached in the browser for 14 days per area.
+cached in the browser for 14 days per area. The street map comes from CARTO
+(built on OpenStreetMap) and the aerial view from Esri World Imagery;
+OpenStreetMap's own tile server refuses requests from embedded viewers like
+the Claude panel. Both are free tiers meant for light or non-commercial use,
+so heavy commercial use needs a key from CARTO, Esri or another provider.
 Places are only as good as the map: check names before posting. Ground is
 treated as flat at takeoff height, so pins on hills well above or below the
 takeoff point drift a little until you drag one.
