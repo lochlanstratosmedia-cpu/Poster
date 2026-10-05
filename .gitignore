@@ -14,3 +14,9 @@ inbox/*
 
 # Knights outro alpha master is large; rebuild with render.mjs
 outros/knights/renders/*.mov
+
+# Room Tone trailer: app screenshots, plates built from them, and renders stay
+# local because this repo is public. Rebuild with the scripts in the folder.
+trailers/room-tone/source/
+trailers/room-tone/plates/
+trailers/room-tone/renders/

@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Room Tone trailer</title>
+<style>
+  @font-face { font-family: "Script"; src: url(fonts/courier-prime-latin-400-normal.woff2) format("woff2"); font-weight: 400; font-style: normal; }
+  @font-face { font-family: "Script"; src: url(fonts/courier-prime-latin-400-italic.woff2) format("woff2"); font-weight: 400; font-style: italic; }
+  @font-face { font-family: "Script"; src: url(fonts/courier-prime-latin-700-normal.woff2) format("woff2"); font-weight: 700; font-style: normal; }
+  @font-face { font-family: "UI"; src: url(../../assets/fonts/Inter.ttf) format("truetype"); font-weight: 100 900; }
+
+  :root {
+    --script: "Script", "Courier New", monospace; /* swap for the app's screenplay face */
+    --ui: "UI", -apple-system, system-ui, sans-serif; /* the app uses the system UI face */
+    --ink: #24201c;
+    --amber: #c9a36a;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { background: #0b0a09; color: #f2ede6; font-family: var(--ui); overflow: hidden; height: 100%; }
+
+  #viewport { position: absolute; inset: 0 0 64px 0; display: grid; place-items: center; }
+  body.render #viewport { inset: 0; display: block; }
+  #stage { position: relative; width: 1920px; height: 1080px; overflow: hidden; background: #000; transform-origin: 0 0; }
+  body.render #stage { position: absolute; left: 0; top: 0; }
+
+  .layer { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; }
+  #app { transform-origin: 0 0; }
+  #desk img { position: absolute; left: 0; top: 0; }
+
+  /* Screenplay page: 8.5 x 11 in at 96 px per inch, scaled onto the paper. */
+  .sheet { position: absolute; width: 816px; height: 1056px; transform-origin: 0 0; font-family: var(--script); font-size: 16px; line-height: 16px; }
+  .sheet .ln { position: absolute; white-space: pre; }
+  .sheet .ctr { left: 144px; width: 576px; text-align: center; }
+  .sheet .ph { opacity: 0.5; }
+  #pageText { color: var(--ink); mix-blend-mode: multiply; }
+  #pageText .face { position: absolute; inset: 0; }
+  #caret { position: absolute; width: 1.6px; height: 17px; background: var(--ink); }
+  .selrect { position: absolute; height: 16px; background: rgba(64, 118, 232, 0.36); }
+
+  /* Glass controls */
+  .glass {
+    background: linear-gradient(100deg, rgba(78, 70, 64, 0.82), rgba(40, 36, 33, 0.86));
+    border: 1px solid rgba(255, 255, 255, 0.17);
+    box-shadow: 0 8px 26px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+    backdrop-filter: blur(14px) saturate(1.1);
+    -webkit-backdrop-filter: blur(14px) saturate(1.1);
+  }
+  .dim-glass {
+    background: rgba(18, 16, 14, 0.52);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+  }
+  #nav { position: absolute; border-radius: 999px; display: flex; align-items: center; justify-content: space-between; font-weight: 600; color: #f5f2ed; letter-spacing: -0.005em; }
+  #nav span, .btn { position: relative; border-radius: 999px; }
+  .pressed { background: rgba(255, 255, 255, 0.16); }
+
+  #switches { position: absolute; display: flex; }
+  .sw { display: flex; align-items: center; border-radius: 999px; font-weight: 500; color: rgba(236, 232, 225, 0.82); white-space: nowrap; }
+  .track { position: relative; border-radius: 999px; background: rgba(255, 255, 255, 0.2); }
+  .knob { position: absolute; top: 50%; border-radius: 50%; background: #cfccc6; transform: translateY(-50%); }
+
+  .bar { position: absolute; border-radius: 9px; color: rgba(240, 236, 229, 0.9); font-weight: 600; }
+  .bar span { position: absolute; top: 50%; transform: translate(-50%, -50%); white-space: nowrap; }
+  #saved { position: absolute; color: rgba(230, 226, 219, 0.9); white-space: nowrap; }
+
+  /* Stand-ins (no screenshots yet): same glass language as the real controls. */
+  #sound { position: absolute; border-radius: 14px; padding: 6px; width: 196px; font-size: 12.5px; font-weight: 500; transform-origin: 50% 0; }
+  #sound .row { display: flex; align-items: center; justify-content: space-between; height: 30px; padding: 0 10px; border-radius: 9px; color: rgba(240, 236, 229, 0.86); }
+  #sound .row.on { background: rgba(255, 255, 255, 0.1); color: #fff; }
+  #sound .lvl { display: flex; gap: 2px; align-items: flex-end; height: 10px; }
+  #sound .lvl i { display: block; width: 2px; background: var(--amber); border-radius: 1px; }
+  #pill { position: absolute; display: flex; border-radius: 999px; padding: 3px; gap: 2px; color: #f5f2ed; }
+  #pill .btn { width: 30px; height: 22px; display: grid; place-items: center; font-size: 13px; font-family: var(--script); }
+  #menu { position: absolute; border-radius: 12px; padding: 5px; font-size: 12.5px; font-weight: 500; color: #f5f2ed; transform-origin: 50% 0; }
+  #menu .btn { padding: 7px 14px; border-radius: 8px; white-space: nowrap; }
+  #tag { position: absolute; left: 28px; top: 24px; font: 500 15px var(--ui); color: rgba(255, 255, 255, 0.5); letter-spacing: 0.02em; }
+
+  #pointer { position: absolute; left: 0; top: 0; transform-origin: 0 0; pointer-events: none; }
+  #pointer svg { position: absolute; left: 0; top: 0; overflow: visible; }
+
+  /* PDF preview */
+  #pdf { background: #161412; }
+  #pdfCam { transform-origin: 0 0; }
+  .pdfpage { position: absolute; background: #fbfaf7; box-shadow: 0 18px 50px rgba(0, 0, 0, 0.45), 0 2px 6px rgba(0, 0, 0, 0.3); overflow: hidden; }
+  .pdfpage .sheet { color: #151311; }
+
+  /* Copy */
+  .copy { position: absolute; font-weight: 600; font-size: 60px; letter-spacing: -0.022em; color: #f6f1e9; white-space: nowrap; text-shadow: 0 2px 24px rgba(0, 0, 0, 0.35); }
+  .scrim { position: absolute; inset: 0; pointer-events: none; }
+  #keys { position: absolute; left: 112px; top: 494px; display: flex; align-items: center; gap: 18px; }
+  #keys .cap { font: 500 22px var(--ui); color: #f3eee7; padding: 9px 16px; border-radius: 10px; }
+  #keys .lbl { font: 600 44px var(--ui); letter-spacing: -0.02em; color: #f6f1e9; text-shadow: 0 2px 24px rgba(0, 0, 0, 0.35); }
+  #word { position: absolute; left: 0; right: 0; text-align: center; font-weight: 600; letter-spacing: -0.03em; color: #f6f1e9; }
+  #word .caret { display: inline-block; width: 0.06em; height: 0.82em; background: var(--amber); margin-left: 0.06em; vertical-align: -0.06em; }
+  #line { position: absolute; left: 0; right: 0; text-align: center; font-weight: 500; font-size: 34px; letter-spacing: -0.01em; color: rgba(246, 241, 233, 0.78); }
+  #black { background: #000; }
+
+  /* Preview controls */
+  #controls { position: absolute; left: 0; right: 0; bottom: 0; height: 64px; display: flex; align-items: center; gap: 14px; padding: 0 18px; background: #141210; border-top: 1px solid #2a2622; font: 500 13px var(--ui); color: #cfc8bd; }
+  body.render #controls { display: none; }
+  #controls button { background: #2a2622; color: #f2ede6; border: 0; border-radius: 8px; padding: 8px 12px; font: inherit; cursor: pointer; }
+  #controls input[type=range] { flex: 1; accent-color: var(--amber); }
+  #time { font-variant-numeric: tabular-nums; width: 120px; }
+  .jumps { display: flex; gap: 6px; }
+  .jumps button { padding: 6px 9px !important; }
+</style>
+</head>
+<body>
+<div id="viewport">
+  <div id="stage">
+    <div id="app" class="layer">
+      <div id="desk" class="layer"><img id="plateOn" src="plates/desk1-on.jpg" alt=""><img id="plateOff" src="plates/desk1-off.jpg" alt=""></div>
+      <div id="pageText" class="sheet"><div class="face" id="faceA"></div><div class="face" id="faceB"></div><div id="sel"></div><div id="caret"></div></div>
+      <div id="ui" class="layer">
+        <div id="saved">Saved on this device</div>
+        <div id="pageNav" class="bar dim-glass"></div>
+        <div id="zoom" class="bar dim-glass"><span style="left:20%">-</span><span style="left:50%">100%</span><span style="left:80%">+</span></div>
+        <div id="switches"></div>
+        <div id="nav" class="glass"></div>
+        <div id="sound" class="glass"></div>
+        <div id="menu" class="glass"><div class="btn" id="exportBtn">Export PDF</div></div>
+        <div id="pill" class="glass"><div class="btn" style="font-weight:700">B</div><div class="btn" id="pillI" style="font-style:italic">I</div><div class="btn" style="text-decoration:underline">U</div></div>
+      </div>
+      <div id="pointer"></div>
+    </div>
+    <div id="pdf" class="layer"><div id="pdfCam" class="layer"></div></div>
+    <div id="scrimL" class="scrim" style="background:linear-gradient(90deg, rgba(0,0,0,.62) 0%, rgba(0,0,0,.38) 26%, rgba(0,0,0,0) 46%)"></div>
+    <div id="scrimR" class="scrim" style="background:linear-gradient(300deg, rgba(0,0,0,.62) 0%, rgba(0,0,0,.3) 26%, rgba(0,0,0,0) 46%)"></div>
+    <div id="copy" class="layer"></div>
+    <div id="keys"><div class="cap dim-glass"></div><div class="lbl"></div></div>
+    <div id="black" class="layer"></div>
+    <div id="word"></div>
+    <div id="line">Make room for the story.</div>
+    <div id="tag"></div>
+  </div>
+</div>
+<div id="controls">
+  <button id="play">Play</button>
+  <span id="time">0.00 s</span>
+  <input id="scrub" type="range" min="0" max="2700" value="0" step="1">
+  <div class="jumps"></div>
+</div>
+<script src="src/screenplay.js"></script>
+<script src="src/config.js"></script>
+<script src="src/engine.js"></script>
+<script src="src/draw.js"></script>
+</body>
+</html>
