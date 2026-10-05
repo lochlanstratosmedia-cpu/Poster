@@ -106,7 +106,9 @@ place the drone on the map first.
 
 Brand styles live in the Style tab: seven pin designs (Classic, Glass,
 Liquid, Beacon, Editorial, Bold, Tag), colours, font, size, line length, capitals,
-distances, icons and a logo for the property pin. Brands save in the browser.
+distances, icons and a logo for the property pin. Turn on Logo only to show
+just the logo on the property pin; it sits on the brand's Label colour, so
+pick a light Label for a dark logo and a dark one for a white logo. Brands save in the browser.
 Use the ... menu to export a brand as a `.pinpoint.json` file and import it
 on another machine.
 

@@ -241,6 +241,7 @@ input[type="range"]::-moz-range-progress { height: 4px; border-radius: 2px; back
 .switch { -webkit-appearance: none; appearance: none; width: 38px; height: 22px; border-radius: 999px; background: var(--switch-off); position: relative; transition: background .25s; margin: 0; flex: none; }
 .switch::after { content: ""; position: absolute; top: 2px; left: 2px; width: 24px; height: 18px; border-radius: 999px; background: #fff; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.22), 0 0 0 0.5px rgba(0, 0, 0, 0.04); transition: transform .3s cubic-bezier(.3, 1.4, .5, 1); }
 .switch:checked { background: #34c759; }
+.switch:disabled { opacity: 0.4; }
 .switch:checked::after { transform: translateX(10px); }
 
 .seg { display: flex; background: var(--fill); border-radius: 999px; padding: 2px; gap: 2px; }
@@ -457,6 +458,7 @@ dialog.sheet::backdrop { background: rgba(0, 0, 0, 0.18); }
         <div class="group">
           <div class="row"><span class="lbl">Property pin</span><input class="switch" type="checkbox" id="bHero"></div>
           <div class="row"><span class="lbl">Logo</span><canvas class="logo-thumb" id="bLogoImg" hidden></canvas><button class="btn small" id="bLogoBtn">Choose…</button><button class="btn small" id="bLogoRm" hidden>Remove</button></div>
+          <div class="row"><span class="lbl">Logo only<br><span class="hint" style="margin:0">Property pin shows just the logo</span></span><input class="switch" type="checkbox" id="bLogoOnly"></div>
         </div>
         <input type="file" id="logoInput" accept="image/png,image/svg+xml,image/jpeg,image/webp" hidden>
         <input type="file" id="brandInput" accept="application/json,.json" hidden>
@@ -571,7 +573,7 @@ const FONTS = {
   cormorant: { label: "Cormorant", stack: '"Cormorant Garamond", serif', load: "Cormorant Garamond" },
 };
 const STYLE_NAMES = { classic: "Classic", glass: "Glass", liquid: "Liquid", beacon: "Beacon", editorial: "Editorial", bold: "Bold", tag: "Tag" };
-const BRAND_DEFAULTS = { style: "classic", accent: "#007aff", labelBg: "#ffffff", text: "#1d1d1f", font: "system", weight: 600, upper: false, distance: true, icons: true, catColors: true, size: 1, stem: 1, radius: 0.6, heroOn: true, logo: null };
+const BRAND_DEFAULTS = { style: "classic", accent: "#007aff", labelBg: "#ffffff", text: "#1d1d1f", font: "system", weight: 600, upper: false, distance: true, icons: true, catColors: true, size: 1, stem: 1, radius: 0.6, heroOn: true, logo: null, logoOnly: false };
 const BUILTIN_BRANDS = [
   { id: "classic", name: "Classic", style: "classic" },
   { id: "glass", name: "Glass", style: "glass", labelBg: "#1c1c1e", text: "#ffffff", radius: 0.7 },
@@ -997,6 +999,13 @@ function measurePin(ctx, pin, b, u) {
   const logo = hero ? logoImg(b.logo) : null;
   const padX = (b.style === "liquid" ? 15 : 12) * u * k, padY = (b.style === "liquid" ? 9 : 8) * u * k, gap = 8 * u * k;
   const m = { hero, k, fs1, fs2, track, name, sub, lh1, lh2, textW, textH, logo, padX, padY, gap };
+  if (logo && b.logoOnly) {
+    // Logo-only property pin: the logo, larger, in the style's label (bare for Editorial).
+    m.logoOnly = true; m.logoH = textH * 1.45; m.logoW = Math.min(m.logoH * 6, m.logoH * logo.width / logo.height);
+    if (st === "editorial") { m.w = m.logoW; m.h = m.logoH; }
+    else { m.w = m.logoW + padX * 1.6; m.h = m.logoH + padY * 1.6; }
+    return m;
+  }
   if (st === "editorial") {
     m.logoH = logo ? textH * 1.4 : 0; m.logoW = logo ? m.logoH * logo.width / logo.height : 0;
     m.w = Math.max(textW, m.logoW); m.h = textH + (logo ? m.logoH + 6 * u : 0);
@@ -1093,7 +1102,7 @@ function drawPin(ctx, L, b, src, W, H, selected) {
   if (st !== "editorial") { ctx.shadowColor = "rgba(0,0,0,0.28)"; ctx.shadowBlur = 16 * u; ctx.shadowOffsetY = 4 * u; }
   let ink = b.text, sub = withAlpha(b.text, 0.62), fill = b.labelBg;
   if (st === "classic" || st === "tag") {
-    if (hero) { fill = b.accent; ink = onColor(b.accent); sub = withAlpha(ink, 0.75); }
+    if (hero && !m.logoOnly) { fill = b.accent; ink = onColor(b.accent); sub = withAlpha(ink, 0.75); }
     rrect(ctx, x, y, w, h, r); ctx.fillStyle = fill; ctx.fill();
   } else if (st === "glass") {
     rrect(ctx, x, y, w, h, r); ctx.fillStyle = "rgba(0,0,0,0.001)"; ctx.fill();
@@ -1106,7 +1115,7 @@ function drawPin(ctx, L, b, src, W, H, selected) {
       ctx.drawImage(src, rx * sx, ry * sy, rw * sx, rh * sy, rx, ry, rw, rh);
       ctx.filter = "none";
     }
-    ctx.fillStyle = hero ? withAlpha(b.accent, 0.78) : withAlpha(b.labelBg, FILTER ? 0.42 : 0.7); ctx.fillRect(x, y, w, h);
+    ctx.fillStyle = hero && !m.logoOnly ? withAlpha(b.accent, 0.78) : withAlpha(b.labelBg, FILTER ? 0.42 : 0.7); ctx.fillRect(x, y, w, h);
     ctx.restore();
     rrect(ctx, x + 0.5 * u, y + 0.5 * u, w - u, h - u, r); ctx.strokeStyle = "rgba(255,255,255,0.32)"; ctx.lineWidth = u; ctx.stroke();
     if (hero) { ink = onColor(b.accent); sub = withAlpha(ink, 0.78); }
@@ -1125,7 +1134,7 @@ function drawPin(ctx, L, b, src, W, H, selected) {
       ctx.drawImage(src, srx * sx, sry * sy, sw * sx, sh * sy, cx - bw / 2, cy - bh / 2, bw, bh);
       ctx.filter = "none";
     }
-    ctx.fillStyle = hero ? withAlpha(b.accent, 0.45) : withAlpha(b.labelBg, 0.1); ctx.fillRect(x, y, w, h);
+    ctx.fillStyle = hero && !m.logoOnly ? withAlpha(b.accent, 0.45) : withAlpha(b.labelBg, 0.1); ctx.fillRect(x, y, w, h);
     // Like Apple's glass, shade a little more over bright backgrounds so white text still reads.
     const lum = src ? brightnessBehind(src, W, H, x, y, w, h) : 0.5;
     ctx.fillStyle = `rgba(0,0,0,${(0.07 + clamp((lum - 0.5) * 0.75, 0, 0.3)).toFixed(3)})`; ctx.fillRect(x, y, w, h);
@@ -1161,7 +1170,10 @@ function drawPin(ctx, L, b, src, W, H, selected) {
   if (st === "liquid") { ctx.shadowColor = "rgba(0,0,0,0.45)"; ctx.shadowBlur = 6 * u; ctx.shadowOffsetY = 1 * u; }
 
   // contents
-  if (st === "editorial") {
+  if (m.logoOnly) {
+    if (st !== "editorial") { ctx.shadowColor = "transparent"; ctx.shadowBlur = 0; ctx.shadowOffsetY = 0; }
+    ctx.drawImage(m.logo, x + (w - m.logoW) / 2, y + (h - m.logoH) / 2, m.logoW, m.logoH);
+  } else if (st === "editorial") {
     let ty = y;
     if (m.logo) { ctx.drawImage(m.logo, x + (w - m.logoW) / 2, y, m.logoW, m.logoH); ty += m.logoH + 6 * u; }
     drawText(ctx, m, b, x + w / 2, ty, b.text, withAlpha(b.text, 0.85), "center");
@@ -1407,6 +1419,7 @@ function renderBrand() {
   $("#bFont").innerHTML = Object.entries(FONTS).map(([k, f]) => `<option value="${k}" ${k === b.font ? "selected" : ""}>${f.label}</option>`).join("");
   $("#bSize").value = b.size; $("#bStem").value = b.stem; $("#bRadius").value = b.radius;
   $("#bDistance").checked = b.distance; $("#bIcons").checked = b.icons; $("#bCatColors").checked = b.catColors; $("#bUpper").checked = b.upper; $("#bHero").checked = b.heroOn;
+  $("#bLogoOnly").checked = !!b.logoOnly && !!b.logo; $("#bLogoOnly").disabled = !b.logo;
   const lc = $("#bLogoImg"), li = logoImg(b.logo);
   lc.hidden = !li;
   if (li) { lc.height = 48; lc.width = Math.round(48 * li.width / li.height); lc.style.width = lc.width / 2 + "px"; lc.style.height = "24px"; lc.getContext("2d").drawImage(li, 0, 0, lc.width, lc.height); }
@@ -1458,6 +1471,7 @@ $("#bIcons").onchange = e => editBrand({ icons: e.target.checked });
 $("#bCatColors").onchange = e => editBrand({ catColors: e.target.checked });
 $("#bUpper").onchange = e => editBrand({ upper: e.target.checked });
 $("#bHero").onchange = e => editBrand({ heroOn: e.target.checked });
+$("#bLogoOnly").onchange = e => editBrand({ logoOnly: e.target.checked });
 $("#bLogoBtn").onclick = () => $("#logoInput").click();
 $("#bLogoRm").onclick = () => editBrand({ logo: null });
 $("#logoInput").onchange = async e => {
@@ -1465,7 +1479,7 @@ $("#logoInput").onchange = async e => {
   let im;
   try { im = await decodeImage(f); } catch { flash("That logo file didn't open. Try a PNG."); return; }
   const iw = im.naturalWidth || im.width || 600, ih = im.naturalHeight || im.height || 300;
-  const s = Math.min(1, 600 / Math.max(iw, ih));
+  const s = Math.min(1, 1200 / Math.max(iw, ih));
   const c = document.createElement("canvas"); c.width = Math.round(iw * s); c.height = Math.round(ih * s);
   c.getContext("2d").drawImage(im, 0, 0, c.width, c.height);
   editBrand({ logo: c.toDataURL("image/png") });
