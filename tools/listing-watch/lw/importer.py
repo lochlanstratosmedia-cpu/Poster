@@ -26,6 +26,12 @@ FIELDS = {
         ("price", "Price / price guide", False),
         ("property_type", "Property type", False),
         ("bedrooms", "Bedrooms", False),
+        ("bathrooms", "Bathrooms", False),
+        ("car_spaces", "Car spaces", False),
+        ("land_size", "Land size (m²)", False),
+        ("owner_type", "Owner type", False),
+        ("listing_type", "Sale method", False),
+        ("first_price", "First listed price", False),
         ("url", "Listing link", False),
     ],
     "contacts": [
@@ -41,8 +47,20 @@ FIELDS = {
         ("postcode", "Postcode", False),
         ("do_not_contact", "Do not contact flag", False),
         ("tags", "Tags", False),
+        ("source", "Lead source", False),
+        ("last_note", "Last note", False),
+        ("last_note_at", "Last note date", False),
+        ("last_note_by", "Last note by", False),
+        ("contact_owner", "Contact owner (staff)", False),
         ("notes", "Notes", False),
     ],
+}
+
+# Extra fields kept with each record for the contact sheet. They never change
+# who gets matched or called.
+EXTRA_FIELDS = {
+    "listings": ["bathrooms", "car_spaces", "land_size", "owner_type", "listing_type", "first_price"],
+    "contacts": ["tags", "source", "last_note", "last_note_at", "last_note_by", "contact_owner"],
 }
 
 # Header words that suggest a field. Checked in order; first match wins.
@@ -70,6 +88,17 @@ HINTS = {
     "do_not_contact": ["do not contact", "do not call", "dnc", "opt out", "unsubscribed"],
     "notes": ["notes", "comments", "comment"],
     "tags": ["tags", "tag", "categories", "groups"],
+    "bathrooms": ["bathrooms", "baths", "bath"],
+    "car_spaces": ["car spaces", "carspaces", "parking", "garages", "cars", "car"],
+    "land_size": ["land size m2", "land size m²", "land size", "land area", "land"],
+    "owner_type": ["owner type", "occupancy"],
+    "listing_type": ["listing type", "sale method", "method of sale", "sale type"],
+    "first_price": ["first listed price", "original price"],
+    "source": ["enquiry source", "lead source", "marketing enquiry source", "source"],
+    "last_note": ["last note content", "last note", "latest note"],
+    "last_note_at": ["last note created at", "last note date", "last contacted", "last contact date"],
+    "last_note_by": ["last note created by", "last note by"],
+    "contact_owner": ["audit owned by", "owned by", "contact owner", "account manager"],
 }
 
 # Header words that rule a column out for a field, e.g. a CRM's "marketing
@@ -79,6 +108,9 @@ EXCLUDE = {
     "email": ["company", "secondary"], "phone": ["company", "fax"], "phone2": ["company", "fax"],
     "address": ["email", "postal", "mailing"], "name": ["company", "legal", "salutation", "addressee", "formal"],
     "notes": ["created", "by"],
+    "property_type": ["listing", "owner", "sale"],
+    "price": ["first"],
+    "land_size": ["use"],
 }
 
 
@@ -291,6 +323,28 @@ def _safe_date(y, mo, d):
         return None
 
 
+def split_phone(text):
+    """Split a CRM phone field into (number, label, note).
+
+    "0432 410 535 - Ranni" -> ("0432 410 535", "Ranni", "")
+    "(DECEASED) Thomas"    -> ("", "", "(DECEASED) Thomas")
+    Text with no usable number comes back as a note so it can be shown to the
+    agent instead of being printed as if it were a phone number."""
+    raw = (text or "").strip()
+    if not raw:
+        return "", "", ""
+    if len(re.sub(r"\D", "", raw)) < 8:
+        return "", "", raw
+    m = re.match(r"^([\d\s()+.]+?)\s*(?:[-\u2013:,/]\s*|\s+)([A-Za-z].*)$", raw)
+    if m and len(re.sub(r"\D", "", m.group(1))) >= 8:
+        return clean_phone(m.group(1)), m.group(2).strip(), ""
+    return clean_phone(raw), "", ""
+
+
+PHONE_DNC = re.compile(r"do\s*not\s*(call|contact)|\bdnc\b", re.I)
+PHONE_DANGER = re.compile(r"deceased|passed away|\bdied\b|do\s*not\s*(call|contact)|\bdnc\b|wrong number|disconnected", re.I)
+
+
 def clean_phone(text):
     """Format Australian numbers consistently so they are easy to read aloud."""
     raw = (text or "").strip()
@@ -312,9 +366,16 @@ def truthy(text):
 
 # ---------- building records ----------
 
+def _extras(kind, get):
+    return {f: get(None, f) for f in EXTRA_FIELDS[kind] if get(None, f) not in ("", "-")}
+
+
 def build_records(kind, headers, rows, mapping, today, date_order="DMY"):
     """Return (records, problems). problems is a list of (row number, reason)."""
+    current = {"row": []}
+
     def get(row, field):
+        row = current["row"] if row is None else row
         i = mapping.get(field)
         if i is None or i >= len(row):
             return ""
@@ -324,6 +385,7 @@ def build_records(kind, headers, rows, mapping, today, date_order="DMY"):
     for n, row in enumerate(rows, start=2):  # row 1 is the header
         if not any(c.strip() for c in row):
             continue
+        current["row"] = row
         addr = get(row, "address")
         parts = address.parse(addr, get(row, "suburb"), get(row, "state"), get(row, "postcode"))
         if not parts["number"] or not parts["street"]:
@@ -359,20 +421,32 @@ def build_records(kind, headers, rows, mapping, today, date_order="DMY"):
                 continue
             rec.update(agency=agency, agent=get(row, "agent"), listed_date=listed,
                        price=get(row, "price"), property_type=get(row, "property_type"),
-                       bedrooms=get(row, "bedrooms"), url=get(row, "url"))
+                       bedrooms=get(row, "bedrooms"), url=get(row, "url"),
+                       extra=_extras(kind, get))
         else:
             name = get(row, "name") or " ".join(filter(None, [get(row, "first_name"), get(row, "last_name")]))
             if not name:
                 problems.append((n, "No owner name"))
                 continue
-            phone, phone2, email = clean_phone(get(row, "phone")), clean_phone(get(row, "phone2")), get(row, "email")
-            if phone == phone2:
-                phone2 = ""
-            if not phone:
-                phone, phone2 = phone2, ""
+            extra = _extras(kind, get)
+            numbers, phone_notes = [], []
+            for field in ("phone", "phone2"):
+                num, label, note = split_phone(get(row, field))
+                if note:
+                    phone_notes.append(note)
+                elif num and num not in [n for n, _ in numbers]:
+                    numbers.append((num, label))
+            numbers += [("", "")] * (2 - len(numbers))
+            (phone, label1), (phone2, label2) = numbers[:2]
+            if label1 or label2:
+                extra["phone_labels"] = [label1, label2]
+            if phone_notes:
+                extra["phone_notes"] = phone_notes
+            email = get(row, "email")
             tags = get(row, "tags").lower()
-            tag_dnc = bool(re.search(r"do not (contact|call)|\bdnc\b", tags))
+            tag_dnc = bool(re.search(r"do not (contact|call)|\bdnc\b", tags)) or any(PHONE_DNC.search(n) for n in phone_notes)
             rec.update(name=name, phone=phone, phone2=phone2, email=email,
-                       do_not_contact=truthy(get(row, "do_not_contact")) or tag_dnc, notes=get(row, "notes"))
+                       do_not_contact=truthy(get(row, "do_not_contact")) or tag_dnc, notes=get(row, "notes"),
+                       extra=extra)
         records.append(rec)
     return records, problems

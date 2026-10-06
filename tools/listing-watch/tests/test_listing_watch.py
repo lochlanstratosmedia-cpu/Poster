@@ -93,6 +93,16 @@ class ImporterTests(unittest.TestCase):
         recs, _ = importer.build_records("contacts", headers, rows, m, TODAY)
         self.assertTrue(recs[0]["do_not_contact"])
 
+    def test_phone_fields_keep_labels_and_flag_notes(self):
+        self.assertEqual(importer.split_phone("0432 410 535 - Ranni"), ("0432 410 535", "Ranni", ""))
+        self.assertEqual(importer.split_phone("(DECEASED) Thomas"), ("", "", "(DECEASED) Thomas"))
+        headers = ["Name", "Address", "Mobile", "Phone 2"]
+        m = importer.guess_mapping("contacts", headers)
+        recs, _ = importer.build_records("contacts", headers, [["A", "1 A St, X", "0491 570 001 - Pat", "DO NOT CALL"]], m, TODAY)
+        self.assertEqual(recs[0]["phone"], "0491 570 001")
+        self.assertEqual(recs[0]["extra"]["phone_labels"], ["Pat", ""])
+        self.assertTrue(recs[0]["do_not_contact"], "a phone field saying do not call marks the owner")
+
     def test_phone_format(self):
         self.assertEqual(importer.clean_phone("+61412345678"), "0412 345 678")
         self.assertEqual(importer.clean_phone("0298765432"), "(02) 9876 5432")
@@ -267,6 +277,22 @@ class FlowTests(unittest.TestCase):
         with self.o.conn:
             engine.review_match(self.o.conn, lead["id"], cid, "reject", "Boss")
         self.assertEqual(self.o.lead("8 Bay")["match"], "none")
+
+    def test_approach_sheet_shows_warnings_and_hold_dates(self):
+        from lw import server
+        rows = [["Name", "Mobile", "Other phone", "Address", "Suburb", "Tags"],
+                ["Pat Owner", "0491570001", "(DECEASED) Chris", "12 Smith Street", "Northvale", "Buyer, GREEN"],
+                ["Lee Owner", "0491570002", "", "Unit 3, 5 Hill Road", "Northvale", ""]]
+        self.o.load("contacts", rows)
+        self.o.load("listings", listings(TODAY, smith=80, hill=50))
+        st = db.get_settings(self.o.conn)
+        dd = {"today": TODAY.isoformat(), "listings": TODAY.isoformat()}
+        page = server.approach_pages([self.o.lead("12 Smith"), self.o.lead("3/5 Hill")], st, dd)
+        self.assertIn("READY TO CALL", page)
+        self.assertIn("(DECEASED) Chris. Do not ask for this person.", page)
+        self.assertIn("In our database · Buyer · GREEN", page)
+        self.assertIn("DO NOT CALL BEFORE", page)
+        self.assertIn("Estimated to", page)
 
     def test_release_and_reassign(self):
         self.o.load("listings", listings(TODAY, smith=80))

@@ -127,11 +127,19 @@ const FIELDS = {
   listings: [["address", "Property address", true], ["suburb", "Suburb", false], ["state", "State", false],
     ["postcode", "Postcode", false], ["agency", "Listing agency", true], ["agent", "Listing agent", false],
     ["listed_date", "Date listed", false], ["days_on_market", "Days on market", false], ["price", "Price / price guide", false],
-    ["property_type", "Property type", false], ["bedrooms", "Bedrooms", false], ["url", "Listing link", false]],
+    ["property_type", "Property type", false], ["bedrooms", "Bedrooms", false], ["bathrooms", "Bathrooms", false],
+    ["car_spaces", "Car spaces", false], ["land_size", "Land size (m²)", false], ["owner_type", "Owner type", false],
+    ["listing_type", "Sale method", false], ["first_price", "First listed price", false], ["url", "Listing link", false]],
   contacts: [["name", "Owner name", true], ["first_name", "First name", false], ["last_name", "Last name", false],
     ["phone", "Phone (mobile)", false], ["phone2", "Other phone", false], ["email", "Email", false],
     ["address", "Property address", true], ["suburb", "Suburb", false], ["state", "State", false], ["postcode", "Postcode", false],
-    ["do_not_contact", "Do not contact flag", false], ["tags", "Tags", false], ["notes", "Notes", false]],
+    ["do_not_contact", "Do not contact flag", false], ["tags", "Tags", false], ["source", "Lead source", false],
+    ["last_note", "Last note", false], ["last_note_at", "Last note date", false], ["last_note_by", "Last note by", false],
+    ["contact_owner", "Contact owner (staff)", false], ["notes", "Notes", false]],
+};
+const EXTRA_FIELDS = {
+  listings: ["bathrooms", "car_spaces", "land_size", "owner_type", "listing_type", "first_price"],
+  contacts: ["tags", "source", "last_note", "last_note_at", "last_note_by", "contact_owner"],
 };
 const HINTS = {
   listed_date: ["first listed date", "date listed", "listed date", "listing date", "list date", "date on market", "first listed", "listed on", "listed"],
@@ -147,11 +155,18 @@ const HINTS = {
   phone2: ["home phone", "work phone", "phone 2", "other phone", "landline"], email: ["email", "e-mail", "email address"],
   do_not_contact: ["do not contact", "do not call", "dnc", "opt out", "unsubscribed"], notes: ["notes", "comments", "comment"],
   tags: ["tags", "tag", "categories", "groups"],
+  bathrooms: ["bathrooms", "baths", "bath"], car_spaces: ["car spaces", "carspaces", "parking", "garages", "cars", "car"],
+  land_size: ["land size m2", "land size m²", "land size", "land area", "land"], owner_type: ["owner type", "occupancy"],
+  listing_type: ["listing type", "sale method", "method of sale", "sale type"], first_price: ["first listed price", "original price"],
+  source: ["enquiry source", "lead source", "marketing enquiry source", "source"], last_note: ["last note content", "last note", "latest note"],
+  last_note_at: ["last note created at", "last note date", "last contacted", "last contact date"],
+  last_note_by: ["last note created by", "last note by"], contact_owner: ["audit owned by", "owned by", "contact owner", "account manager"],
 };
 const EXCLUDE = {
   postcode: ["marketing", "interest"], suburb: ["marketing", "interest"], email: ["company", "secondary"],
   phone: ["company", "fax"], phone2: ["company", "fax"], address: ["email", "postal", "mailing"],
   name: ["company", "legal", "salutation", "addressee", "formal"], notes: ["created", "by"],
+  property_type: ["listing", "owner", "sale"], price: ["first"], land_size: ["use"],
 };
 
 function readCsv(text) {
@@ -235,11 +250,22 @@ function cleanPhone(text) {
   if (d.length === 8) return `${d.slice(0, 4)} ${d.slice(4)}`;
   return raw;
 }
+const PHONE_DNC = /do\s*not\s*(call|contact)|\bdnc\b/i;
+const PHONE_DANGER = /deceased|passed away|\bdied\b|do\s*not\s*(call|contact)|\bdnc\b|wrong number|disconnected/i;
+function splitPhone(text) {
+  const raw = String(text || "").trim();
+  if (!raw) return ["", "", ""];
+  if (raw.replace(/\D/g, "").length < 8) return ["", "", raw];
+  const m = raw.match(/^([\d\s()+.]+?)\s*(?:[-\u2013:,/]\s*|\s+)([A-Za-z].*)$/);
+  if (m && m[1].replace(/\D/g, "").length >= 8) return [cleanPhone(m[1]), m[2].trim(), ""];
+  return [cleanPhone(raw), "", ""];
+}
 const truthy = (t) => ["y", "yes", "true", "1", "x", "dnc", "do not contact", "do not call", "opted out", "unsubscribed"].includes(String(t || "").trim().toLowerCase());
 
 function buildRecords(kind, headers, rows, mapping, today, order) {
   const get = (row, f) => { const i = mapping[f]; return i == null || i >= row.length ? "" : row[i].trim(); };
   const records = [], problems = [];
+  const extras = (row) => Object.fromEntries(EXTRA_FIELDS[kind].map((f) => [f, get(row, f)]).filter(([, v]) => v && v !== "-"));
   rows.forEach((row, idx) => {
     const n = idx + 2;
     if (!row.some((c) => c.trim())) return;
@@ -262,15 +288,22 @@ function buildRecords(kind, headers, rows, mapping, today, order) {
       if (listed > today) { problems.push([n, `Listed date ${fmt(listed, "dmy")} is in the future. Check the date format setting (day/month or month/day)`]); return; }
       if (diffDays(today, listed) > 3 * 365) { problems.push([n, `Listed date ${fmt(listed, "dmy")} is more than 3 years ago, which looks wrong`]); return; }
       Object.assign(rec, { agency, agent: get(row, "agent"), listed_date: listed, price: get(row, "price"),
-        property_type: get(row, "property_type"), bedrooms: get(row, "bedrooms"), url: get(row, "url") });
+        property_type: get(row, "property_type"), bedrooms: get(row, "bedrooms"), url: get(row, "url"), extra: extras(row) });
     } else {
       const name = get(row, "name") || [get(row, "first_name"), get(row, "last_name")].filter(Boolean).join(" ");
       if (!name) { problems.push([n, "No owner name"]); return; }
-      let phone = cleanPhone(get(row, "phone")), phone2 = cleanPhone(get(row, "phone2"));
-      if (phone === phone2) phone2 = "";
-      if (!phone) { phone = phone2; phone2 = ""; }
-      const tagDnc = /do not (contact|call)|\bdnc\b/.test(get(row, "tags").toLowerCase());
-      Object.assign(rec, { name, phone, phone2, email: get(row, "email"), do_not_contact: truthy(get(row, "do_not_contact")) || tagDnc, notes: get(row, "notes") });
+      const extra = extras(row), numbers = [], notes = [];
+      for (const f of ["phone", "phone2"]) {
+        const [num, label, note] = splitPhone(get(row, f));
+        if (note) notes.push(note);
+        else if (num && !numbers.some(([n]) => n === num)) numbers.push([num, label]);
+      }
+      while (numbers.length < 2) numbers.push(["", ""]);
+      const [[phone, l1], [phone2, l2]] = numbers;
+      if (l1 || l2) extra.phone_labels = [l1, l2];
+      if (notes.length) extra.phone_notes = notes;
+      const tagDnc = /do not (contact|call)|\bdnc\b/.test(get(row, "tags").toLowerCase()) || notes.some((n) => PHONE_DNC.test(n));
+      Object.assign(rec, { name, phone, phone2, email: get(row, "email"), do_not_contact: truthy(get(row, "do_not_contact")) || tagDnc, notes: get(row, "notes"), extra });
     }
     records.push(rec);
   });
@@ -293,7 +326,7 @@ const OUTCOMES = {
 const METHODS = { call: "Phone call", sms: "Text message", email: "Email", door: "Door knock", other: "Other" };
 const OPEN = new Set(["assigned", "no_answer", "left_message", "call_back", "appraisal"]);
 const DEFAULT_SETTINGS = { threshold_days: 70, soon_days: 14, our_agencies: [], date_order: "DMY", stale_after_days: 7,
-  timezone: "Australia/Sydney", office_name: "" };
+  timezone: "Australia/Sydney", office_name: "", agreement_days: 90 };
 
 let S;
 function freshState() {
@@ -376,7 +409,7 @@ function commitImport(token, mapping, full, by) {
   if (p.kind === "contacts") {
     if (full) S.contacts = [];
     for (const r of records) S.contacts.push({ id: nextId("contacts"), import_id: imp.id, name: r.name, phone: r.phone, phone2: r.phone2,
-      email: r.email, address_raw: r.address_raw, parts: r.parts, block: blockKey(r.parts), do_not_contact: r.do_not_contact ? 1 : 0, notes: r.notes });
+      email: r.email, address_raw: r.address_raw, parts: r.parts, block: blockKey(r.parts), do_not_contact: r.do_not_contact ? 1 : 0, notes: r.notes, extra: r.extra || {} });
     used = records.length;
   } else {
     const seen = new Set();
@@ -385,7 +418,7 @@ function commitImport(token, mapping, full, by) {
       if (seen.has(k)) { problems.push([r.row, `Same property appears twice in the file (${displayAddr(r.parts)}). Kept the first row`]); continue; }
       seen.add(k); used++;
       const vals = { address_raw: r.address_raw, parts: r.parts, block: blockKey(r.parts), agency: r.agency, agent: r.agent,
-        listed_date: r.listed_date, price: r.price, property_type: r.property_type, bedrooms: r.bedrooms, url: r.url };
+        listed_date: r.listed_date, price: r.price, property_type: r.property_type, bedrooms: r.bedrooms, url: r.url, extra: r.extra || {} };
       const ex = S.listings.find((l) => l.address_key === k);
       if (ex) Object.assign(ex, vals, { last_seen: t, active: 1, off_market_on: null });
       else S.listings.push({ id: nextId("listings"), address_key: k, ...vals, first_seen: t, last_seen: t, active: 1, off_market_on: null });
@@ -478,13 +511,13 @@ function leadRow(lead) {
   const l = listingOf(lead);
   return { ...lead, parts: l.parts, address_key: l.address_key, agency: l.agency, listing_agent: l.agent, listed_date: l.listed_date,
     price: l.price, url: l.url, property_type: l.property_type, bedrooms: l.bedrooms, active: l.active, off_market_on: l.off_market_on,
-    address_raw: l.address_raw, agent_name: agentById(lead.agent_id)?.name || null };
+    address_raw: l.address_raw, listing_extra: l.extra || {}, agent_name: agentById(lead.agent_id)?.name || null };
 }
 function contactsFor(leadId) {
   return (S.leadContacts[leadId] || []).map(({ contact_id, quality }) => {
     const c = S.contacts.find((x) => x.id === contact_id);
     return { id: c.id, name: c.name, phone: c.phone, phone2: c.phone2, email: c.email, quality, do_not_contact: !!c.do_not_contact,
-      notes: c.notes, address: displayAddr(c.parts), address_raw: c.address_raw };
+      notes: c.notes, extra: c.extra || {}, address: displayAddr(c.parts), address_raw: c.address_raw };
   }).sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
 }
 function blockersFor(r, eligible, match, usable) {
@@ -516,7 +549,7 @@ function serialize(leads) {
     return {
       id: r.id, address: displayAddr(p), address_raw: r.address_raw, suburb: title(p.suburb),
       street_sort: `${p.suburb} ${p.street} ${p.number.padStart(6)} ${p.unit.padStart(6)}`,
-      agency: r.agency, listing_agent: r.listing_agent, price: r.price, url: r.url, property_type: r.property_type, bedrooms: r.bedrooms,
+      agency: r.agency, listing_agent: r.listing_agent, price: r.price, url: r.url, property_type: r.property_type, bedrooms: r.bedrooms, extra: r.listing_extra,
       listed_date: r.listed_date, days, hits_on: addDays(r.listed_date, threshold), days_to_go: Math.max(0, threshold - days),
       eligible: days >= threshold, just_hit: !!r.seen_below && threshold <= days && days <= threshold + 3,
       for_sale: !!r.active, off_market_on: r.off_market_on, status: r.status, status_label: label,
@@ -693,6 +726,7 @@ function saveSettings(body, by) {
   requirePerson(by);
   const c = {};
   if ("threshold_days" in body) { const t = parseInt(body.threshold_days, 10); if (!(t >= 1 && t <= 365)) throw new Problem("The day threshold must be between 1 and 365."); c.threshold_days = t; }
+  if ("agreement_days" in body) { const a = parseInt(body.agreement_days || 0, 10); if (!(a >= 0 && a <= 365)) throw new Problem("The agreement length must be between 0 and 365 days (0 turns the estimate off)."); c.agreement_days = a; }
   if ("soon_days" in body) c.soon_days = Math.max(1, Math.min(60, parseInt(body.soon_days, 10) || 14));
   if ("stale_after_days" in body) c.stale_after_days = Math.max(1, Math.min(60, parseInt(body.stale_after_days, 10) || 7));
   if ("our_agencies" in body) { let n = body.our_agencies; if (typeof n === "string") n = n.split("\n"); c.our_agencies = n.map((x) => x.trim()).filter(Boolean); }
@@ -709,27 +743,76 @@ function saveSettings(body, by) {
 // ---------------- the printed sheet, as an in-page preview ----------------
 
 const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-function renderSheet(id) {
-  const s = sheet(id), office = esc(S.settings.office_name || "");
-  const rows = s.leads.map((l, n) => {
-    const warn = !l.for_sale ? "NO LONGER FOR SALE. DO NOT CALL." : l.do_not_contact ? "DO NOT CONTACT." : l.moved ? "MOVED OFF THIS SHEET. DO NOT CALL." : "";
-    const people = l.contacts.filter((c) => c.quality === "exact" || c.quality === "confirmed").map((c) => {
-      const phones = [c.phone, c.phone2].filter(Boolean).map(esc).join(" &middot; ") || '<span class="none">No phone on file</span>';
-      return `<div class="person"><b>${esc(c.name)}</b>${c.do_not_contact ? ' <span class="dnc">DNC</span>' : ""}<div class="phone">${phones}</div>${c.email ? `<div class="email">${esc(c.email)}</div>` : ""}</div>`;
-    }).join("");
-    const listing = [l.property_type, l.bedrooms ? l.bedrooms + " bed" : "", l.price].filter(Boolean).map(esc).join(" &middot; ");
-    return `<tr class="${warn ? "struck" : ""}"><td class="n">${n + 1}</td>
-      <td><div class="addr">${esc(l.address)}</div>${warn ? `<div class="warn">${warn}</div>` : ""}<div class="small">${listing}</div><div class="small">Lead #${l.id}</div></td>
-      <td>${people}</td><td><div class="days">${l.days}</div><div class="small">days listed<br>since ${fmt(l.listed_date, "short")}</div></td>
-      <td><div>${esc(l.agency)}</div><div class="small">${esc(l.listing_agent || "")}</div></td>
-      <td class="boxes"><div>&#9744; No answer &nbsp; &#9744; Left message</div><div>&#9744; Call back: ____/____ &nbsp; &#9744; Appraisal: ____/____</div>
-      <div>&#9744; Not interested &nbsp; &#9744; Wrong number &nbsp; &#9744; Do not contact</div><div class="lines"></div></td></tr>`;
-  }).join("");
-  return `<div class="paper-head"><div><h1>Contact sheet #${s.id}</h1><div>${office}${office ? " &middot; " : ""}Properties listed ${S.settings.threshold_days}+ days with another agency</div></div>
-    <div class="meta">For <b>${esc(s.agent)}</b><br>Made ${fmt(s.created_at.slice(0, 10))} by ${esc(s.created_by)}<br>${s.leads.length} propert${s.leads.length === 1 ? "y" : "ies"}</div></div>
-    <div class="rules">Call only the people on this sheet. Log every call in Listing Watch the same day, including no answers. A row marked DO NOT CALL changed after this sheet was printed: skip it.</div>
-    <div class="paper-scroll"><table><thead><tr><th>#</th><th>Property</th><th>Owner</th><th>Listed</th><th>Current agency</th><th>Outcome</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+const daysPhrase = (n) => (n === 0 ? "today" : n > 0 ? `in ${n} day${n !== 1 ? "s" : ""}` : `${-n} day${n !== -1 ? "s" : ""} ago`);
+const longDate = (iso) => { const [y, m, d] = iso.split("-").map(Number); return `${DOW[new Date(Date.UTC(y, m - 1, d)).getUTCDay()]} ${d} ${MON[m - 1]} ${y}`; };
+function propertyLine(l) {
+  const x = l.extra || {}, beds = l.bedrooms && l.bedrooms !== "-" ? l.bedrooms : "";
+  return [beds ? `${beds} bed` : "", x.bathrooms ? `${x.bathrooms} bath` : "", x.car_spaces ? `${x.car_spaces} car` : "", l.property_type || "", x.land_size ? `${x.land_size}m²` : ""].filter(Boolean).join(" · ");
 }
+function howWeKnow(c) {
+  const x = c.extra || {};
+  const tags = String(x.tags || "").split(/[,;|]/).map((t) => t.trim()).filter((t) => t && !/do not (contact|call)|\bdnc\b/i.test(t));
+  return ["In our database", ...tags.slice(0, 4), x.source ? `source: ${x.source}` : ""].filter(Boolean).join(" · ");
+}
+// Same page as approach_pages() in lw/server.py.
+function approachPages(leads, label, sheetId) {
+  const st = S.settings, T = Number(st.threshold_days), agreement = Number(st.agreement_days || 0), t = today();
+  const office = (st.office_name || "").trim();
+  const lastImport = S.imports.filter((i) => i.kind === "listings").map((i) => i.imported_at).sort().pop();
+  const box = '<span class="box"></span>';
+  return leads.map((l, i) => {
+    const x = l.extra || {};
+    let status;
+    if (!l.for_sale) status = '<div class="status stop">NO LONGER FOR SALE. DO NOT CALL.</div>';
+    else if (l.do_not_contact) status = '<div class="status stop">DO NOT CONTACT THIS OWNER.</div>';
+    else if (l.moved) status = `<div class="status stop">MOVED OFF THIS SHEET. DO NOT CALL.<small>${l.agent_name ? esc("Now with " + l.agent_name) : ""}</small></div>`;
+    else if (!l.eligible) status = `<div class="status hold">DO NOT CALL BEFORE ${longDate(l.hits_on).toUpperCase()}<small>Listed ${l.days} days. It reaches ${T} days on that date.</small></div>`;
+    else status = `<div class="status go">READY TO CALL<small>Listed ${l.days} days with another agency</small></div>`;
+    let asking = esc(l.price || "Not shown");
+    if (x.first_price && x.first_price !== l.price) asking += ` <small>(first listed at ${esc(x.first_price)})</small>`;
+    const rows = [["Property", esc(propertyLine(l)) || "Not shown"], ["Asking now", asking], ["On the market", `${l.days} days`],
+      ["First listed", esc(longDate(l.listed_date))], ["Currently with", esc(l.agency + (l.listing_agent ? ` · ${l.listing_agent}` : ""))]];
+    if (x.listing_type) rows.push(["Sale method", esc(x.listing_type)]);
+    if (x.owner_type) rows.push(["Owner type", esc(x.owner_type)]);
+    if (agreement) {
+      const ends = addDays(l.listed_date, agreement), gap = diffDays(ends, t);
+      rows.push(["Agency agreement", `Estimated to ${gap >= 0 ? "lapse" : "have lapsed"} ${esc(longDate(ends))}, ${daysPhrase(gap)} <small>(assumes ${agreement} days)</small>`]);
+    }
+    if (l.url) rows.push(["Listing", `<span class="link">${esc(l.url)}</span>`]);
+    const owners = l.contacts.filter((c) => c.quality === "exact" || c.quality === "confirmed").map((c) => {
+      const cx = c.extra || {}, labels = cx.phone_labels || ["", ""], pn = cx.phone_notes || [];
+      const warns = pn.filter((n) => PHONE_DANGER.test(n)).map((n) => `<div class="warn">CRM phone note: ${esc(n.replace(/[.\s]+$/, ""))}.${/deceas|passed away|died/i.test(n) ? " Do not ask for this person." : ""}</div>`).join("");
+      let phones = [[c.phone, labels[0]], [c.phone2, labels[1]]].filter(([p]) => p).map(([p, lab]) => `<div class="phone">${esc(p)}${lab ? `<small>${esc(lab)}</small>` : ""}</div>`).join("");
+      phones += pn.filter((n) => !PHONE_DANGER.test(n)).map((n) => `<div class="pnote">Note in CRM phone field: ${esc(n)}</div>`).join("");
+      const orow = [["Owner", `<b>${esc(c.name)}</b>`], ["Phone", phones || '<b style="color:#b3261e">No phone on file</b>']];
+      if (c.email) orow.push(["Email", esc(c.email)]);
+      orow.push(["How we know them", esc(howWeKnow(c))]);
+      if (cx.contact_owner) orow.push(["Contact owner", esc(cx.contact_owner)]);
+      if (cx.last_note) {
+        const when = String(cx.last_note_at || "").slice(0, 10);
+        const meta = [/^\d{4}-\d{2}-\d{2}$/.test(when) ? longDate(when) : when, cx.last_note_by || ""].filter(Boolean).join(", ");
+        let note = cx.last_note.trim().replace(/\n/g, " ");
+        if (note.length > 320) note = note.slice(0, 317).replace(/\s+\S*$/, "") + "...";
+        orow.push(["Last note", `${esc(meta)}<br><span class="quote">"${esc(note)}"</span>`]);
+      }
+      orow.push(["In our CRM as", `<small>${esc(c.address_raw.split(/\s+/).join(" "))}</small>`]);
+      return `<div class="owner">${warns}<dl>${orow.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join("")}</dl></div>`;
+    }).join("");
+    const right = [lastImport ? `For-sale data to ${Number(lastImport.slice(8, 10))} ${MON[Number(lastImport.slice(5, 7)) - 1]} ${lastImport.slice(0, 4)}` : "", sheetId ? `Sheet #${sheetId}` : "", `${i + 1} of ${leads.length}`].filter(Boolean).join(" · ");
+    const [street, ...rest] = l.address.split(", ");
+    return `<section class="sheet"><div class="top"><span>${esc(office ? office.toUpperCase() + " · " : "")}Approach sheet</span><span>${esc(right)}</span></div>
+<h1>${esc(street)}</h1><div class="suburb">${esc(rest.join(", "))}</div>${status}
+<h2>The listing</h2><dl>${rows.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join("")}</dl>
+<h2>The owner</h2>${owners || "<p>No confirmed owner.</p>"}
+<h2>Before you make contact</h2><div class="checks"><div>${box}Checked against the Do Not Call Register</div><div>${box}Confirmed it is still on the market</div><div>${box}Checked the agreement has lapsed</div><div>${box}Read the last note above</div></div>
+<div class="given"><div>Agent: ${esc(label || "")}</div><div>Date given:</div></div>
+<h2>The call</h2><table class="log"><tr><th style="width:24%">Date and time</th><th style="width:26%">Number called</th><th>What happened</th></tr>${"<tr><td></td><td></td><td></td></tr>".repeat(3)}</table>
+<div class="outcomes">${["No answer", "Left message", "Call back on ________", "Appraisal booked ________", "Not interested", "Wrong number", "Asked not to be contacted"].map((o) => `<span>${box}${o}</span>`).join("")}</div>
+<div class="lines"><div></div><div></div><div></div></div>
+<div class="foot">Owner matched on the exact property address in our CRM. Log every call in Listing Watch the same day, including no answers. Lead #${l.id}.</div></section>`;
+  }).join("");
+}
+function renderSheet(id) { const s = sheet(id); return approachPages(s.leads, s.agent, s.id); }
 
 // ---------------- made-up demo data (port of lw/demo.py) ----------------
 
@@ -834,6 +917,7 @@ function route(method, path, qs, body, person) {
 // The real build embeds an export as window.LW_SEED; the demo build doesn't.
 function loadSeed(seed) {
   S = freshState();
+  Object.assign(S.settings, seed.settings || {});
   // Import as of the export's own date, then run today's check, so anything
   // that reached the threshold since the export raises a notification.
   TODAY_OVERRIDE = seed.date;

@@ -175,10 +175,10 @@ def commit_import(token, mapping, full_snapshot, by, conn):
         for r in records:
             p = r["parts"]
             conn.execute(
-                "INSERT INTO contacts(import_id, name, phone, phone2, email, address_raw, parts, block, do_not_contact, notes) "
-                "VALUES (?,?,?,?,?,?,?,?,?,?)",
+                "INSERT INTO contacts(import_id, name, phone, phone2, email, address_raw, parts, block, do_not_contact, notes, extra) "
+                "VALUES (?,?,?,?,?,?,?,?,?,?,?)",
                 (import_id, r["name"], r["phone"], r["phone2"], r["email"], r["address_raw"],
-                 json.dumps(p), json.dumps(address.block_key(p)), int(r["do_not_contact"]), r["notes"]))
+                 json.dumps(p), json.dumps(address.block_key(p)), int(r["do_not_contact"]), r["notes"], json.dumps(r["extra"])))
         used = len(records)
     else:
         seen, used = set(), 0
@@ -191,17 +191,17 @@ def commit_import(token, mapping, full_snapshot, by, conn):
             used += 1
             p = r["parts"]
             vals = (r["address_raw"], json.dumps(p), json.dumps(address.block_key(p)), r["agency"], r["agent"],
-                    r["listed_date"].isoformat(), r["price"], r["property_type"], r["bedrooms"], r["url"])
+                    r["listed_date"].isoformat(), r["price"], r["property_type"], r["bedrooms"], r["url"], json.dumps(r["extra"]))
             existing = conn.execute("SELECT id FROM listings WHERE address_key = ?", (k,)).fetchone()
             if existing:
                 conn.execute(
                     "UPDATE listings SET address_raw=?, parts=?, block=?, agency=?, agent=?, listed_date=?, price=?, "
-                    "property_type=?, bedrooms=?, url=?, last_seen=?, active=1, off_market_on=NULL WHERE id=?",
+                    "property_type=?, bedrooms=?, url=?, extra=?, last_seen=?, active=1, off_market_on=NULL WHERE id=?",
                     vals + (t.isoformat(), existing["id"]))
             else:
                 conn.execute(
                     "INSERT INTO listings(address_raw, parts, block, agency, agent, listed_date, price, property_type, "
-                    "bedrooms, url, address_key, first_seen, last_seen) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                    "bedrooms, url, extra, address_key, first_seen, last_seen) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                     vals + (k, t.isoformat(), t.isoformat()))
         if full_snapshot:
             gone = [row["id"] for row in conn.execute("SELECT id, address_key FROM listings WHERE active = 1")
@@ -348,7 +348,7 @@ def _lead_rows(conn, where="1=1", params=()):
     return conn.execute(
         f"SELECT leads.*, listings.parts, listings.address_key, listings.agency, listings.agent AS listing_agent, "
         f"listings.listed_date, listings.price, listings.url, listings.property_type, listings.bedrooms, "
-        f"listings.active, listings.off_market_on, listings.address_raw, agents.name AS agent_name "
+        f"listings.active, listings.off_market_on, listings.address_raw, listings.extra AS listing_extra, agents.name AS agent_name "
         f"FROM leads JOIN listings ON listings.id = leads.listing_id "
         f"LEFT JOIN agents ON agents.id = leads.agent_id WHERE {where}", params).fetchall()
 
@@ -366,6 +366,7 @@ def _contacts_for(conn, lead_ids):
             out[r["lead_id"]].append({
                 "id": r["id"], "name": r["name"], "phone": r["phone"], "phone2": r["phone2"], "email": r["email"],
                 "quality": r["quality"], "do_not_contact": bool(r["do_not_contact"]), "notes": r["notes"],
+                "extra": json.loads(r["extra"] or "{}"),
                 "address": address.display(json.loads(r["parts"])), "address_raw": r["address_raw"]})
     return out
 
@@ -401,6 +402,7 @@ def serialize(conn, rows):
             "suburb": parts["suburb"].title(), "street_sort": f"{parts['suburb']} {parts['street']} {parts['number']:>6} {parts['unit']:>6}",
             "agency": r["agency"], "listing_agent": r["listing_agent"], "price": r["price"], "url": r["url"],
             "property_type": r["property_type"], "bedrooms": r["bedrooms"],
+            "extra": json.loads(r["listing_extra"] or "{}"),
             "listed_date": r["listed_date"], "days": days, "hits_on": hits_on.isoformat(),
             "days_to_go": max(0, threshold - days), "eligible": days >= threshold,
             "just_hit": bool(r["seen_below"]) and threshold <= days <= threshold + 3,

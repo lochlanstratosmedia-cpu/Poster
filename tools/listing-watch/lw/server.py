@@ -13,11 +13,11 @@ import re
 import threading
 import time
 import traceback
-from datetime import date
+from datetime import date, timedelta
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, unquote, urlparse
 
-from . import db, engine
+from . import db, engine, importer
 
 STATIC = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "static")
 LOCK = threading.Lock()
@@ -191,6 +191,11 @@ def save_settings(conn, body, by):
         clean["threshold_days"] = t
     if "soon_days" in body:
         clean["soon_days"] = max(1, min(60, int(body["soon_days"])))
+    if "agreement_days" in body:
+        a = int(body["agreement_days"] or 0)
+        if not 0 <= a <= 365:
+            raise engine.Problem("The agreement length must be between 0 and 365 days (0 turns the estimate off).")
+        clean["agreement_days"] = a
     if "stale_after_days" in body:
         clean["stale_after_days"] = max(1, min(60, int(body["stale_after_days"])))
     if "our_agencies" in body:
@@ -221,87 +226,183 @@ def _fmt_date(iso, fmt="%a %d %b %Y"):
     return date.fromisoformat(iso).strftime(fmt) if iso else ""
 
 
+def _days_phrase(n):
+    if n == 0:
+        return "today"
+    return f"in {n} day{'s' if n != 1 else ''}" if n > 0 else f"{-n} day{'s' if n != -1 else ''} ago"
+
+
+SHEET_CSS = """
+@page { size: A4 portrait; margin: 11mm 12mm; }
+* { box-sizing: border-box; }
+body { margin: 0; padding: 16px; background: #fff; color: #1d1d1f;
+  font: 10.5pt/1.38 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", Arial, sans-serif; -webkit-font-smoothing: antialiased; }
+.toolbar { margin-bottom: 14px; display: flex; gap: 8px; flex-wrap: wrap; }
+.toolbar button, .toolbar a { font: 500 14px/1 inherit; padding: 10px 18px; border: 0; background: #007aff; color: #fff; border-radius: 980px; cursor: pointer; text-decoration: none; }
+.toolbar a { background: rgba(118,118,128,.12); color: #007aff; }
+.sheet { max-width: 186mm; margin: 0 auto 28px; page-break-after: always; break-after: page; }
+.sheet:last-child { page-break-after: auto; break-after: auto; }
+.top { display: flex; justify-content: space-between; gap: 12px; align-items: baseline; border-bottom: 2px solid #1d1d1f; padding-bottom: 5px; font-size: 8.5pt; letter-spacing: .1em; text-transform: uppercase; font-weight: 600; }
+.top span:last-child { letter-spacing: .02em; text-transform: none; font-weight: 500; color: #3a3a3c; }
+h1 { font-size: 23pt; line-height: 1.1; margin: 12px 0 1px; letter-spacing: -.02em; }
+.suburb { font-size: 11pt; letter-spacing: .08em; text-transform: uppercase; font-weight: 600; }
+.status { margin: 10px 0 2px; padding: 7px 12px; border-radius: 8px; font-weight: 700; font-size: 11.5pt; display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; align-items: baseline; }
+.status small { font-weight: 500; font-size: 9pt; }
+.go { background: #e8f6ec; color: #1d6b3a; border: 1.5px solid #34c759; }
+.hold { background: #fff1f0; color: #b3261e; border: 2px solid #ff3b30; }
+.stop { background: #1d1d1f; color: #fff; }
+h2 { font-size: 8.5pt; letter-spacing: .14em; text-transform: uppercase; font-weight: 600; margin: 13px 0 3px; padding-bottom: 3px; border-bottom: 1px solid #8e8e93; }
+dl { display: grid; grid-template-columns: 40mm 1fr; gap: 3px 10px; margin: 5px 0 0; font-size: 10.5pt; }
+dt { color: #3a3a3c; }
+dd { margin: 0; font-weight: 500; }
+dd small { color: #6e6e73; font-weight: 400; }
+.phone { font-size: 14pt; font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: .01em; }
+.phone small { font-size: 9pt; font-weight: 500; color: #6e6e73; margin-left: 6px; letter-spacing: 0; }
+.quote { font-style: italic; }
+.owner + .owner { margin-top: 8px; padding-top: 8px; border-top: 1px dashed #c7c7cc; }
+.warn { background: #ff3b30; color: #fff; font-weight: 700; padding: 3px 8px; border-radius: 5px; margin: 5px 0 2px; font-size: 9.5pt; }
+.pnote { color: #6e6e73; font-size: 9pt; }
+.checks { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size: 9.5pt; display: grid; grid-template-columns: 1fr 1fr; gap: 5px 14px; margin-top: 6px; }
+.box { display: inline-block; width: 11px; height: 11px; border: 1.3px solid #1d1d1f; margin-right: 7px; vertical-align: -1px; }
+.given { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 9px; font-size: 9pt; color: #3a3a3c; }
+.given div { border-bottom: 1px solid #8e8e93; padding-bottom: 12px; }
+table.log { width: 100%; border-collapse: collapse; margin-top: 4px; }
+.log th { font-size: 8pt; text-align: left; color: #6e6e73; font-weight: 600; padding: 2px 4px; border-bottom: 1px solid #1d1d1f; }
+.log td { border-bottom: 1px solid #c7c7cc; height: 21px; }
+.outcomes { font-size: 9pt; margin: 6px 0 0; line-height: 1.75; }
+.outcomes span { white-space: nowrap; margin-right: 12px; }
+.lines div { border-bottom: 1px solid #c7c7cc; height: 21px; }
+.foot { margin-top: 8px; font-size: 7.5pt; color: #6e6e73; }
+.link { word-break: break-all; font-size: 7.5pt; color: #6e6e73; font-weight: 400; }
+@media print { body { padding: 0; } .toolbar { display: none; } .sheet { margin: 0; max-width: none; } }
+"""
+
+
+def _property_line(l):
+    x = l.get("extra") or {}
+    beds = l.get("bedrooms") if l.get("bedrooms") not in (None, "", "-") else ""
+    bits = [f"{beds} bed" if beds else "", f"{x['bathrooms']} bath" if x.get("bathrooms") else "",
+            f"{x['car_spaces']} car" if x.get("car_spaces") else "", l.get("property_type") or "",
+            f"{x['land_size']}m²" if x.get("land_size") else ""]
+    return " · ".join(b for b in bits if b)
+
+
+def _how_we_know(c):
+    x = c.get("extra") or {}
+    tags = [t.strip() for t in re.split(r"[,;|]", x.get("tags", "")) if t.strip()]
+    tags = [t for t in tags if not re.search(r"do not (contact|call)|\bdnc\b", t, re.I)]
+    parts = ["In our database"] + tags[:4]
+    if x.get("source"):
+        parts.append(f"source: {x['source']}")
+    return " · ".join(parts)
+
+
+def approach_pages(leads, settings, data_date, label="", sheet_id=None):
+    """One page per property, for an agent to work from. Shared by the app's
+    printout and by any batch of sheets made outside the app."""
+    e = html.escape
+    office = (settings.get("office_name") or "").strip()
+    T = int(settings["threshold_days"])
+    agreement = int(settings.get("agreement_days") or 0)
+    today = date.fromisoformat(data_date["today"])
+    out = []
+    for n, l in enumerate(leads, 1):
+        x = l.get("extra") or {}
+        if not l["for_sale"]:
+            status = '<div class="status stop">NO LONGER FOR SALE. DO NOT CALL.</div>'
+        elif l["do_not_contact"]:
+            status = '<div class="status stop">DO NOT CONTACT THIS OWNER.</div>'
+        elif l.get("moved"):
+            status = f'<div class="status stop">MOVED OFF THIS SHEET. DO NOT CALL.<small>{e("Now with " + l["agent_name"]) if l.get("agent_name") else ""}</small></div>'
+        elif not l["eligible"]:
+            status = (f'<div class="status hold">DO NOT CALL BEFORE {_fmt_date(l["hits_on"]).upper()}'
+                      f'<small>Listed {l["days"]} days. It reaches {T} days on that date.</small></div>')
+        else:
+            status = f'<div class="status go">READY TO CALL<small>Listed {l["days"]} days with another agency</small></div>'
+
+        asking = e(l["price"] or "Not shown")
+        if x.get("first_price") and x["first_price"] != l["price"]:
+            asking += f' <small>(first listed at {e(x["first_price"])})</small>'
+        rows = [("Property", e(_property_line(l)) or "Not shown"), ("Asking now", asking),
+                ("On the market", f'{l["days"]} days'), ("First listed", e(_fmt_date(l["listed_date"]))),
+                ("Currently with", e(l["agency"] + (f' · {l["listing_agent"]}' if l.get("listing_agent") else "")))]
+        if x.get("listing_type"):
+            rows.append(("Sale method", e(x["listing_type"])))
+        if x.get("owner_type"):
+            rows.append(("Owner type", e(x["owner_type"])))
+        if agreement:
+            ends = date.fromisoformat(l["listed_date"]) + timedelta(days=agreement)
+            gap = (ends - today).days
+            verb = "lapse" if gap >= 0 else "have lapsed"
+            rows.append(("Agency agreement", f'Estimated to {verb} {e(_fmt_date(ends.isoformat()))}, {_days_phrase(gap)} '
+                                             f'<small>(assumes {agreement} days)</small>'))
+        if l.get("url"):
+            rows.append(("Listing", f'<span class="link">{e(l["url"])}</span>'))
+        listing = "".join(f"<dt>{k}</dt><dd>{v}</dd>" for k, v in rows)
+
+        owners = []
+        for c in [c for c in l["contacts"] if c["quality"] in ("exact", "confirmed")]:
+            cx = c.get("extra") or {}
+            labels = cx.get("phone_labels") or ["", ""]
+            warns = "".join(f'<div class="warn">CRM phone note: {e(t.rstrip(". "))}.{" Do not ask for this person." if re.search("deceas|passed away|died", t, re.I) else ""}</div>'
+                            for t in cx.get("phone_notes", []) if importer.PHONE_DANGER.search(t))
+            soft = [t for t in cx.get("phone_notes", []) if not importer.PHONE_DANGER.search(t)]
+            phones = "".join(f'<div class="phone">{e(p)}{f"<small>{e(lab)}</small>" if lab else ""}</div>'
+                             for p, lab in zip([c["phone"], c["phone2"]], labels) if p)
+            if soft:
+                phones += "".join(f'<div class="pnote">Note in CRM phone field: {e(t)}</div>' for t in soft)
+            orow = [("Owner", f'<b>{e(c["name"])}</b>'), ("Phone", phones or '<b style="color:#b3261e">No phone on file</b>')]
+            if c.get("email"):
+                orow.append(("Email", e(c["email"])))
+            orow.append(("How we know them", e(_how_we_know(c))))
+            if cx.get("contact_owner"):
+                orow.append(("Contact owner", e(cx["contact_owner"])))
+            if cx.get("last_note"):
+                when = cx.get("last_note_at", "")[:10]
+                who = cx.get("last_note_by", "")
+                meta = ", ".join(v for v in [_fmt_date(when) if re.fullmatch(r"\d{4}-\d{2}-\d{2}", when) else when, who] if v)
+                note = cx["last_note"].strip().replace("\n", " ")
+                note = note if len(note) <= 320 else note[:317].rsplit(" ", 1)[0] + "..."
+                orow.append(("Last note", f'{e(meta)}<br><span class="quote">"{e(note)}"</span>'))
+            orow.append(("In our CRM as", f'<small>{e(" ".join(c["address_raw"].split()))}</small>'))
+            owners.append(f'<div class="owner">{warns}<dl>' + "".join(f"<dt>{k}</dt><dd>{v}</dd>" for k, v in orow) + "</dl></div>")
+
+        head_right = " · ".join(v for v in [f"For-sale data to {_fmt_date(data_date['listings'], '%-d %b %Y')}" if data_date.get("listings") else "",
+                                             f"Sheet #{sheet_id}" if sheet_id else "", f"{n} of {len(leads)}"] if v)
+        p = l["address"].split(", ", 1)
+        out.append(f"""<section class="sheet">
+<div class="top"><span>{e(office.upper() + " · " if office else "")}Approach sheet</span><span>{e(head_right)}</span></div>
+<h1>{e(p[0])}</h1><div class="suburb">{e(p[1] if len(p) > 1 else "")}</div>
+{status}
+<h2>The listing</h2><dl>{listing}</dl>
+<h2>The owner</h2>{"".join(owners) or '<p>No confirmed owner.</p>'}
+<h2>Before you make contact</h2>
+<div class="checks"><div><span class="box"></span>Checked against the Do Not Call Register</div><div><span class="box"></span>Confirmed it is still on the market</div>
+<div><span class="box"></span>Checked the agreement has lapsed</div><div><span class="box"></span>Read the last note above</div></div>
+<div class="given"><div>Agent: {e(label)}</div><div>Date given:</div></div>
+<h2>The call</h2>
+<table class="log"><tr><th style="width:24%">Date and time</th><th style="width:26%">Number called</th><th>What happened</th></tr>{"<tr><td></td><td></td><td></td></tr>" * 3}</table>
+<div class="outcomes"><span><span class="box"></span>No answer</span><span><span class="box"></span>Left message</span><span><span class="box"></span>Call back on ________</span><span><span class="box"></span>Appraisal booked ________</span><span><span class="box"></span>Not interested</span><span><span class="box"></span>Wrong number</span><span><span class="box"></span>Asked not to be contacted</span></div>
+<div class="lines"><div></div><div></div><div></div></div>
+<div class="foot">Owner matched on the exact property address in our CRM. Log every call in Listing Watch the same day, including no answers. Lead #{l["id"]}.</div>
+</section>""")
+    return "".join(out)
+
+
+def data_dates(conn):
+    row = conn.execute("SELECT MAX(imported_at) AS at FROM imports WHERE kind = 'listings'").fetchone()
+    return {"today": engine.today(conn).isoformat(), "listings": row["at"][:10] if row and row["at"] else ""}
+
+
 def render_sheet(conn, sheet_id):
     s = engine.sheet(conn, sheet_id)
     settings = db.get_settings(conn)
     e = html.escape
-    rows = []
-    for n, l in enumerate(s["leads"], 1):
-        warn = ""
-        if not l["for_sale"]:
-            warn = '<div class="warn">NO LONGER FOR SALE. DO NOT CALL.</div>'
-        elif l["do_not_contact"]:
-            warn = '<div class="warn">DO NOT CONTACT.</div>'
-        elif l["moved"]:
-            warn = '<div class="warn">MOVED OFF THIS SHEET. DO NOT CALL.</div>'
-        people = []
-        for c in l["contacts"]:
-            if c["quality"] not in ("exact", "confirmed"):
-                continue
-            phones = " &middot; ".join(e(p) for p in (c["phone"], c["phone2"]) if p) or '<span class="none">No phone on file</span>'
-            people.append(f'<div class="person"><b>{e(c["name"])}</b>{" <span class=dnc>DNC</span>" if c["do_not_contact"] else ""}'
-                          f'<div class="phone">{phones}</div>'
-                          f'{"<div class=email>" + e(c["email"]) + "</div>" if c["email"] else ""}</div>')
-        listing = " &middot; ".join(e(x) for x in [l["property_type"], (l["bedrooms"] + " bed") if l["bedrooms"] else "", l["price"]] if x)
-        rows.append(f"""
-<tr class="{'struck' if warn else ''}">
-  <td class="n">{n}</td>
-  <td><div class="addr">{e(l['address'])}</div>{warn}
-      <div class="small">{listing}</div>
-      <div class="small">Lead #{l['id']}</div></td>
-  <td>{''.join(people)}</td>
-  <td><div class="days">{l['days']}</div><div class="small">days listed<br>since {_fmt_date(l['listed_date'], '%d %b %Y')}</div></td>
-  <td><div>{e(l['agency'])}</div><div class="small">{e(l['listing_agent'] or '')}</div></td>
-  <td class="boxes">
-    <div>&#9744; No answer &nbsp; &#9744; Left message</div>
-    <div>&#9744; Call back: ____/____ &nbsp; &#9744; Appraisal: ____/____</div>
-    <div>&#9744; Not interested &nbsp; &#9744; Wrong number &nbsp; &#9744; Do not contact</div>
-    <div class="lines"></div>
-  </td>
-</tr>""")
-    office = e(settings.get("office_name") or "")
     return f"""<!doctype html>
 <html lang="en-AU"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Contact sheet #{s['id']} - {e(s['agent'])}</title>
-<style>
-@page {{ size: A4 landscape; margin: 12mm; }}
-* {{ box-sizing: border-box; }}
-body {{ font: 11pt/1.35 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", "Segoe UI", Arial, sans-serif; -webkit-font-smoothing: antialiased; color: #111; margin: 0; padding: 16px; background: #fff; }}
-header {{ display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 3px solid #111; padding-bottom: 8px; margin-bottom: 10px; gap: 16px; flex-wrap: wrap; }}
-h1 {{ font-size: 20pt; margin: 0; }}
-.meta {{ text-align: right; font-size: 10pt; }}
-.meta b {{ font-size: 13pt; }}
-.rules {{ font-size: 9.5pt; background: #f2f2f2; padding: 6px 10px; margin-bottom: 10px; border-left: 4px solid #111; }}
-table {{ width: 100%; border-collapse: collapse; }}
-th {{ text-align: left; font-size: 9pt; text-transform: uppercase; letter-spacing: .04em; border-bottom: 2px solid #111; padding: 4px 6px; }}
-td {{ vertical-align: top; padding: 8px 6px; border-bottom: 1px solid #999; }}
-tr {{ page-break-inside: avoid; }}
-.n {{ font-weight: 700; width: 24px; }}
-.addr {{ font-weight: 700; font-size: 12pt; }}
-.person + .person {{ margin-top: 6px; }}
-.phone {{ font-size: 13pt; font-weight: 600; letter-spacing: .02em; font-variant-numeric: tabular-nums; }}
-.email, .small {{ font-size: 9pt; color: #333; }}
-.none {{ color: #a00; font-size: 10pt; font-weight: 400; }}
-.days {{ font-size: 18pt; font-weight: 800; font-variant-numeric: tabular-nums; }}
-.boxes {{ font-size: 9.5pt; width: 34%; }}
-.boxes div {{ margin-bottom: 3px; }}
-.lines {{ border-bottom: 1px solid #bbb; height: 18px; margin-top: 6px; }}
-.warn {{ background: #111; color: #fff; font-weight: 800; padding: 2px 6px; display: inline-block; margin: 3px 0; }}
-.dnc {{ background: #a00; color: #fff; font-size: 8pt; padding: 1px 4px; margin-left: 4px; }}
-tr.struck .addr, tr.struck .phone {{ text-decoration: line-through; }}
-.toolbar {{ margin-bottom: 12px; display: flex; gap: 8px; }}
-.toolbar button, .toolbar a {{ font: 500 14px/1 inherit; padding: 10px 18px; border: 0; background: #007aff; color: #fff; border-radius: 980px; cursor: pointer; text-decoration: none; }}
-.toolbar a {{ background: rgba(118,118,128,.12); color: #007aff; }}
-@media print {{ .toolbar {{ display: none; }} body {{ padding: 0; }} }}
-</style></head><body>
+<title>Contact sheet #{s['id']} - {e(s['agent'])}</title><style>{SHEET_CSS}</style></head><body>
 <div class="toolbar"><button onclick="window.print()">Print this sheet</button><a href="/sheet/{s['id']}.csv">Download as spreadsheet</a><a href="/#/sheets/{s['id']}">Back to the app</a></div>
-<header>
-  <div><h1>Contact sheet #{s['id']}</h1><div>{office}{' &middot; ' if office else ''}Properties listed {settings['threshold_days']}+ days with another agency</div></div>
-  <div class="meta">For <b>{e(s['agent'])}</b><br>Made {_fmt_date(s['created_at'][:10])} by {e(s['created_by'] or '')}<br>{len(s['leads'])} propert{'y' if len(s['leads']) == 1 else 'ies'}</div>
-</header>
-<div class="rules">Call only the people on this sheet. Log every call in Listing Watch the same day, including no answers. A row marked DO NOT CALL changed after this sheet was printed: skip it.</div>
-<table><thead><tr><th>#</th><th>Property</th><th>Owner</th><th>Listed</th><th>Current agency</th><th>Outcome</th></tr></thead>
-<tbody>{''.join(rows)}</tbody></table>
+{approach_pages(s['leads'], settings, data_dates(conn), s['agent'], s['id'])}
 </body></html>"""
 
 

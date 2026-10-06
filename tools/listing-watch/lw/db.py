@@ -74,6 +74,9 @@ DEFAULT_SETTINGS = {
     "stale_after_days": 7,
     "timezone": "Australia/Sydney",
     "office_name": "",
+    # Assumed length of the other agency's agreement, used only to print an
+    # estimate on contact sheets. 0 turns the estimate off.
+    "agreement_days": 90,
 }
 
 
@@ -91,6 +94,11 @@ def connect(path=None):
     conn.execute("PRAGMA foreign_keys = ON")
     conn.execute("PRAGMA journal_mode = WAL") if path != ":memory:" else None
     conn.executescript(SCHEMA)
+    # Columns added after the first release.
+    for table in ("listings", "contacts"):
+        cols = [r[1] for r in conn.execute(f"PRAGMA table_info({table})")]
+        if "extra" not in cols:
+            conn.execute(f"ALTER TABLE {table} ADD COLUMN extra TEXT NOT NULL DEFAULT '{{}}'")
     return conn
 
 

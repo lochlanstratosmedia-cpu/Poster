@@ -587,9 +587,12 @@ async function openLead(id) {
       <section class="card"><h3>Who owns it</h3>
         ${usable.length ? usable.map((c) => `<div class="contact">
           <div class="name">${esc(c.name)} ${c.do_not_contact ? `<span class="pill dnc">Do not contact</span>` : ""} ${c.quality === "confirmed" ? `<span class="pill appraisal">Match confirmed</span>` : ""}</div>
-          ${c.phone ? `<a class="phone" href="${telHref(c.phone)}">${esc(c.phone)}</a>` : `<div class="sub">No mobile on file</div>`}
-          ${c.phone2 ? `<div><a class="phone" style="font-size:16px" href="${telHref(c.phone2)}">${esc(c.phone2)}</a> <span class="sub">other</span></div>` : ""}
+          ${c.phone ? `<a class="phone" href="${telHref(c.phone)}">${esc(c.phone)}</a>${c.extra?.phone_labels?.[0] ? ` <span class="sub">${esc(c.extra.phone_labels[0])}</span>` : ""}` : `<div class="sub">No phone on file</div>`}
+          ${c.phone2 ? `<div><a class="phone" style="font-size:16px" href="${telHref(c.phone2)}">${esc(c.phone2)}</a> <span class="sub">${esc(c.extra?.phone_labels?.[1] || "other")}</span></div>` : ""}
           ${c.email ? `<div><a href="mailto:${esc(c.email)}">${esc(c.email)}</a></div>` : ""}
+          ${(c.extra?.phone_notes || []).map((t) => `<div class="alertbox ${/deceas|passed away|died|do\s*not|dnc|wrong number|disconnected/i.test(t) ? "danger" : "warn"}" style="margin-top:6px">CRM phone field says: ${esc(t)}</div>`).join("")}
+          ${c.extra?.tags || c.extra?.source ? `<div class="sub">How we know them: ${esc([c.extra.tags, c.extra.source ? "source: " + c.extra.source : ""].filter(Boolean).join(" · "))}</div>` : ""}
+          ${c.extra?.last_note ? `<div class="sub" style="margin-top:4px">Last note (${esc([String(c.extra.last_note_at || "").slice(0, 10), c.extra.last_note_by].filter(Boolean).join(", "))}): <i>"${esc(c.extra.last_note)}"</i></div>` : ""}
           <div class="sub">In our database as: ${esc(c.address_raw)}</div>
           ${c.notes ? `<div class="sub">Notes: ${esc(c.notes)}</div>` : ""}
         </div>`).join("") : `<p class="muted">No confirmed owner.</p>`}
@@ -624,7 +627,10 @@ async function openLead(id) {
         <dt>Date listed</dt><dd>${esc(fmtDate(l.listed_date))} (${l.days} days)</dd>
         <dt>Hit ${T} days</dt><dd>${esc(fmtDate(l.hits_on))}</dd>
         ${l.price ? `<dt>Price</dt><dd>${esc(l.price)}</dd>` : ""}
-        ${l.property_type || l.bedrooms ? `<dt>Property</dt><dd>${esc([l.property_type, l.bedrooms ? l.bedrooms + " bed" : ""].filter(Boolean).join(", "))}</dd>` : ""}
+        ${l.property_type || l.bedrooms ? `<dt>Property</dt><dd>${esc([l.bedrooms && l.bedrooms !== "-" ? l.bedrooms + " bed" : "", l.extra?.bathrooms ? l.extra.bathrooms + " bath" : "", l.extra?.car_spaces ? l.extra.car_spaces + " car" : "", l.property_type, l.extra?.land_size ? l.extra.land_size + "m²" : ""].filter(Boolean).join(" · "))}</dd>` : ""}
+        ${l.extra?.listing_type ? `<dt>Sale method</dt><dd>${esc(l.extra.listing_type)}</dd>` : ""}
+        ${l.extra?.owner_type ? `<dt>Owner type</dt><dd>${esc(l.extra.owner_type)}</dd>` : ""}
+        ${l.extra?.first_price && l.extra.first_price !== l.price ? `<dt>First listed at</dt><dd>${esc(l.extra.first_price)}</dd>` : ""}
         ${l.url ? `<dt>Listing</dt><dd><a href="${esc(l.url)}" target="_blank" rel="noopener">Open listing</a></dd>` : ""}
         <dt>As imported</dt><dd>${esc(l.address_raw)}</dd>
       </dl></section>
@@ -920,6 +926,8 @@ async function viewSettings() {
           <label class="field"><span>Dates in your files are written</span><select class="input" id="date_order" style="max-width:320px">
             <option value="DMY" ${st.date_order === "DMY" ? "selected" : ""}>Day first: 03/04/2026 is 3 April</option>
             <option value="MDY" ${st.date_order === "MDY" ? "selected" : ""}>Month first: 03/04/2026 is 4 March</option></select></label>
+          <label class="field"><span>Assumed agency agreement length (days)</span><input class="input" id="agreement_days" type="number" min="0" max="365" value="${st.agreement_days ?? 90}" style="max-width:120px">
+            <span class="hint">Used only to print an estimated end date on contact sheets. Agents still check the real agreement. 0 hides it.</span></label>
           <label class="field"><span>Warn when for-sale data is older than (days)</span><input class="input" id="stale_after_days" type="number" min="1" max="60" value="${st.stale_after_days}" style="max-width:120px"></label>
           <label class="field"><span>Time zone</span><input class="input" id="timezone" value="${esc(st.timezone)}" style="max-width:320px"><span class="hint">Decides when a new day starts. For example Australia/Sydney, Australia/Brisbane, Australia/Perth.</span></label>
           <div><button class="btn" id="save-settings">Save settings</button></div>
@@ -938,7 +946,7 @@ async function viewSettings() {
       </div>
     </div>`;
   $("#save-settings").addEventListener("click", async () => {
-    const body = Object.fromEntries(["office_name", "our_agencies", "threshold_days", "soon_days", "date_order", "stale_after_days", "timezone"].map((k) => [k, $("#" + k).value]));
+    const body = Object.fromEntries(["office_name", "our_agencies", "threshold_days", "soon_days", "date_order", "agreement_days", "stale_after_days", "timezone"].map((k) => [k, $("#" + k).value]));
     if (+body.threshold_days !== st.threshold_days && !(await confirmBox({ title: `Change the threshold to ${body.threshold_days} days?`, body: "<p>Every listing is re-sorted straight away. Properties already assigned stay with their agents.</p>", ok: "Change it" }))) return;
     if (await act(() => api("/api/settings", { json: body }), "Settings saved.")) viewSettings();
   });
