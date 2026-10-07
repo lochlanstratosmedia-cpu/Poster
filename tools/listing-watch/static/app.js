@@ -239,7 +239,7 @@ document.addEventListener("keydown", (e) => {
 
 // ---------- router ----------
 
-const views = { today: viewToday, ready: viewReady, watch: viewWatch, tracker: viewTracker, sheets: viewSheets, import: viewImport, settings: viewSettings };
+const views = { today: viewToday, ready: viewReady, watch: viewWatch, tracker: viewTracker, sheets: viewSheets, insights: viewInsights, import: viewImport, settings: viewSettings };
 
 async function render() {
   const [, name = "today", arg] = (location.hash || "#/today").split("/");
@@ -904,6 +904,234 @@ async function commitImport() {
     ${r.crossed ? `<p><b>${plural(r.crossed, "property", "properties")} just hit ${threshold()} days.</b></p>` : ""}
     <div class="row end"><button class="btn ghost" data-close>Stay here</button><a class="btn" href="#/ready" data-close>Go to Ready to assign</a></div>`);
   viewImport();
+}
+
+// ---------- Insights ----------
+// Everything here is worked out from the listings already imported, so it
+// changes with every new export. Small groups are left out of rankings.
+
+const MIN_GROUP = 5;
+const median = (xs) => {
+  if (!xs.length) return null;
+  const s = [...xs].sort((a, b) => a - b), m = Math.floor(s.length / 2);
+  return s.length % 2 ? s[m] : Math.round((s[m - 1] + s[m]) / 2);
+};
+const pct = (n, d) => (d ? Math.round((100 * n) / d) : 0);
+
+// "$850,000 - $900,000", "Offers over $1.2m", "Guide $995k" -> a number, or null.
+function priceNum(text) {
+  const t = String(text || "").toLowerCase().replace(/,/g, "");
+  const nums = [...t.matchAll(/\$\s*(\d+(?:\.\d+)?)\s*(m|mil|million|k)?/g)].map((m) => {
+    let v = parseFloat(m[1]);
+    if (m[2] && m[2].startsWith("m")) v *= 1e6; else if (m[2] === "k") v *= 1e3;
+    return v;
+  }).filter((v) => v >= 50000 && v <= 50e6);
+  if (!nums.length) return null;
+  // A range whose ends are far apart is almost always a typo ("$1,3000,000").
+  if (nums.length > 1 && Math.max(nums[0], nums[1]) / Math.min(nums[0], nums[1]) > 1.6) return null;
+  return nums.length > 1 ? (nums[0] + nums[1]) / 2 : nums[0];
+}
+// Changes bigger than this between first and current price are treated as typos.
+const MAX_PRICE_SWING = 0.35;
+const typeGroup = (t) => {
+  const s = String(t || "").toLowerCase();
+  if (s.includes("townhouse") || s.includes("villa")) return "Townhouse / villa";
+  if (s.startsWith("unit") || s.includes("apartment") || s.includes("flat")) return "Unit / apartment";
+  if (s.startsWith("land") || s.includes("vacant")) return "Land";
+  if (s.startsWith("house")) return "House";
+  return s ? "Other" : "Not stated";
+};
+const BANDS = [[0, 29, "Under 30"], [30, 59, "30 to 59"], [60, 69, "60 to 69"], [70, 89, "70 to 89"], [90, 119, "90 to 119"], [120, 179, "120 to 179"], [180, 1e9, "180 or more"]];
+const PRICE_BANDS = [[0, 700e3, "Under $700k"], [700e3, 1e6, "$700k to $1m"], [1e6, 1.5e6, "$1m to $1.5m"], [1.5e6, 2e6, "$1.5m to $2m"], [2e6, 1e12, "$2m or more"]];
+
+function groupStats(list, keyFn, T) {
+  const g = new Map();
+  for (const l of list) { const k = keyFn(l); if (!k) continue; if (!g.has(k)) g.set(k, []); g.get(k).push(l); }
+  return [...g.entries()].map(([key, ls]) => ({
+    key, n: ls.length, over: ls.filter((l) => l.days >= T).length,
+    share: pct(ls.filter((l) => l.days >= T).length, ls.length), median: median(ls.map((l) => l.days)),
+    owned: ls.filter((l) => l.days >= T && l.match !== "none").length,
+  }));
+}
+
+function computeInsights(all, todayIso, T) {
+  const market = all.filter((l) => l.for_sale && !l.ours);
+  const ours = all.filter((l) => l.for_sale && l.ours);
+  const over = market.filter((l) => l.days >= T);
+  const out = { T, n: market.length, ours: ours.length };
+  out.medianDays = median(market.map((l) => l.days));
+  out.over = over.length;
+  out.overShare = pct(over.length, market.length);
+  out.overOwned = over.filter((l) => l.match !== "none").length;
+  out.bands = BANDS.map(([a, b, label]) => ({ label, from: a, n: market.filter((l) => l.days >= a && l.days <= b).length }));
+  out.oldest = [...market].sort((a, b) => b.days - a.days).slice(0, 5);
+
+  // Price changes: compare the first listed price with the current one.
+  const priced = market.map((l) => ({ l, first: priceNum(l.extra?.first_price), now: priceNum(l.price) }))
+    .filter((x) => x.first && x.now && Math.abs(x.now - x.first) / x.first <= MAX_PRICE_SWING);
+  const changedText = market.filter((l) => l.extra?.first_price && l.price && l.extra.first_price.trim().toLowerCase() !== l.price.trim().toLowerCase());
+  const drops = priced.filter((x) => x.now < x.first * 0.995);
+  out.price = {
+    withBoth: market.filter((l) => l.extra?.first_price).length, changed: changedText.length,
+    comparable: priced.length, drops: drops.length, rises: priced.filter((x) => x.now > x.first * 1.005).length,
+    medianDropPct: median(drops.map((x) => Math.round((1000 * (x.first - x.now)) / x.first) / 10)),
+    medianDropDollars: median(drops.map((x) => Math.round(x.first - x.now))),
+    dropsOver: drops.filter((x) => x.l.days >= T).length,
+    medianDaysChanged: median(changedText.map((l) => l.days)),
+    medianDaysSame: median(market.filter((l) => l.extra?.first_price && !changedText.includes(l)).map((l) => l.days)),
+  };
+
+  out.agencies = groupStats(market, (l) => l.agency, T).filter((g) => g.n >= MIN_GROUP).sort((a, b) => b.over - a.over || b.share - a.share).slice(0, 10);
+  const suburbs = groupStats(market, (l) => l.suburb, T).filter((g) => g.n >= MIN_GROUP);
+  out.slowSuburbs = [...suburbs].sort((a, b) => b.median - a.median || b.n - a.n).slice(0, 10);
+  out.fastSuburbs = [...suburbs].sort((a, b) => a.median - b.median || b.n - a.n).slice(0, 5);
+  out.suburbCount = suburbs.length;
+  out.methods = groupStats(market, (l) => l.extra?.listing_type || "Not stated", T).filter((g) => g.n >= MIN_GROUP).sort((a, b) => b.n - a.n);
+  out.owners = groupStats(market, (l) => l.extra?.owner_type || "Not stated", T).filter((g) => g.n >= MIN_GROUP).sort((a, b) => b.n - a.n);
+  out.types = groupStats(market, (l) => typeGroup(l.property_type), T).filter((g) => g.n >= MIN_GROUP).sort((a, b) => b.n - a.n);
+  out.prices = PRICE_BANDS.map(([a, b, label]) => {
+    const ls = market.filter((l) => { const p = priceNum(l.price); return p && p >= a && p < b; });
+    return { key: label, n: ls.length, over: ls.filter((l) => l.days >= T).length, share: pct(ls.filter((l) => l.days >= T).length, ls.length), median: median(ls.map((l) => l.days)) };
+  }).filter((g) => g.n);
+  out.pricedShare = pct(market.filter((l) => priceNum(l.price)).length, market.length);
+
+  // The next eight weeks: how many reach the threshold each week.
+  const weeks = [];
+  for (let w = 0; w < 8; w++) {
+    const start = addDays(todayIso, 7 * w + 1), end = addDays(todayIso, 7 * w + 7);
+    const ls = market.filter((l) => !l.eligible && l.hits_on >= start && l.hits_on <= end);
+    weeks.push({ start, end, n: ls.length, owned: ls.filter((l) => l.match !== "none").length });
+  }
+  out.weeks = weeks;
+  out.ourMedian = median(ours.map((l) => l.days));
+  out.ourOverShare = pct(ours.filter((l) => l.days >= T).length, ours.length);
+  return out;
+}
+
+// One horizontal bar per row, scaled to the largest value in the set.
+function barRows(rows, { value, label, max, unit = "", tip }) {
+  const top = max ?? Math.max(1, ...rows.map(value));
+  return rows.map((r) => `<div class="hbar" data-tip="${esc(tip ? tip(r) : "")}">
+    <div class="hbar-label">${label(r)}</div>
+    <div class="hbar-track"><span style="width:${Math.max(1, (100 * value(r)) / top)}%"></span></div>
+    <div class="hbar-val">${esc(value(r))}${unit}</div></div>`).join("");
+}
+
+function groupTable(rows, T, firstCol) {
+  if (!rows.length) return `<p class="muted">Not enough listings to compare (each group needs ${MIN_GROUP} or more).</p>`;
+  const top = Math.max(...rows.map((r) => r.median || 0), 1);
+  return `<table class="list ins-table"><thead><tr><th>${esc(firstCol)}</th><th class="ncol">Listings</th><th class="ncol">${T}+ days</th><th>Median days on market</th></tr></thead><tbody>
+    ${rows.map((r) => `<tr data-tip="${esc(`${r.key}: ${r.n} listings, ${r.over} at ${T}+ days (${r.share}%), median ${r.median} days`)}">
+      <td>${esc(r.key)}</td><td class="ncol">${r.n}</td><td class="ncol">${r.over} <span class="sub">(${r.share}%)</span></td>
+      <td><div class="hbar inline"><div class="hbar-track"><span style="width:${Math.max(1, (100 * (r.median || 0)) / top)}%"></span></div><div class="hbar-val">${r.median}</div></div></td></tr>`).join("")}
+  </tbody></table>`;
+}
+
+async function viewInsights() {
+  const s = await refreshSummary();
+  const all = await api("/api/leads?view=all");
+  const T = threshold();
+  if (!all.some((l) => l.for_sale && !l.ours)) {
+    $("#view").innerHTML = `<h1>Insights</h1><div class="card empty"><b>No listings yet</b>Import everything for sale and this page fills in.</div>`;
+    return;
+  }
+  const I = computeInsights(all, s.today, T);
+  const hasCrm = s.counts.contacts > 0;
+  const money = (v) => (v >= 1e6 ? `$${(v / 1e6).toFixed(2)}m` : `$${Math.round(v / 1000)}k`);
+  const asOf = s.last_import.listings ? fmtDate(s.last_import.listings.imported_at) : "";
+  const p = I.price;
+  const bandTop = Math.max(...I.bands.map((b) => b.n), 1);
+  const weekTop = Math.max(...I.weeks.map((w) => w.n), 1);
+  const owners = I.owners.filter((o) => o.key !== "Not stated");
+  const rented = owners.find((o) => /rent/i.test(o.key)), occ = owners.find((o) => /occupied/i.test(o.key));
+
+  $("#view").innerHTML = `
+    <h1>Insights</h1>
+    <p class="lede">What the for-sale data says right now, across ${I.n} listings with other agencies${asOf ? ` (export of ${esc(asOf)})` : ""}. Your own ${I.ours} listings are left out except where they're compared. Groups with fewer than ${MIN_GROUP} listings aren't ranked.</p>
+
+    <div class="stats">
+      <div class="stat static"><div class="num">${I.medianDays}</div><div class="lbl">Median days on market</div><div class="sub">Half of all listings have been up longer than this</div></div>
+      <div class="stat static"><div class="num">${I.overShare}%</div><div class="lbl">At ${T}+ days</div><div class="sub">${I.over} of ${I.n} listings</div></div>
+      <div class="stat static"><div class="num">${pct(p.changed, p.withBoth)}%</div><div class="lbl">Price changed since listing</div><div class="sub">${p.changed} of ${p.withBoth} with a first price on record</div></div>
+      ${hasCrm ? `<div class="stat static"><div class="num">${pct(I.overOwned, I.over)}%</div><div class="lbl">Of ${T}+ owners you can reach</div><div class="sub">${I.overOwned} of ${I.over} are in your CRM</div></div>`
+        : `<div class="stat static"><div class="num" style="font-size:26px">Not loaded</div><div class="lbl">Owners you can reach</div><div class="sub">Import your CRM to see how many ${T}+ owners you know</div></div>`}
+    </div>
+
+    <div class="grid cols-2">
+      <section class="card"><h2>How long listings have been up</h2>
+        <p class="sub">Number of listings by days on market. Bars below the line are past ${T} days.</p>
+        <div class="hist">${I.bands.map((b, i) => `${b.from === T ? `<div class="hist-line"><span>${T} days</span></div>` : ""}<div class="hbar" data-tip="${esc(`${b.label} days: ${b.n} listings (${pct(b.n, I.n)}%)`)}">
+          <div class="hbar-label">${esc(b.label)}</div><div class="hbar-track"><span style="width:${Math.max(1, (100 * b.n) / bandTop)}%"></span></div><div class="hbar-val">${b.n}</div></div>`).join("")}</div>
+      </section>
+
+      <section class="card"><h2>Owners reaching ${T} days, next 8 weeks</h2>
+        <p class="sub">How many listings cross the line each week, by the week starting on each date.</p>
+        ${barRows(I.weeks, { value: (w) => w.n, max: weekTop, label: (w) => `${esc(fmtDate(w.start, false).replace(/ \d{4}$/, ""))}`,
+          tip: (w) => `Week from ${fmtDate(w.start)}: ${w.n} reach ${T} days, ${w.owned} owner${w.owned === 1 ? "" : "s"} in your CRM` })}
+        <p class="sub" style="margin-top:8px">${hasCrm ? "" : "Import your CRM to see how many of these owners you know. "}Total across these weeks: <b>${I.weeks.reduce((a, w) => a + w.n, 0)}</b>. Some will sell before they get there, so these are the most there could be.</p>
+        <p class="sub" ${hasCrm ? "" : "hidden"}>Owners in your CRM across these weeks: <b>${I.weeks.reduce((a, w) => a + w.owned, 0)}</b> of ${I.weeks.reduce((a, w) => a + w.n, 0)}.</p>
+      </section>
+    </div>
+
+    <section class="card" style="margin-top:16px"><h2>Price changes</h2>
+      <div class="facts">
+        <div><b>${p.changed}</b> of ${p.withBoth} listings (${pct(p.changed, p.withBoth)}%) show a different price now than when first listed.</div>
+        ${p.comparable ? `<div>Of the ${p.comparable} with a readable dollar figure both times, <b>${p.drops}</b> came down${p.rises ? ` and ${p.rises} went up` : ""}.${p.drops ? ` The median cut is <b>${p.medianDropPct}%</b> (about ${money(p.medianDropDollars)}).` : ""}</div>` : ""}
+        ${p.medianDaysChanged !== null && p.medianDaysSame !== null ? `<div>Listings with a price change have been up a median <b>${p.medianDaysChanged} days</b>, against <b>${p.medianDaysSame}</b> for those without one. Older listings have had more time to change, so this shows where cuts happen, not that cuts slow a sale.</div>` : ""}
+        ${p.dropsOver ? `<div><b>${p.dropsOver}</b> of the listings at ${T}+ days have already cut their price: owners who have adjusted once may be open to a new approach.</div>` : ""}
+      </div>
+    </section>
+
+    <section class="card" style="margin-top:16px"><h2>Agencies with the most listings past ${T} days</h2>
+      <p class="sub">Agencies with ${MIN_GROUP} or more listings, ranked by how many are past ${T} days. These are where most of your calls will come from.</p>
+      <div class="table-wrap flat">${groupTable(I.agencies, T, "Agency")}</div>
+    </section>
+
+    <div class="grid cols-2" style="margin-top:16px">
+      <section class="card"><h2>Slowest suburbs</h2><p class="sub">Highest median days on market, of ${I.suburbCount} suburbs with ${MIN_GROUP}+ listings.</p>
+        <div class="table-wrap flat">${groupTable(I.slowSuburbs, T, "Suburb")}</div></section>
+      <section class="card"><h2>Fastest suburbs</h2><p class="sub">Lowest median days on market. Owners here who are still unsold stand out.</p>
+        <div class="table-wrap flat">${groupTable(I.fastSuburbs, T, "Suburb")}</div></section>
+    </div>
+
+    <div class="grid cols-2" style="margin-top:16px">
+      <section class="card"><h2>By sale method</h2><div class="table-wrap flat">${groupTable(I.methods, T, "Method")}</div></section>
+      <section class="card"><h2>Owner-occupied or rented</h2><div class="table-wrap flat">${groupTable(I.owners, T, "Owner type")}</div>
+        ${rented && occ ? `<p class="sub" style="margin-top:8px">${rented.share}% of rented properties are past ${T} days, against ${occ.share}% of owner-occupied ones.</p>` : ""}</section>
+    </div>
+
+    <div class="grid cols-2" style="margin-top:16px">
+      <section class="card"><h2>By property type</h2><div class="table-wrap flat">${groupTable(I.types, T, "Type")}</div></section>
+      <section class="card"><h2>By asking price</h2><div class="table-wrap flat">${groupTable(I.prices, T, "Asking price")}</div>
+        <p class="sub" style="margin-top:8px">Uses the ${I.pricedShare}% of listings that show a dollar figure. "Contact agent" and similar are left out.</p></section>
+    </div>
+
+    <div class="grid cols-2" style="margin-top:16px">
+      <section class="card"><h2>Longest on the market</h2>
+        ${I.oldest.map((l) => `<div class="row" style="justify-content:space-between;padding:6px 0;border-bottom:.5px solid var(--line)"><span><b>${esc(l.address)}</b><br><span class="sub">${esc(l.agency)}</span></span><span class="days">${l.days}<small>days</small></span></div>`).join("")}</section>
+      <section class="card"><h2>Your listings against the market</h2>
+        ${I.ours ? `<div class="facts"><div>You have <b>${I.ours}</b> listings on the market. Their median is <b>${I.ourMedian} days</b>, against <b>${I.medianDays}</b> for other agencies.</div>
+          <div><b>${I.ourOverShare}%</b> of yours are past ${T} days, against <b>${I.overShare}%</b> for other agencies.</div>
+          <div class="sub">A small group, so treat the comparison as a rough guide.</div></div>`
+        : `<p class="muted">Set your agency name in Settings to compare your listings with the market.</p>`}</section>
+    </div>
+    <p class="sub" style="margin-top:16px">Days on market count from the first listed date in the for-sale export. A median is the middle value, so one very old listing doesn't skew it.</p>`;
+  bindTips($("#view"));
+}
+
+// A small hover label for bars and table rows.
+function bindTips(root) {
+  let tip = $("#tip");
+  if (!tip) { tip = document.createElement("div"); tip.id = "tip"; tip.className = "tip"; tip.hidden = true; document.body.appendChild(tip); }
+  root.querySelectorAll("[data-tip]").forEach((el) => {
+    if (!el.dataset.tip) return;
+    el.addEventListener("mousemove", (e) => {
+      tip.textContent = el.dataset.tip; tip.hidden = false;
+      const x = Math.min(e.clientX + 14, window.innerWidth - tip.offsetWidth - 8);
+      tip.style.left = x + "px"; tip.style.top = (e.clientY + 16) + "px";
+    });
+    el.addEventListener("mouseleave", () => (tip.hidden = true));
+  });
 }
 
 // ---------- Settings ----------
