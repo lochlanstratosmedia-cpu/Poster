@@ -1,0 +1,239 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Own in postcode</title>
+<style>
+  @font-face { font-family: "Brand Sans"; font-weight: 400; src: url("../../assets/fonts/ProximaNova-Regular.otf"); }
+  @font-face { font-family: "Brand Sans"; font-weight: 700; src: url("../../assets/fonts/ProximaNova-Bold.otf"); }
+  @font-face { font-family: "Brand Sans Fallback"; font-weight: 400; src: url("../../assets/fonts/Montserrat-Regular.ttf"); }
+  @font-face { font-family: "Brand Sans Fallback"; font-weight: 700; src: url("../../assets/fonts/Montserrat-SemiBold.ttf"); }
+  @font-face { font-family: "Anton"; src: url("../../assets/fonts/Anton-Regular.ttf"); }
+
+  :root { --plum: #3a2a3f; --lilac: #c9b1e8; --pill: #c3a8e2; }
+  html, body { margin: 0; height: 100%; background: #000; overflow: hidden; }
+  #wrap { position: absolute; inset: 0; display: grid; place-items: center; }
+  #stage { position: relative; width: 1080px; overflow: hidden; background: var(--plum); color: #fff; transform-origin: center center; font-family: "Brand Sans", "Brand Sans Fallback", sans-serif; }
+  #stage * { box-sizing: border-box; }
+  .layer { position: absolute; inset: 0; }
+  .anton { font-family: "Anton", sans-serif; font-weight: 400; text-transform: uppercase; }
+  #picker { position: fixed; top: 10px; left: 10px; z-index: 10; display: flex; gap: 6px; flex-wrap: wrap; font: 13px/1 system-ui, sans-serif; }
+  #picker a { color: #fff; background: #2a2433; padding: 7px 9px; border-radius: 6px; text-decoration: none; }
+  #picker a.on { background: #52215f; }
+  body.render #picker { display: none; }
+</style>
+</head>
+<body>
+<div id="picker"></div>
+<div id="wrap"><div id="stage"></div></div>
+
+<script>
+// "Own in <postcode>" in the flat plum style: photo under a plum wash, heavy
+// condensed caps, outlined numerals that trace themselves on, lilac pill.
+// Same contract as ad.html: draw(t) sets the frame, render.mjs steps it.
+//
+//   own-in.html?pc=2287&fmt=story
+//   own-in.html?pc=2284&fmt=feed&bg=photos/house.jpg
+//
+// Background: ?bg=, else photos/<postcode>.jpg, else photos/house.jpg, else
+// a drawn weatherboard house and picket fence.
+
+const params = new URLSearchParams(location.search);
+const PC = params.get("pc") || "2287";
+const FMT = params.get("fmt") === "feed" ? "feed" : "story";
+const RENDER = params.has("render");
+const DURATION = 10;
+const LINE = params.get("line") || "Even if you've only thought about selling,<br>we'd love to start a conversation.";
+const PILL = params.get("pill") || "Book a Chat. <b>No Cost. No Commitment.</b>";
+
+const F = { story: { H: 1920, S: 1, y: 0 }, feed: { H: 1350, S: .82, y: -36 } }[FMT];
+const W = 1080, H = F.H, S = F.S;
+const stage = document.getElementById("stage");
+stage.style.height = H + "px";
+const NS = "http://www.w3.org/2000/svg";
+const pending = [];
+
+const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
+const prog = (t, s, d) => clamp((t - s) / d);
+const lerp = (a, b, p) => a + (b - a) * p;
+const easeOut = p => 1 - Math.pow(1 - p, 3);
+const easeOut5 = p => 1 - Math.pow(1 - p, 5);
+const easeInOut = p => p < .5 ? 4 * p * p * p : 1 - Math.pow(-2 * p + 2, 3) / 2;
+const easeOutBack = (p, c = 1.7) => 1 + (c + 1) * Math.pow(p - 1, 3) + c * Math.pow(p - 1, 2);
+function el(tag, css = {}, parent = stage, html = "") {
+  const e = document.createElement(tag); Object.assign(e.style, css);
+  if (html) e.innerHTML = html; parent.appendChild(e); return e;
+}
+function svgEl(tag, attrs = {}, parent) {
+  const e = document.createElementNS(NS, tag);
+  for (const k in attrs) e.setAttribute(k, attrs[k]);
+  if (parent) parent.appendChild(e); return e;
+}
+
+// ---------- background ----------
+const bgBox = el("div", { transformOrigin: "50% 60%" }); bgBox.className = "layer";
+const photo = el("div", { backgroundSize: "cover", backgroundPosition: "center", filter: "grayscale(.35)" }, bgBox); photo.className = "layer";
+function drawnHouse() {
+  // weatherboard cottage and picket fence, as faint line art
+  const s = svgEl("svg", { width: W, height: H, viewBox: `0 0 ${W} ${H}`, style: "position:absolute;inset:0" }, bgBox);
+  const base = H * .76, c = "rgba(220,200,240,.14)", fill = "rgba(255,255,255,.035)";
+  const g = svgEl("g", { stroke: c, "stroke-width": 3, fill: "none" }, s);
+  const hx = 40, hw = 1000, wallTop = base - H * .2, apex = wallTop - H * .1;
+  svgEl("path", { d: `M${hx} ${wallTop}L${W / 2 + 180} ${apex}L${hx + hw} ${wallTop}`, fill }, g);
+  svgEl("rect", { x: hx + 40, y: wallTop, width: hw - 80, height: base - wallTop, fill }, g);
+  for (let y = wallTop + 26; y < base; y += 26) svgEl("path", { d: `M${hx + 40} ${y}H${hx + hw - 40}`, "stroke-width": 1.5, opacity: .7 }, g);
+  svgEl("path", { d: `M${hx - 10} ${wallTop + 40}H${hx + hw + 10}`, "stroke-width": 4 }, g);
+  [[160, 150], [700, 150]].forEach(([x, w]) => svgEl("rect", { x, y: wallTop + 80, width: w, height: 170, fill: "rgba(0,0,0,.12)" }, g));
+  svgEl("rect", { x: 460, y: wallTop + 70, width: 120, height: base - wallTop - 70, fill: "rgba(0,0,0,.12)" }, g);
+  svgEl("rect", { x: W / 2 + 230, y: apex - 30, width: 50, height: 90, fill }, g);
+  // picket fence
+  const fy = H * .73, ft = H * .87;
+  const fg = svgEl("g", { fill: "rgba(235,220,250,.10)", stroke: "rgba(235,220,250,.16)", "stroke-width": 2 }, s);
+  for (let x = -10; x < W + 40; x += 52) svgEl("path", { d: `M${x} ${ft}V${fy + 14}L${x + 15} ${fy}L${x + 30} ${fy + 14}V${ft}Z` }, fg);
+  svgEl("rect", { x: 0, y: fy + 40, width: W, height: 12 }, fg);
+  svgEl("rect", { x: 0, y: ft - 60, width: W, height: 12 }, fg);
+}
+const wash = el("div", { background: "linear-gradient(180deg, rgba(58,42,63,.93) 0%, rgba(58,42,63,.82) 45%, rgba(52,36,58,.86) 75%, rgba(40,28,46,.95) 100%)" }); wash.className = "layer";
+
+{
+  const tries = [params.get("bg"), `photos/${PC}.jpg`, "photos/house.jpg"].filter(Boolean);
+  pending.push(new Promise(done => {
+    const next = () => {
+      const src = tries.shift();
+      if (!src) { drawnHouse(); return done(); }
+      const img = new Image();
+      img.onload = () => { photo.style.backgroundImage = `url("${src}")`; done(); };
+      img.onerror = next; img.src = src;
+    };
+    next();
+  }));
+}
+
+// ---------- foreground ----------
+const fg = el("div", { transform: `translateY(${F.y}px)` }); fg.className = "layer";
+const cy = H / 2;
+
+// OWN IN: letters punch up one by one
+const own = el("div", { position: "absolute", left: 0, right: 0, top: cy - 382 * S + "px", textAlign: "center", fontSize: 152 * S + "px", lineHeight: 1, letterSpacing: "-.005em", textShadow: "0 6px 30px rgba(0,0,0,.25)" }, fg);
+own.className = "anton";
+const ownSpans = [..."OWN IN"].map(ch => { const s = el("span", { display: "inline-block" }, own); s.textContent = ch === " " ? "\u00a0" : ch; return s; });
+
+// outlined postcode, traced on, with a light running round the outline
+const NW = 900 * S, NH = 400 * S;
+const ns = svgEl("svg", { width: NW, height: NH, viewBox: `0 0 900 400`, style: `position:absolute;left:${(W - NW) / 2}px;top:${cy - 225 * S}px;overflow:visible` }, fg);
+const defs = svgEl("defs", {}, ns);
+const glow = svgEl("filter", { id: "glow", filterUnits: "userSpaceOnUse", x: -100, y: -100, width: 1100, height: 600 }, defs);
+svgEl("feGaussianBlur", { stdDeviation: 7 }, glow);
+const digitGroups = [...PC].map((ch, i) => {
+  const g = svgEl("g", {}, ns);
+  const attrs = { x: 0, y: 375, "font-family": "Anton", "font-size": 400, "text-anchor": "middle" };
+  const fillT = svgEl("text", { ...attrs, fill: "rgba(201,177,232,0)" }, g);
+  const trace = svgEl("text", { ...attrs, fill: "none", stroke: "#c9b1e8", "stroke-width": 5, "stroke-linejoin": "round" }, g);
+  const spark = svgEl("text", { ...attrs, fill: "none", stroke: "#f6eeff", "stroke-width": 6, "stroke-linecap": "round", filter: "url(#glow)" }, g);
+  const sparkCore = svgEl("text", { ...attrs, fill: "none", stroke: "#fff", "stroke-width": 4, "stroke-linecap": "round" }, g);
+  [fillT, trace, spark, sparkCore].forEach(n => n.textContent = ch);
+  return { g, fillT, trace, spark, sparkCore };
+});
+
+const line = el("div", { position: "absolute", left: 0, right: 0, top: cy + 240 * S + "px", textAlign: "center", fontSize: 32 * S + "px", fontWeight: 700, lineHeight: 1.45, letterSpacing: ".045em" }, fg);
+const lineParts = LINE.split("<br>").map(l => el("div", {}, line, l));
+
+const PW = 718 * S, PH = 70 * S;
+const pill = el("div", { position: "absolute", left: (W - PW) / 2 + "px", top: cy + 362 * S + "px", width: PW + "px", height: PH + "px" }, fg);
+const pillBg = el("div", { position: "absolute", inset: 0, borderRadius: "999px", background: "var(--pill)", border: `${3 * S}px solid #fff`, boxShadow: "0 10px 40px rgba(20,8,30,.35)" }, pill);
+const pillText = el("div", { position: "absolute", left: 58 * S + "px", top: 0, lineHeight: PH - 6 * S + "px", fontSize: 26 * S + "px", letterSpacing: ".04em", whiteSpace: "nowrap" }, pill, PILL);
+const arrow = el("div", { position: "absolute", right: 22 * S + "px", top: 0, bottom: 0, width: 36 * S + "px", display: "flex", alignItems: "center" }, pill,
+  `<svg viewBox="0 0 24 24" width="100%" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12h15M13 6l6 6-6 6"/></svg>`);
+
+const black = el("div", { background: "#000" }); black.className = "layer";
+
+let laid = false;
+function layout() {
+  // centre each digit in its own advance width, like the type does
+  let x = 0; const widths = digitGroups.map(d => d.trace.getComputedTextLength());
+  const total = widths.reduce((a, b) => a + b, 0) - 4 * (widths.length - 1);
+  x = 450 - total / 2;
+  digitGroups.forEach((d, i) => {
+    d.cx = x + widths[i] / 2; d.g.setAttribute("transform", `translate(${d.cx} 0)`);
+    x += widths[i] - 4;
+  });
+  laid = true;
+}
+
+function draw(t) {
+  if (!laid) layout();
+  bgBox.style.transform = `scale(${lerp(1.12, 1.02, easeOut(prog(t, 0, DURATION)))}) translateY(${lerp(10, 0, easeOut(prog(t, 0, DURATION)))}px)`;
+  black.style.opacity = 1 - easeOut(prog(t, 0, .7));
+
+  ownSpans.forEach((s, i) => {
+    const p = prog(t, .45 + i * .07, .55);
+    s.style.opacity = clamp(p * 3);
+    s.style.transform = `translateY(${(1 - easeOutBack(p)) * 60 * S}px) scale(${lerp(1.35, 1, easeOut5(p))})`;
+  });
+
+  const L = 2400;
+  digitGroups.forEach((d, i) => {
+    const p = easeInOut(prog(t, 1.05 + i * .16, 1.3));
+    d.trace.style.strokeDasharray = L;
+    d.trace.style.strokeDashoffset = L * (1 - p);
+    const lift = easeOut(prog(t, 1.05 + i * .16, .9));
+    d.g.setAttribute("transform", `translate(${d.cx} ${(1 - lift) * 40})`);
+    d.g.style.opacity = clamp(lift * 2);
+    // a soft lilac fill blooms once traced, then settles back to outline only
+    const f = clamp(prog(t, 2.2 + i * .16, .35)) * (1 - prog(t, 2.6 + i * .16, .9));
+    d.fillT.setAttribute("fill", `rgba(201,177,232,${.35 * f})`);
+    // light that runs round each outline after it is drawn
+    const sp = t - (2.6 + i * .16);
+    const on = clamp(sp * 2);
+    const off = -((sp * 900) % L);
+    [d.spark, d.sparkCore].forEach(n => {
+      n.style.strokeDasharray = `110 ${L - 110}`;
+      n.style.strokeDashoffset = off;
+      n.style.opacity = sp > 0 ? on * (n === d.spark ? .9 : .85) : 0;
+    });
+  });
+
+  lineParts.forEach((n, i) => {
+    const p = easeOut(prog(t, 2.5 + i * .14, .8));
+    n.style.opacity = p; n.style.transform = `translateY(${(1 - p) * 22 * S}px)`;
+  });
+
+  // pill wipes open from the left, then its words and arrow arrive
+  const wp = easeInOut(prog(t, 3.2, .8));
+  pill.style.clipPath = `inset(-20px ${(1 - wp) * 100}% -20px -20px round 999px)`;
+  pill.style.opacity = clamp(wp * 4);
+  const tp = easeOut(prog(t, 3.7, .6));
+  pillText.style.opacity = tp; pillText.style.transform = `translateX(${(1 - tp) * -18}px)`;
+  const nudge = Math.max(0, Math.sin((t - 4.6) * Math.PI / .9)) * (t > 4.6 && ((t - 4.6) % 2.4) < .9 ? 1 : 0);
+  arrow.style.transform = `translateX(${(1 - easeOut(prog(t, 3.9, .5))) * -30 + nudge * 10 * S}px)`;
+  arrow.style.opacity = easeOut(prog(t, 3.9, .5));
+}
+
+window.draw = draw;
+window.DURATION = DURATION;
+window.ready = Promise.all([document.fonts.load('400 100px "Anton"'), document.fonts.ready, ...pending]).then(() => true);
+
+if (RENDER) {
+  document.body.classList.add("render");
+  document.getElementById("wrap").style.placeItems = "start";
+} else {
+  const fit = () => stage.style.transform = `scale(${Math.min(innerWidth / W, (innerHeight - 50) / H)})`;
+  fit(); addEventListener("resize", fit);
+  const picker = document.getElementById("picker");
+  const link = (label, k, v, cur) => {
+    const q = new URLSearchParams(location.search); q.set(k, v); q.delete("t");
+    const a = el("a", {}, picker, label); a.href = "?" + q; if (cur === v) a.className = "on";
+  };
+  ["2287", "2284"].forEach(p => link(p, "pc", p, PC));
+  link("9:16", "fmt", "story", FMT); link("4:5", "fmt", "feed", FMT);
+  window.ready.then(() => {
+    if (params.has("t")) return draw(Number(params.get("t")));
+    const t0 = performance.now();
+    const loop = now => { draw(((now - t0) / 1000) % (DURATION + 1.5)); requestAnimationFrame(loop); };
+    requestAnimationFrame(loop);
+  });
+}
+</script>
+</body>
+</html>

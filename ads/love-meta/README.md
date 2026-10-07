@@ -65,3 +65,29 @@ placements autoplay muted, and a sound bed can be added later.
 
 - `fees`: confirm the zero management fees offer is still current, and that
   "Conditions apply." on screen is enough for whoever signs off the terms.
+
+## Own in (flat plum style)
+
+`own-in.html` follows the flat "Own in 2287" design: a house photo under a
+plum wash, "OWN IN" in Anton, outlined numerals and a lilac pill. It runs 10
+seconds:
+
+| Time | What moves |
+|---|---|
+| 0.0 s | Fade up from black, then a slow push-in on the photo for the whole ad |
+| 0.45 s | "OWN IN" punches up letter by letter |
+| 1.05 s | Each numeral traces its own outline, then flashes a soft lilac fill |
+| 2.6 s | A spark of light keeps running round each outline |
+| 2.5 s | The two lines fade up |
+| 3.2 s | The pill wipes open, then its words and the arrow arrive. The arrow nudges every 2.4 s |
+
+```bash
+node ads/love-meta/render-own-in.mjs                    # 2287 and 2284, both formats
+node ads/love-meta/render-own-in.mjs 2287 --bg path/to/house.jpg
+```
+
+Background photo: `?bg=` (or `--bg`), else `photos/<postcode>.jpg`, else
+`photos/house.jpg`. With no photo it draws a faint weatherboard house and
+picket fence. `?line=` and `?pill=` change the copy.
+
+Anton is OFL (`assets/fonts/OFL-Anton.txt`).
