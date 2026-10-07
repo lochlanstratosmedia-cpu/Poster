@@ -91,3 +91,36 @@ Background photo: `?bg=` (or `--bg`), else `photos/<postcode>.jpg`, else
 picket fence. `?line=` and `?pill=` change the copy.
 
 Anton is OFL (`assets/fonts/OFL-Anton.txt`).
+
+## Drive designs (Meta Ads > Animate)
+
+`drive.html` animates the six finished designs from Lochlan's Drive folder
+`Meta Ads/Animate` (9:16, 1080x1920). The originals are in `designs/`.
+
+The text was baked into those PNGs, so `scripts/clean_plates.py` lifts it
+off each photo (OpenCV inpainting) into `designs/clean/`, and the page sets
+the type again live on top. Each line's tracking is fitted to the ink width
+measured from the original, and each outline numeral is stretched into its
+original box, so the end frame lands on the design. Check with
+`drive.html?d=9&t=10&ref`, which overlays the original in difference mode
+(matching areas go dark).
+
+| Design | What moves |
+|---|---|
+| 9, 11 | Postcode traces itself on digit by digit, then a spark runs round each outline. Headline rises line by line as its tracking closes in. Pill wipes open |
+| 13 | Question rises line by line, "Pay zero management fees." comes in word by word, solid pill |
+| 16 | Three lines rise, "right price" in lilac, solid pill |
+| 17 | Lilac card swings in and settles at a tilt, the white card drops on top, then the copy arrives word by word. No pill, as in the design |
+| 18 | Lilac line rises, the question comes in word by word, pill |
+
+```bash
+pip install opencv-python-headless numpy
+python3 ads/love-meta/scripts/clean_plates.py    # rebuild the plates
+node ads/love-meta/render-drive.mjs              # all six, or: 9 17
+```
+
+Design 17 has no clean photo of its own: the card covers it. It is the same
+photo as 18, so its plate takes the card area from 18's plate.
+
+13 says "Pay zero management fees." with no "Conditions apply." The first
+fees ad carried that line, so check whether this one needs it too.

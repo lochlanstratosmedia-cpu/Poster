@@ -1,0 +1,277 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Love Drive ads</title>
+<style>
+  @font-face { font-family: "Brand Sans"; font-weight: 400; src: url("../../assets/fonts/ProximaNova-Regular.otf"); }
+  @font-face { font-family: "Brand Sans"; font-weight: 700; src: url("../../assets/fonts/ProximaNova-Bold.otf"); }
+  @font-face { font-family: "Brand Sans Fallback"; font-weight: 400; src: url("../../assets/fonts/Montserrat-Regular.ttf"); }
+  @font-face { font-family: "Brand Sans Fallback"; font-weight: 700; src: url("../../assets/fonts/Montserrat-SemiBold.ttf"); }
+  @font-face { font-family: "Gloock"; src: url("../../assets/fonts/Gloock.ttf"); }
+  @font-face { font-family: "Anton"; src: url("../../assets/fonts/Anton-Regular.ttf"); }
+
+  :root { --lilac: #c2ade0; --plum: #302133; }
+  html, body { margin: 0; height: 100%; background: #000; overflow: hidden; }
+  #wrap { position: absolute; inset: 0; display: grid; place-items: center; }
+  #stage { position: relative; width: 1080px; height: 1920px; overflow: hidden; background: #1c1520; color: #fff; transform-origin: center center; font-family: "Brand Sans", "Brand Sans Fallback", sans-serif; }
+  #stage * { box-sizing: border-box; }
+  .layer { position: absolute; inset: 0; }
+  .serif { font-family: "Gloock", serif; font-weight: 400; white-space: nowrap; }
+  .line { overflow: hidden; padding-bottom: .22em; margin-bottom: -.22em; }
+  .line > div { will-change: transform; }
+  .lilac { color: var(--lilac); }
+  .word { display: inline-block; }
+  #ref { opacity: .5; mix-blend-mode: difference; pointer-events: none; }
+  #picker { position: fixed; top: 10px; left: 10px; z-index: 10; display: flex; gap: 6px; flex-wrap: wrap; font: 13px/1 system-ui, sans-serif; }
+  #picker a { color: #fff; background: #2a2433; padding: 7px 9px; border-radius: 6px; text-decoration: none; }
+  #picker a.on { background: #52215f; }
+  body.render #picker { display: none; }
+</style>
+</head>
+<body>
+<div id="picker"></div>
+<div id="wrap"><div id="stage"></div></div>
+
+<script>
+// The six designs from Drive (Meta Ads > Animate), rebuilt live so the type
+// can move. Each sits on a clean plate (designs/clean/<n>.jpg, the photo with
+// the baked-in text lifted out by scripts/clean_plates.py).
+//
+//   drive.html?d=9            play design 9
+//   drive.html?d=9&t=10       freeze on the end frame
+//   drive.html?d=9&t=10&ref   overlay the original to check the match
+
+const params = new URLSearchParams(location.search);
+const D = params.get("d") || "9";
+const RENDER = params.has("render");
+const DURATION = 10;
+const W = 1080, H = 1920;
+const stage = document.getElementById("stage");
+const NS = "http://www.w3.org/2000/svg";
+const pending = [];
+
+const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
+const prog = (t, s, d) => clamp((t - s) / d);
+const lerp = (a, b, p) => a + (b - a) * p;
+const easeOut = p => 1 - Math.pow(1 - p, 3);
+const easeOut5 = p => 1 - Math.pow(1 - p, 5);
+const easeInOut = p => p < .5 ? 4 * p * p * p : 1 - Math.pow(-2 * p + 2, 3) / 2;
+const easeOutBack = (p, c = 1.5) => 1 + (c + 1) * Math.pow(p - 1, 3) + c * Math.pow(p - 1, 2);
+function el(tag, css = {}, parent = stage, html = "") {
+  const e = document.createElement(tag); Object.assign(e.style, css);
+  if (html) e.innerHTML = html; parent.appendChild(e); return e;
+}
+function svgEl(tag, attrs = {}, parent) {
+  const e = document.createElementNS(NS, tag);
+  for (const k in attrs) e.setAttribute(k, attrs[k]);
+  if (parent) parent.appendChild(e); return e;
+}
+// Set each line's tracking so its ink is `target` px wide, like the design.
+function fitLine(node, target) {
+  node.style.letterSpacing = "0px";
+  const r = document.createRange(); r.selectNodeContents(node);
+  const n = node.textContent.length;
+  return (target - r.getBoundingClientRect().width / scaleNow()) / Math.max(1, n - 1);
+}
+const scaleNow = () => Number((stage.style.transform.match(/scale\(([^)]+)\)/) || [, 1])[1]);
+const mark = s => s.replace(/\*(.+?)\*/g, '<span class="lilac">$1</span>');
+
+// ---------- pieces ----------
+
+// Serif lines that rise out of a mask while their tracking closes in.
+function serifBlock({ x, y, size, lh, ls = 0, lines, color = "#fff", align = "left", w, fit }) {
+  const box = el("div", { position: "absolute", left: x + "px", top: y + "px", width: (w || W - x) + "px", fontSize: size + "px", lineHeight: lh + "px", letterSpacing: ls + "em", color, textAlign: align }, stage);
+  box.className = "serif";
+  const inners = lines.map(l => { const line = el("div", {}, box); line.className = "line"; return el("div", {}, line, mark(l)); });
+  let lsPx;
+  return (t, start, gap = .14) => {
+    if (!lsPx) lsPx = inners.map((n, i) => fit ? fitLine(n, fit[i]) : ls * size);
+    inners.forEach((n, i) => {
+      const p = easeOut5(prog(t, start + i * gap, 1.1));
+      n.style.transform = `translateY(${(1 - p) * 105}%)`;
+      n.style.letterSpacing = `${lsPx[i] + (1 - easeOut(prog(t, start + i * gap, 1.8))) * .12 * size}px`;
+    });
+  };
+}
+
+// Lines that come in word by word.
+function wordBlock({ x, y, size, lh, ls = 0, lines, color = "#fff", align = "left", w, cls = "serif", weight, fit }) {
+  const box = el("div", { position: "absolute", left: x + "px", top: y + "px", width: w + "px", fontSize: size + "px", lineHeight: lh + "px", letterSpacing: ls + "em", color, textAlign: align, fontWeight: weight || "" }, stage);
+  box.className = cls;
+  const words = [], rows = [];
+  lines.forEach(l => {
+    const row = el("div", {}, box); rows.push(row);
+    mark(l).split(/ (?![^<]*>)/).forEach((wd, i, arr) => {
+      const s = el("span", {}, row, wd); s.className = "word"; words.push(s);
+      if (i < arr.length - 1) row.appendChild(document.createTextNode(" "));
+    });
+  });
+  let fitted = !fit;
+  return (t, start, gap = .07) => words.forEach((s, i) => {
+    if (!fitted) { rows.forEach((r, j) => { r.style.letterSpacing = fitLine(r, fit[j]) + "px"; }); fitted = true; }
+    const p = prog(t, start + i * gap, .6);
+    s.style.opacity = easeOut(p);
+    s.style.transform = `translateY(${(1 - easeOut5(p)) * .45}em)`;
+    s.style.filter = p < 1 ? `blur(${(1 - p) * 6}px)` : "none";
+  });
+}
+
+// Outlined postcode that traces itself on, with a spark running round it.
+function numerals(code, { y0, y1, cols }) {
+  const s = svgEl("svg", { width: W, height: H, viewBox: `0 0 ${W} ${H}`, style: "position:absolute;left:0;top:0;overflow:visible" }, stage);
+  const f = svgEl("filter", { id: "glow", filterUnits: "userSpaceOnUse", x: 0, y: 0, width: W, height: H }, s);
+  svgEl("feGaussianBlur", { stdDeviation: 6 }, f);
+  const g = svgEl("g", {}, s);
+  const attrs = { "font-family": "Anton", "font-size": 100 };
+  const digits = [...code].map(ch => {
+    const d = svgEl("g", {}, g);
+    const mk = extra => { const n = svgEl("text", { ...attrs, ...extra }, d); n.textContent = ch; return n; };
+    return { d, fill: mk({ fill: "rgba(194,173,224,0)" }), trace: mk({ fill: "none", stroke: "#c2ade0", "vector-effect": "non-scaling-stroke", "stroke-width": 3.6, "stroke-linejoin": "round" }),
+      spark: mk({ fill: "none", stroke: "#f4ecff", "vector-effect": "non-scaling-stroke", "stroke-width": 5, "stroke-linecap": "round", filter: "url(#glow)" }) };
+  });
+  // stretch each digit into the box it fills in the design
+  let laid = false;
+  function layout() {
+    // the glyph's ink, not its line box (which includes ascent and descent)
+    const c = document.createElement("canvas").getContext("2d");
+    c.font = '100px "Anton"';
+    digits.forEach((d, i) => {
+      const m = c.measureText(code[i]), [x0, x1] = cols[i];
+      const bb = { x: -m.actualBoundingBoxLeft, y: -m.actualBoundingBoxAscent, width: m.actualBoundingBoxLeft + m.actualBoundingBoxRight, height: m.actualBoundingBoxAscent + m.actualBoundingBoxDescent };
+      d.fit = `translate(${x0} ${y0}) scale(${(x1 - x0) / bb.width} ${(y1 - y0) / bb.height}) translate(${-bb.x} ${-bb.y})`;
+      d.x = 0;
+    });
+    laid = true;
+  }
+  const L = 3400;
+  return t => {
+    if (!laid) layout();
+    digits.forEach((d, i) => {
+      const st = .5 + i * .16;
+      const p = easeInOut(prog(t, st, 1.3));
+      d.trace.style.strokeDasharray = L; d.trace.style.strokeDashoffset = L * (1 - p);
+      const lift = easeOut(prog(t, st, .9));
+      d.d.style.opacity = clamp(lift * 2);
+      d.d.setAttribute("transform", `translate(0 ${(1 - lift) * 30}) ${d.fit}`);
+      const fl = clamp(prog(t, st + 1.1, .3)) * (1 - prog(t, st + 1.5, .9));
+      d.fill.setAttribute("fill", `rgba(194,173,224,${.32 * fl})`);
+      const sp = t - (st + 1.5);
+      d.spark.style.strokeDasharray = `110 ${L - 110}`;
+      d.spark.style.strokeDashoffset = -((sp * 900) % L);
+      d.spark.style.opacity = sp > 0 ? clamp(sp * 2) * .85 : 0;
+    });
+  };
+}
+
+// "Book a Chat. No Cost. No Commitment." pill: wipes open, words, arrow.
+function pill({ solid }) {
+  const p = el("div", { position: "absolute", left: "74px", top: "1236px", width: "719px", height: "69px" });
+  el("div", { position: "absolute", inset: 0, borderRadius: "999px", border: "3px solid #fff", background: solid ? "var(--plum)" : "rgba(20,14,22,.18)" }, p);
+  const txt = el("div", { position: "absolute", left: "58px", top: 0, lineHeight: "66px", fontSize: "27px", letterSpacing: ".045em", whiteSpace: "nowrap" }, p, "Book a Chat. <b style='font-weight:700'>No Cost. No Commitment.</b>");
+  const arr = el("div", { position: "absolute", right: "24px", top: 0, bottom: 0, width: "34px", display: "flex", alignItems: "center" }, p,
+    `<svg viewBox="0 0 24 24" width="100%" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12h15M13 6l6 6-6 6"/></svg>`);
+  let fitted = false;
+  return (t, start) => {
+    if (!fitted) { txt.style.letterSpacing = fitLine(txt, 546) + "px"; fitted = true; }
+    const wp = easeInOut(prog(t, start, .8));
+    p.style.clipPath = `inset(-10px ${(1 - wp) * 100}% -10px -10px round 999px)`;
+    p.style.opacity = clamp(wp * 4);
+    const tp = easeOut(prog(t, start + .5, .6));
+    txt.style.opacity = tp; txt.style.transform = `translateX(${(1 - tp) * -16}px)`;
+    const k = t - (start + 1.4), nudge = k > 0 && k % 2.4 < .9 ? Math.sin(k % 2.4 * Math.PI / .9) : 0;
+    arr.style.opacity = easeOut(prog(t, start + .7, .5));
+    arr.style.transform = `translateX(${(1 - easeOut(prog(t, start + .7, .5))) * -26 + nudge * 9}px)`;
+  };
+}
+
+// ---------- background ----------
+const bg = el("div", { transformOrigin: "50% 55%" }); bg.className = "layer";
+const img = new Image(); img.style.cssText = "width:100%;height:100%;display:block";
+pending.push(new Promise(ok => { img.onload = img.onerror = ok; }));
+img.src = `designs/clean/${D}.jpg`; bg.appendChild(img);
+
+// ---------- the six designs ----------
+const DESIGNS = {};
+const postcode = (code, cols) => () => {
+  const num = numerals(code, { y0: 643, y1: 975, cols });
+  const head = serifBlock({ x: 70, y: 997, size: 84, lh: 95, fit: [695, 710], lines: ["Find out where", "*your home* sits."] });
+  const pl = pill({});
+  return t => { num(t); head(t, 1.6); pl(t, 2.8); };
+};
+DESIGNS["9"] = postcode("2287", [[68, 241], [246, 418], [421, 592], [603, 769]]);
+DESIGNS["11"] = postcode("2284", [[68, 241], [245, 418], [421, 592], [594, 775]]);
+
+DESIGNS["13"] = () => {
+  const q = serifBlock({ x: 82, y: 861, size: 60, lh: 67, fit: [705, 676, 463], lines: ["Tired of management", "fees eating into your", "rental return?"] });
+  const a = wordBlock({ x: 82, y: 1114, size: 60, lh: 67, fit: [813], w: 980, color: "var(--lilac)", lines: ["Pay zero management fees."] });
+  const pl = pill({ solid: true });
+  return t => { q(t, .5); a(t, 2.0, .16); pl(t, 3.1); };
+};
+
+DESIGNS["16"] = () => {
+  const h = serifBlock({ x: 70, y: 902, size: 78, lh: 86, fit: [917, 755, 582], lines: ["Would the *right price*", "change your mind", "about selling?"] });
+  const pl = pill({ solid: true });
+  return t => { h(t, .5, .2); pl(t, 2.3); };
+};
+
+DESIGNS["17"] = () => {
+  const back = el("div", { position: "absolute", left: "160px", top: "521px", width: "760px", height: "760px", background: "#8b7a9e", opacity: .9, transformOrigin: "50% 50%" });
+  const card = el("div", { position: "absolute", left: "160px", top: "521px", width: "760px", height: "760px", background: "#fff", boxShadow: "0 30px 80px rgba(0,0,0,.25)" });
+  const top = wordBlock({ x: 160, y: 680, w: 760, size: 54, lh: 72, fit: [696, 165], color: "var(--lilac)", align: "center", lines: ["You might not be planning", "to sell."] });
+  const body = wordBlock({ x: 160, y: 896, w: 760, size: 44, lh: 75, fit: [627, 641, 586], color: "#22182a", align: "center", cls: "", weight: 700, lines: ["But if a buyer presented", "more than you expected,", "would you consider it?"] });
+  return t => {
+    const bp = prog(t, .35, 1.1);
+    back.style.opacity = .9 * easeOut(clamp(bp * 2));
+    back.style.transform = `rotate(${lerp(-14, 3.2, easeOutBack(bp, 1.2))}deg) translate(${lerp(-60, 12, easeOut(bp))}px, ${lerp(40, 0, easeOut(bp))}px)`;
+    const cp = prog(t, .6, .9);
+    card.style.opacity = easeOut(clamp(cp * 2.5));
+    card.style.transform = `translateY(${(1 - easeOutBack(cp, 1.3)) * 120}px) rotate(${(1 - easeOut(cp)) * 5}deg)`;
+    top(t, 1.4, .09); body(t, 2.5, .07);
+  };
+};
+
+DESIGNS["18"] = () => {
+  const a = serifBlock({ x: 72, y: 878, size: 46, lh: 52, fit: [876], color: "var(--lilac)", lines: ["You might not be planning to sell."] });
+  const b = wordBlock({ x: 72, y: 960, w: 1000, size: 55, lh: 61, fit: [898, 888, 350], lines: ["But if a buyer presented more", "than you expected, would you", "consider it?"] });
+  const pl = pill({});
+  return t => { a(t, .5); b(t, 1.5, .09); pl(t, 3.4); };
+};
+
+// ---------- boot ----------
+const adDraw = (DESIGNS[D] || DESIGNS["9"])();
+let ref;
+if (params.has("ref")) { ref = el("img", {}); ref.id = "ref"; ref.className = "layer"; ref.src = `designs/${D}.png`; }
+const black = el("div", { background: "#000", pointerEvents: "none" }); black.className = "layer";
+function draw(t) {
+  const k = easeOut(prog(t, 0, DURATION));
+  bg.style.transform = `scale(${lerp(1.08, 1, k)})`;
+  black.style.opacity = 1 - easeOut(prog(t, 0, .7));
+  adDraw(t);
+}
+window.draw = draw;
+window.DURATION = DURATION;
+window.ready = Promise.all([document.fonts.load('100px "Anton"'), document.fonts.load('100px "Gloock"'), document.fonts.ready, ...pending]).then(() => true);
+
+if (RENDER) {
+  document.body.classList.add("render");
+  document.getElementById("wrap").style.placeItems = "start";
+} else {
+  const fit = () => stage.style.transform = `scale(${Math.min(innerWidth / W, (innerHeight - 50) / H)})`;
+  fit(); addEventListener("resize", fit);
+  const picker = document.getElementById("picker");
+  Object.keys(DESIGNS).forEach(k => {
+    const q = new URLSearchParams(location.search); q.set("d", k); q.delete("t");
+    const a = el("a", {}, picker, k); a.href = "?" + q; if (k === D) a.className = "on";
+  });
+  window.ready.then(() => {
+    if (params.has("t")) return draw(Number(params.get("t")));
+    const t0 = performance.now();
+    const loop = now => { draw(((now - t0) / 1000) % (DURATION + 1.5)); requestAnimationFrame(loop); };
+    requestAnimationFrame(loop);
+  });
+}
+</script>
+</body>
+</html>
