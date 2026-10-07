@@ -53,7 +53,7 @@ for (const fmt of fmts) {
     const clip = { x: 0, y: 0, width: 1080, height: h };
 
     if (!stillsOnly) {
-      const enc = ffmpeg(["-c:v", "libx264", "-pix_fmt", "yuv420p", "-crf", "17", "-preset", "slow", "-tune", "film", "-movflags", "+faststart", `${out}/${ad}-${fmt}.mp4`]);
+      const enc = ffmpeg(["-c:v", "libx264", "-pix_fmt", "yuv420p", "-crf", "20", "-maxrate", "9M", "-bufsize", "18M", "-preset", "slow", "-tune", "film", "-movflags", "+faststart", `${out}/${ad}-${fmt}.mp4`]);
       const frames = Math.round(seconds * fps);
       for (let f = 0; f < frames; f++) {
         await page.evaluate(t => window.draw(t), f / fps);

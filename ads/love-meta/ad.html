@@ -303,7 +303,7 @@ function nightScene() {
     // one shooting star early on
     const sp = prog(t, 1.6, .75);
     if (sp > 0 && sp < 1) {
-      const x0 = W * .15, y0 = H * .1, dx = W * .42, dy = H * .07;
+      const x0 = W * .06, y0 = F.top * .3, dx = W * .44, dy = F.top * .32;
       const hx = x0 + dx * easeOut(sp), hy = y0 + dy * easeOut(sp);
       const g = ctx.createLinearGradient(hx - dx * .35, hy - dy * .35, hx, hy);
       g.addColorStop(0, "rgba(255,255,255,0)"); g.addColorStop(1, "rgba(255,248,235,.95)");
@@ -385,8 +385,9 @@ ADS.fees = function (fr) {
   const big = el("div", { position: "relative", display: "flex", alignItems: "flex-start", fontSize: px(400), lineHeight: 1, margin: `${px(8)} 0 ${px(28)}`, height: "1em" }, fr.body);
   big.className = "serif";
   const ring = el("div", { position: "absolute", left: "50%", top: "50%", width: px(520), height: px(520), marginLeft: px(-260), marginTop: px(-260), borderRadius: "50%", border: "2px solid rgba(233,196,138,.7)" }, big);
+  const halo = el("div", { position: "absolute", left: "50%", top: "50%", width: px(640), height: px(640), marginLeft: px(-320), marginTop: px(-320), borderRadius: "50%", background: "radial-gradient(circle, rgba(233,196,138,.42) 0%, rgba(233,196,138,.12) 35%, rgba(0,0,0,0) 68%)" }, big);
   const dollar = el("div", { fontSize: ".46em", marginTop: ".16em", marginRight: ".04em", color: "var(--gold)" }, big, "$");
-  const win = el("div", { height: "1em", overflow: "hidden" }, big);
+  const win = el("div", { position: "relative", height: "1em", overflow: "hidden", clipPath: "inset(0)" }, big);
   const seq = [8, 3, 6, 1, 9, 4, 7, 2, 5, 8, 3, 6, 9, 1, 4, 0];
   const reel = el("div", {}, win, seq.map(d => `<div style="height:1em">${d}</div>`).join(""));
   const h1 = headline(fr.body, ["Pay *zero*", "management fees"], 104);
@@ -401,9 +402,10 @@ ADS.fees = function (fr) {
     const pos = easeOut5(p) * (seq.length - 1);
     reel.style.transform = `translateY(${-pos}em)`;
     const speed = p < 1 ? 5 * Math.pow(1 - p, 4) : 0;
-    win.style.filter = speed > .01 ? `blur(${Math.min(14, speed * 3) * S}px)` : "none";
+    reel.style.filter = speed > .01 ? `blur(${Math.min(14, speed * 3) * S}px)` : "none";
     const bloom = pulse(t, LAND - .05, 1.1);
-    big.style.filter = `drop-shadow(0 0 ${(18 + 40 * bloom) * S}px rgba(233,196,138,${.22 + .5 * bloom}))`;
+    halo.style.opacity = easeOut(prog(t, LAND - .3, .4)) * (.45 + .55 * bloom);
+    halo.style.transform = `scale(${.85 + .25 * bloom})`;
     const rp = prog(t, LAND - .05, 1.4);
     ring.style.opacity = rp > 0 && rp < 1 ? (1 - rp) * .9 : 0;
     ring.style.transform = `scale(${lerp(.5, 1.5, easeOut(rp))})`;
