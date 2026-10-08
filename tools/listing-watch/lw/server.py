@@ -17,7 +17,7 @@ from datetime import date, timedelta
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, unquote, urlparse
 
-from . import db, engine, importer
+from . import address, db, engine, importer
 
 STATIC = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "static")
 LOCK = threading.Lock()
@@ -244,15 +244,15 @@ body { margin: 0; padding: 16px; background: #fff; color: #1d1d1f;
 .sheet:last-child { page-break-after: auto; break-after: auto; }
 .top { display: flex; justify-content: space-between; gap: 12px; align-items: baseline; border-bottom: 2px solid #1d1d1f; padding-bottom: 5px; font-size: 8.5pt; letter-spacing: .1em; text-transform: uppercase; font-weight: 600; }
 .top span:last-child { letter-spacing: .02em; text-transform: none; font-weight: 500; color: #3a3a3c; }
-h1 { font-size: 23pt; line-height: 1.1; margin: 12px 0 1px; letter-spacing: -.02em; }
+h1 { font-size: 23pt; line-height: 1.1; margin: 9px 0 1px; letter-spacing: -.02em; }
 .suburb { font-size: 11pt; letter-spacing: .08em; text-transform: uppercase; font-weight: 600; }
 .status { margin: 10px 0 2px; padding: 7px 12px; border-radius: 8px; font-weight: 700; font-size: 11.5pt; display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; align-items: baseline; }
 .status small { font-weight: 500; font-size: 9pt; }
 .go { background: #e8f6ec; color: #1d6b3a; border: 1.5px solid #34c759; }
 .hold { background: #fff1f0; color: #b3261e; border: 2px solid #ff3b30; }
 .stop { background: #1d1d1f; color: #fff; }
-h2 { font-size: 8.5pt; letter-spacing: .14em; text-transform: uppercase; font-weight: 600; margin: 13px 0 3px; padding-bottom: 3px; border-bottom: 1px solid #8e8e93; }
-dl { display: grid; grid-template-columns: 40mm 1fr; gap: 3px 10px; margin: 5px 0 0; font-size: 10.5pt; }
+h2 { font-size: 8.5pt; letter-spacing: .14em; text-transform: uppercase; font-weight: 600; margin: 10px 0 3px; padding-bottom: 3px; border-bottom: 1px solid #8e8e93; }
+dl { display: grid; grid-template-columns: 40mm 1fr; gap: 2px 10px; margin: 4px 0 0; font-size: 10.5pt; }
 dt { color: #3a3a3c; }
 dd { margin: 0; font-weight: 500; }
 dd small { color: #6e6e73; font-weight: 400; }
@@ -264,6 +264,7 @@ dd small { color: #6e6e73; font-weight: 400; }
 .ln-head { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; font-size: 8pt; letter-spacing: .1em; text-transform: uppercase; font-weight: 700; }
 .ln-head span:last-child { letter-spacing: .02em; text-transform: none; font-weight: 500; color: #3a3a3c; }
 .ln-text { font-size: 12pt; line-height: 1.4; font-weight: 600; margin-top: 3px; }
+.ln-warn { font-size: 8.5pt; margin-top: 4px; color: #3a3a3c; font-style: italic; }
 .owner + .owner { margin-top: 8px; padding-top: 8px; border-top: 1px dashed #c7c7cc; }
 .warn { background: #ff3b30; color: #fff; font-weight: 700; padding: 3px 8px; border-radius: 5px; margin: 5px 0 2px; font-size: 9.5pt; }
 .pnote { color: #6e6e73; font-size: 9pt; }
@@ -296,7 +297,7 @@ def _how_we_know(c):
     x = c.get("extra") or {}
     tags = [t.strip() for t in re.split(r"[,;|]", x.get("tags", "")) if t.strip()]
     tags = [t for t in tags if not re.search(r"do not (contact|call)|\bdnc\b", t, re.I)]
-    parts = ["In our database"] + tags[:4]
+    parts = ["In our database"] + tags[:6]
     if x.get("source"):
         parts.append(f"source: {x['source']}")
     return " · ".join(parts)
@@ -359,6 +360,11 @@ def approach_pages(leads, settings, data_date, label="", sheet_id=None):
             orow = [("Owner", f'<b>{e(c["name"])}</b>'), ("Phone", phones or '<b style="color:#b3261e">No phone on file</b>')]
             if c.get("email"):
                 orow.append(("Email", e(c["email"])))
+            on_title = engine.title_owners(x)
+            if on_title:
+                ok = engine.name_matches(c["name"], on_title)
+                verdict = {True: "matches our contact", False: "<b style=\"color:#b3261e\">does not match our contact</b>", None: "company owner, check before calling"}[ok]
+                orow.append(("Owner on title", f'{e(", ".join(on_title))} <small>(RP Data, {verdict})</small>'))
             orow.append(("How we know them", e(_how_we_know(c))))
             if cx.get("contact_owner"):
                 orow.append(("Contact owner", e(cx["contact_owner"])))
@@ -371,8 +377,13 @@ def approach_pages(leads, settings, data_date, label="", sheet_id=None):
                 note = note if len(note) <= 320 else note[:317].rsplit(" ", 1)[0] + "..."
             callout = ""
             if cx.get("last_note"):
-                callout = (f'<div class="lastnote"><div class="ln-head"><span>Read before calling</span><span>Last note in our CRM'
-                           f'{" · " + e(meta) if meta else ""}</span></div><div class="ln-text">"{e(note)}"</div></div>')
+                street = address.parse(l["address"])["street"]
+                about_here = bool(street) and street in cx["last_note"].lower()
+                caution = "" if about_here else (
+                    f'<div class="ln-warn">This note doesn\'t mention {e(street.title() or "this street")}. It is the latest note on the person '
+                    f'and may be about another property or about them as a buyer.</div>')
+                callout = (f'<div class="lastnote"><div class="ln-head"><span>Read before calling</span><span>Last note on this contact'
+                           f'{" · " + e(meta) if meta else ""}</span></div><div class="ln-text">"{e(note)}"</div>{caution}</div>')
             orow.append(("In our CRM as", f'<small>{e(" ".join(c["address_raw"].split()))}</small>'))
             owners.append(f'<div class="owner">{warns}<dl>' + "".join(f"<dt>{k}</dt><dd>{v}</dd>" for k, v in orow) + f"</dl>{callout}</div>")
 
@@ -392,7 +403,7 @@ def approach_pages(leads, settings, data_date, label="", sheet_id=None):
 <h2>The call</h2>
 <table class="log"><tr><th style="width:24%">Date and time</th><th style="width:26%">Number called</th><th>What happened</th></tr>{"<tr><td></td><td></td><td></td></tr>" * 3}</table>
 <div class="outcomes"><span><span class="box"></span>No answer</span><span><span class="box"></span>Left message</span><span><span class="box"></span>Call back on ________</span><span><span class="box"></span>Appraisal booked ________</span><span><span class="box"></span>Not interested</span><span><span class="box"></span>Wrong number</span><span><span class="box"></span>Asked not to be contacted</span></div>
-<div class="lines"><div></div><div></div><div></div></div>
+<div class="lines"><div></div><div></div></div>
 <div class="foot">Owner matched on the exact property address in our CRM. Log every call in Listing Watch the same day, including no answers. Lead #{l["id"]}.</div>
 </section>""")
     return "".join(out)

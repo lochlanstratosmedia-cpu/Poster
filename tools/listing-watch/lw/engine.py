@@ -86,6 +86,30 @@ def contact_sig(name, parts):
     return re.sub(r"[^a-z]", "", (name or "").lower()) + "@" + address.key(parts)
 
 
+# ---------- owner names ----------
+
+_NAME_NOISE = {"and", "the", "mr", "mrs", "ms", "miss", "dr", "of", "estate", "late"}
+_COMPANY = re.compile(r"\b(pty|ltd|limited|trust|trustee|super|superannuation|holdings|investments|corporation|council|housing|nsw|department)\b", re.I)
+
+
+def title_owners(extra):
+    """Owner names on title from the for-sale data (RP Data's Owner 1/2/3 Name), if present."""
+    return [extra[k] for k in ("owner_1", "owner_2", "owner_3") if (extra or {}).get(k)]
+
+
+def _name_words(text):
+    return {w for w in re.sub(r"[^a-z ]", " ", (text or "").lower()).split() if len(w) > 1 and w not in _NAME_NOISE}
+
+
+def name_matches(contact_name, owners):
+    """True if the contact shares a name with an owner on title, False if not,
+    None when it can't be checked (no owner names, or only companies)."""
+    people = [o for o in owners if not _COMPANY.search(o)]
+    if not people:
+        return None
+    return bool(_name_words(contact_name) & set().union(*[_name_words(o) for o in people]))
+
+
 # ---------- imports ----------
 
 _PENDING = {}
@@ -257,12 +281,16 @@ def rebuild(conn):
             lead = conn.execute("SELECT * FROM leads WHERE id = ?", (lid,)).fetchone()
 
         lparts = json.loads(l["parts"])
+        owners_on_title = title_owners(json.loads(l["extra"] or "{}"))
         conn.execute("DELETE FROM lead_contacts WHERE lead_id = ?", (lead["id"],))
         contact_dnc = False
         for c in by_block.get(l["block"], []):
             quality = address.compare(lparts, json.loads(c["parts"]))
             if quality is None:
                 continue
+            if quality == "exact" and name_matches(c["name"], owners_on_title) is False:
+                # Right address, wrong name: often a buyer or tenant saved against the property.
+                quality = "name"
             decision = reviews.get((l["address_key"], contact_sig(c["name"], json.loads(c["parts"]))))
             if decision == "reject":
                 continue
@@ -385,7 +413,7 @@ def serialize(conn, rows):
         usable = [c for c in cs if c["quality"] in ("exact", "confirmed")]
         match = "confirmed" if usable else ("check" if cs else "none")
         hits_on = listed + timedelta(days=threshold)
-        blockers = _blockers(r, days >= threshold, match, usable)
+        blockers = _blockers(r, days >= threshold, match, usable, any(c["quality"] == "name" for c in cs))
         label = STATUSES[r["status"]]
         if r["status"] == "new":
             # Say where an unassigned property actually stands.
@@ -419,7 +447,7 @@ def serialize(conn, rows):
     return out
 
 
-def _blockers(r, eligible, match, usable):
+def _blockers(r, eligible, match, usable, name_issue=False):
     """Reasons this lead can't go on a contact sheet right now. Empty means it can."""
     why = []
     if r["ours"]:
@@ -433,7 +461,7 @@ def _blockers(r, eligible, match, usable):
     if match == "none":
         why.append("Owner not in our database")
     elif match == "check":
-        why.append("Owner match needs checking")
+        why.append("Name doesn't match the owner on title" if name_issue else "Owner match needs checking")
     elif not any(c["phone"] or c["phone2"] or c["email"] for c in usable):
         why.append("No phone or email on file")
     if r["status"] != "new":
@@ -482,11 +510,14 @@ def lead_detail(conn, lead_id):
         q = address.compare(lparts, cparts)
         if q is None:
             continue
+        if q == "exact" and name_matches(c["name"], title_owners(json.loads(l["listing_extra"] or "{}"))) is False:
+            q = "name"
         candidates.append({"id": c["id"], "name": c["name"], "address": address.display(cparts),
                            "address_raw": c["address_raw"], "quality": q,
                            "decision": reviews.get(contact_sig(c["name"], cparts))})
     lead["candidates"] = candidates
     lead["listing_address"] = address.display(lparts)
+    lead["owners_on_title"] = title_owners(json.loads(l["listing_extra"] or "{}"))
     lead["activity"] = [dict(a) | {"prev": None} for a in conn.execute(
         "SELECT a.* FROM activity a WHERE a.lead_id = ? ORDER BY a.id DESC", (lead_id,))]
     lead["sheets"] = [dict(r) for r in conn.execute(

@@ -129,7 +129,8 @@ const FIELDS = {
     ["listed_date", "Date listed", false], ["days_on_market", "Days on market", false], ["price", "Price / price guide", false],
     ["property_type", "Property type", false], ["bedrooms", "Bedrooms", false], ["bathrooms", "Bathrooms", false],
     ["car_spaces", "Car spaces", false], ["land_size", "Land size (m²)", false], ["owner_type", "Owner type", false],
-    ["listing_type", "Sale method", false], ["first_price", "First listed price", false], ["url", "Listing link", false]],
+    ["listing_type", "Sale method", false], ["first_price", "First listed price", false], ["owner_1", "Owner 1 name (on title)", false],
+    ["owner_2", "Owner 2 name (on title)", false], ["owner_3", "Owner 3 name (on title)", false], ["url", "Listing link", false]],
   contacts: [["name", "Owner name", true], ["first_name", "First name", false], ["last_name", "Last name", false],
     ["phone", "Phone (mobile)", false], ["phone2", "Other phone", false], ["email", "Email", false],
     ["address", "Property address", true], ["suburb", "Suburb", false], ["state", "State", false], ["postcode", "Postcode", false],
@@ -138,7 +139,7 @@ const FIELDS = {
     ["contact_owner", "Contact owner (staff)", false], ["notes", "Notes", false]],
 };
 const EXTRA_FIELDS = {
-  listings: ["bathrooms", "car_spaces", "land_size", "owner_type", "listing_type", "first_price"],
+  listings: ["bathrooms", "car_spaces", "land_size", "owner_type", "listing_type", "first_price", "owner_1", "owner_2", "owner_3"],
   contacts: ["tags", "source", "last_note", "last_note_at", "last_note_by", "contact_owner"],
 };
 const HINTS = {
@@ -158,6 +159,7 @@ const HINTS = {
   bathrooms: ["bathrooms", "baths", "bath"], car_spaces: ["car spaces", "carspaces", "parking", "garages", "cars", "car"],
   land_size: ["land size m2", "land size m²", "land size", "land area", "land"], owner_type: ["owner type", "occupancy"],
   listing_type: ["listing type", "sale method", "method of sale", "sale type"], first_price: ["first listed price", "original price"],
+  owner_1: ["owner 1 name", "owner 1", "owner name", "owner names", "registered owner"], owner_2: ["owner 2 name", "owner 2"], owner_3: ["owner 3 name", "owner 3"],
   source: ["enquiry source", "lead source", "marketing enquiry source", "source"], last_note: ["last note content", "last note", "latest note"],
   last_note_at: ["last note created at", "last note date", "last contacted", "last contact date"],
   last_note_by: ["last note created by", "last note by"], contact_owner: ["audit owned by", "owned by", "contact owner", "account manager"],
@@ -167,6 +169,7 @@ const EXCLUDE = {
   phone: ["company", "fax"], phone2: ["company", "fax"], address: ["email", "postal", "mailing"],
   name: ["company", "legal", "salutation", "addressee", "formal"], notes: ["created", "by"],
   property_type: ["listing", "owner", "sale"], price: ["first"], land_size: ["use"],
+  owner_1: ["type"], owner_2: ["type"], owner_3: ["type"],
 };
 
 function readCsv(text) {
@@ -350,6 +353,17 @@ function today() { if (TODAY_OVERRIDE) return TODAY_OVERRIDE; const p = zonedPar
 function nowIso() { const p = zonedParts(); return `${p.year}-${p.month}-${p.day} ${p.hour}:${p.minute}:${p.second}`; }
 const normAgency = (t) => String(t || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
 const isOurs = (agency, ours) => { const a = normAgency(agency); return ours.some((o) => { o = normAgency(o); return o && a.includes(o); }); };
+// Owner names on title (RP Data's Owner 1/2/3 Name), same rules as lw/engine.py.
+const NAME_NOISE = new Set(["and", "the", "mr", "mrs", "ms", "miss", "dr", "of", "estate", "late"]);
+const COMPANY = /\b(pty|ltd|limited|trust|trustee|super|superannuation|holdings|investments|corporation|council|housing|nsw|department)\b/i;
+const titleOwners = (x) => ["owner_1", "owner_2", "owner_3"].map((k) => (x || {})[k]).filter(Boolean);
+const nameWords = (t) => new Set(String(t || "").toLowerCase().replace(/[^a-z ]/g, " ").split(/\s+/).filter((w) => w.length > 1 && !NAME_NOISE.has(w)));
+function nameMatches(name, owners) {
+  const people = owners.filter((o) => !COMPANY.test(o));
+  if (!people.length) return null;
+  const mine = nameWords(name);
+  return people.some((o) => [...nameWords(o)].some((w) => mine.has(w)));
+}
 const contactSig = (name, parts) => String(name || "").toLowerCase().replace(/[^a-z]/g, "") + "@" + addrKey(parts);
 const agentById = (id) => S.agents.find((a) => a.id === Number(id));
 const listingOf = (lead) => S.listings.find((l) => l.id === lead.listing_id);
@@ -458,6 +472,7 @@ function rebuild() {
     for (const c of byBlock[l.block] || []) {
       let q = compareAddr(l.parts, c.parts);
       if (!q) continue;
+      if (q === "exact" && nameMatches(c.name, titleOwners(l.extra)) === false) q = "name";
       const d = S.reviews[l.address_key + "§" + contactSig(c.name, c.parts)]?.decision;
       if (d === "reject") continue;
       if (d === "confirm") q = "confirmed";
@@ -520,14 +535,14 @@ function contactsFor(leadId) {
       notes: c.notes, extra: c.extra || {}, address: displayAddr(c.parts), address_raw: c.address_raw };
   }).sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
 }
-function blockersFor(r, eligible, match, usable) {
+function blockersFor(r, eligible, match, usable, nameIssue = false) {
   const why = [];
   if (r.ours) why.push("Listed with our agency");
   if (!r.active) why.push("No longer for sale");
   if (!eligible) why.push("Hasn't reached the day threshold");
   if (r.do_not_contact) why.push("Do not contact");
   if (match === "none") why.push("Owner not in our database");
-  else if (match === "check") why.push("Owner match needs checking");
+  else if (match === "check") why.push(nameIssue ? "Name doesn't match the owner on title" : "Owner match needs checking");
   else if (!usable.some((c) => c.phone || c.phone2 || c.email)) why.push("No phone or email on file");
   if (r.status !== "new") why.push(`Already ${STATUSES[r.status].toLowerCase()}` + (r.agent_name ? ` (${r.agent_name})` : ""));
   return why;
@@ -538,7 +553,7 @@ function serialize(leads) {
     const r = leadRow(lead), p = r.parts, days = diffDays(t, r.listed_date);
     const cs = contactsFor(r.id), usable = cs.filter((c) => c.quality === "exact" || c.quality === "confirmed");
     const match = usable.length ? "confirmed" : cs.length ? "check" : "none";
-    const blockers = blockersFor(r, days >= threshold, match, usable);
+    const blockers = blockersFor(r, days >= threshold, match, usable, cs.some((c) => c.quality === "name"));
     let label = STATUSES[r.status];
     if (r.status === "new") {
       if (r.ours) label = "Our listing";
@@ -578,13 +593,15 @@ function leadDetail(id) {
   const out = serialize([lead])[0], l = listingOf(lead);
   const candidates = [];
   for (const c of S.contacts.filter((c) => c.block === blockKey(l.parts))) {
-    const q = compareAddr(l.parts, c.parts);
+    let q = compareAddr(l.parts, c.parts);
     if (!q) continue;
+    if (q === "exact" && nameMatches(c.name, titleOwners(l.extra)) === false) q = "name";
     candidates.push({ id: c.id, name: c.name, address: displayAddr(c.parts), address_raw: c.address_raw, quality: q,
       decision: S.reviews[l.address_key + "§" + contactSig(c.name, c.parts)]?.decision || null });
   }
   out.candidates = candidates;
   out.listing_address = displayAddr(l.parts);
+  out.owners_on_title = titleOwners(l.extra);
   out.activity = S.activity.filter((a) => a.lead_id === id).sort((a, b) => b.id - a.id).map((a) => ({ ...a, prev: null }));
   out.sheets = S.sheetLeads.filter((s) => s.lead_id === id).map((s) => S.sheets.find((x) => x.id === s.sheet_id))
     .sort((a, b) => b.id - a.id).map((s) => ({ id: s.id, created_at: s.created_at, agent: agentById(s.agent_id).name }));
@@ -752,7 +769,7 @@ function propertyLine(l) {
 function howWeKnow(c) {
   const x = c.extra || {};
   const tags = String(x.tags || "").split(/[,;|]/).map((t) => t.trim()).filter((t) => t && !/do not (contact|call)|\bdnc\b/i.test(t));
-  return ["In our database", ...tags.slice(0, 4), x.source ? `source: ${x.source}` : ""].filter(Boolean).join(" · ");
+  return ["In our database", ...tags.slice(0, 6), x.source ? `source: ${x.source}` : ""].filter(Boolean).join(" · ");
 }
 // Same page as approach_pages() in lw/server.py.
 function approachPages(leads, label, sheetId) {
@@ -786,6 +803,12 @@ function approachPages(leads, label, sheetId) {
       phones += pn.filter((n) => !PHONE_DANGER.test(n)).map((n) => `<div class="pnote">Note in CRM phone field: ${esc(n)}</div>`).join("");
       const orow = [["Owner", `<b>${esc(c.name)}</b>`], ["Phone", phones || '<b style="color:#b3261e">No phone on file</b>']];
       if (c.email) orow.push(["Email", esc(c.email)]);
+      const onTitle = titleOwners(x);
+      if (onTitle.length) {
+        const ok = nameMatches(c.name, onTitle);
+        const verdict = ok === true ? "matches our contact" : ok === false ? '<b style="color:#b3261e">does not match our contact</b>' : "company owner, check before calling";
+        orow.push(["Owner on title", `${esc(onTitle.join(", "))} <small>(RP Data, ${verdict})</small>`]);
+      }
       orow.push(["How we know them", esc(howWeKnow(c))]);
       if (cx.contact_owner) orow.push(["Contact owner", esc(cx.contact_owner)]);
       let callout = "";
@@ -794,7 +817,10 @@ function approachPages(leads, label, sheetId) {
         const meta = [/^\d{4}-\d{2}-\d{2}$/.test(when) ? longDate(when) : when, cx.last_note_by || ""].filter(Boolean).join(", ");
         let note = cx.last_note.trim().replace(/\n/g, " ");
         if (note.length > 320) note = note.slice(0, 317).replace(/\s+\S*$/, "") + "...";
-        callout = `<div class="lastnote"><div class="ln-head"><span>Read before calling</span><span>Last note in our CRM${meta ? " · " + esc(meta) : ""}</span></div><div class="ln-text">"${esc(note)}"</div></div>`;
+        const street = parseAddr(l.address).street;
+        const caution = street && cx.last_note.toLowerCase().includes(street) ? "" :
+          `<div class="ln-warn">This note doesn't mention ${esc(title(street) || "this street")}. It is the latest note on the person and may be about another property or about them as a buyer.</div>`;
+        callout = `<div class="lastnote"><div class="ln-head"><span>Read before calling</span><span>Last note on this contact${meta ? " · " + esc(meta) : ""}</span></div><div class="ln-text">"${esc(note)}"</div>${caution}</div>`;
       }
       orow.push(["In our CRM as", `<small>${esc(c.address_raw.split(/\s+/).join(" "))}</small>`]);
       return `<div class="owner">${warns}<dl>${orow.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join("")}</dl>${callout}</div>`;
@@ -809,7 +835,7 @@ function approachPages(leads, label, sheetId) {
 <div class="given"><div>Agent: ${esc(label || "")}</div><div>Date given:</div></div>
 <h2>The call</h2><table class="log"><tr><th style="width:24%">Date and time</th><th style="width:26%">Number called</th><th>What happened</th></tr>${"<tr><td></td><td></td><td></td></tr>".repeat(3)}</table>
 <div class="outcomes">${["No answer", "Left message", "Call back on ________", "Appraisal booked ________", "Not interested", "Wrong number", "Asked not to be contacted"].map((o) => `<span>${box}${o}</span>`).join("")}</div>
-<div class="lines"><div></div><div></div><div></div></div>
+<div class="lines"><div></div><div></div></div>
 <div class="foot">Owner matched on the exact property address in our CRM. Log every call in Listing Watch the same day, including no answers. Lead #${l.id}.</div></section>`;
   }).join("");
 }

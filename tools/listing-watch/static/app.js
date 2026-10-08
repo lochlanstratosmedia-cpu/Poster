@@ -567,6 +567,7 @@ async function openLead(id) {
   if (l.do_not_contact) alerts.push(`<div class="alertbox danger">Do not contact this owner.</div>`);
   if (l.ours) alerts.push(`<div class="alertbox info">This is our own listing.</div>`);
   if (l.match === "check") alerts.push(`<div class="alertbox warn">The owner match needs checking before anyone calls. See "Who owns it" below.</div>`);
+  if (l.owners_on_title?.length) alerts.push(`<div class="alertbox info">Owner on title (RP Data): <b>${esc(l.owners_on_title.join(", "))}</b></div>`);
   if (l.match === "none") alerts.push(`<div class="alertbox warn">The owner isn't in our database.</div>`);
   if (!l.eligible && l.for_sale) alerts.push(`<div class="alertbox info">On the watchlist. Hits ${T} days on ${esc(fmtDate(l.hits_on))} (${esc(relDays(l.hits_on))}).</div>`);
   if (l.follow_up_due) alerts.push(`<div class="alertbox warn">${esc(l.status_label)} was due ${esc(fmtDate(l.follow_up_on))}.</div>`);
@@ -596,11 +597,12 @@ async function openLead(id) {
           <div class="sub">In our database as: ${esc(c.address_raw)}</div>
           ${c.notes ? `<div class="sub">Notes: ${esc(c.notes)}</div>` : ""}
         </div>`).join("") : `<p class="muted">No confirmed owner.</p>`}
-        ${l.candidates.filter((c) => c.quality === "check" || c.decision).length ? `
+        ${l.candidates.filter((c) => c.quality === "check" || c.quality === "name" || c.decision).length ? `
           <h3 style="margin-top:14px">Possible owners to check</h3>
-          <p class="sub">Compare the two addresses. Only confirm if they are the same property. A missing suburb or a different street type (Street or Road) is why these weren't matched automatically.</p>
-          ${l.candidates.filter((c) => c.quality === "check" || c.decision).map((c) => `<div class="contact">
+          <p class="sub">Only confirm if this person owns this property. Matches land here when the suburb is missing, the street type differs (Street or Road), or the name doesn't match the owner on title.</p>
+          ${l.candidates.filter((c) => c.quality === "check" || c.quality === "name" || c.decision).map((c) => `<div class="contact">
             <div class="name">${esc(c.name)}</div>
+            ${c.quality === "name" ? `<div class="alertbox warn" style="margin:6px 0">RP Data lists the owner on title as <b>${esc((l.owners_on_title || []).join(", "))}</b>. This contact's name is different, so they may be a buyer or tenant saved against this address. Only confirm if you know they own it.</div>` : ""}
             <dl class="kv" style="margin:6px 0"><dt>For sale</dt><dd>${esc(l.address)}</dd><dt>Our database</dt><dd>${esc(c.address)}<div class="sub">Written as: ${esc(c.address_raw)}</div></dd></dl>
             <div class="row" style="margin-top:8px">
               ${c.decision === "confirm" ? `<span class="pill appraisal">Confirmed</span><button class="btn small ghost" data-match="clear" data-contact="${c.id}">Undo</button>`

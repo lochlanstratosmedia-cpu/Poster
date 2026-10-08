@@ -32,6 +32,9 @@ FIELDS = {
         ("owner_type", "Owner type", False),
         ("listing_type", "Sale method", False),
         ("first_price", "First listed price", False),
+        ("owner_1", "Owner 1 name (on title)", False),
+        ("owner_2", "Owner 2 name (on title)", False),
+        ("owner_3", "Owner 3 name (on title)", False),
         ("url", "Listing link", False),
     ],
     "contacts": [
@@ -59,7 +62,7 @@ FIELDS = {
 # Extra fields kept with each record for the contact sheet. They never change
 # who gets matched or called.
 EXTRA_FIELDS = {
-    "listings": ["bathrooms", "car_spaces", "land_size", "owner_type", "listing_type", "first_price"],
+    "listings": ["bathrooms", "car_spaces", "land_size", "owner_type", "listing_type", "first_price", "owner_1", "owner_2", "owner_3"],
     "contacts": ["tags", "source", "last_note", "last_note_at", "last_note_by", "contact_owner"],
 }
 
@@ -94,6 +97,9 @@ HINTS = {
     "owner_type": ["owner type", "occupancy"],
     "listing_type": ["listing type", "sale method", "method of sale", "sale type"],
     "first_price": ["first listed price", "original price"],
+    "owner_1": ["owner 1 name", "owner 1", "owner name", "owner names", "registered owner"],
+    "owner_2": ["owner 2 name", "owner 2"],
+    "owner_3": ["owner 3 name", "owner 3"],
     "source": ["enquiry source", "lead source", "marketing enquiry source", "source"],
     "last_note": ["last note content", "last note", "latest note"],
     "last_note_at": ["last note created at", "last note date", "last contacted", "last contact date"],
@@ -111,6 +117,7 @@ EXCLUDE = {
     "property_type": ["listing", "owner", "sale"],
     "price": ["first"],
     "land_size": ["use"],
+    "owner_1": ["type"], "owner_2": ["type"], "owner_3": ["type"],
 }
 
 

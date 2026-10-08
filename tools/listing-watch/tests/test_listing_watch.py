@@ -294,6 +294,36 @@ class FlowTests(unittest.TestCase):
         self.assertIn("DO NOT CALL BEFORE", page)
         self.assertIn("Estimated to", page)
 
+    def test_name_not_matching_owner_on_title_needs_a_person(self):
+        rows = [["Address", "Suburb", "Agency", "Date Listed", "Owner 1 Name", "Owner 2 Name"],
+                ["12 Smith St", "Northvale", "Other Realty", (TODAY - timedelta(days=80)).strftime("%d/%m/%Y"), "OWNER", ""],
+                ["3/5 Hill Rd", "Northvale", "Other Realty", (TODAY - timedelta(days=80)).strftime("%d/%m/%Y"), "KOURIL", ""],
+                ["8 Bay St", "Northvale", "Other Realty", (TODAY - timedelta(days=80)).strftime("%d/%m/%Y"), "SOMETHING PTY LTD", ""]]
+        self.o.load("listings", rows)
+        self.assertEqual(self.o.lead("12 Smith")["blockers"], [], "surname matches: fine")
+        self.assertEqual(self.o.lead("3/5 Hill")["blockers"], ["Name doesn't match the owner on title"])
+        detail = engine.lead_detail(self.o.conn, self.o.lead("3/5 Hill")["id"])
+        self.assertEqual(detail["owners_on_title"], ["KOURIL"])
+        self.assertEqual(detail["candidates"][0]["quality"], "name")
+        with self.o.conn:
+            engine.review_match(self.o.conn, detail["id"], detail["candidates"][0]["id"], "confirm", "Boss")
+        self.assertEqual(self.o.lead("3/5 Hill")["blockers"], [], "a person can still confirm it")
+        self.assertEqual(engine.name_matches("Pat Owner", ["SOMETHING PTY LTD"]), None, "companies can't be checked")
+
+    def test_note_not_about_the_property_is_flagged(self):
+        from lw import server
+        rows = [["Name", "Mobile", "Address", "Suburb", "Last Note Content"],
+                ["Pat Owner", "0491570001", "12 Smith Street", "Northvale", "Liked the studio but too much work"],
+                ["Lee Owner", "0491570002", "Unit 3, 5 Hill Road", "Northvale", "Wants an appraisal on Hill Rd in spring"]]
+        self.o.load("contacts", rows)
+        self.o.load("listings", listings(TODAY, smith=80, hill=80))
+        st = db.get_settings(self.o.conn)
+        dd = {"today": TODAY.isoformat(), "listings": TODAY.isoformat()}
+        smith = server.approach_pages([self.o.lead("12 Smith")], st, dd)
+        hill = server.approach_pages([self.o.lead("3/5 Hill")], st, dd)
+        self.assertIn("doesn't mention Smith", smith)
+        self.assertNotIn("doesn't mention", hill)
+
     def test_release_and_reassign(self):
         self.o.load("listings", listings(TODAY, smith=80))
         lid = self.o.lead("12 Smith")["id"]
