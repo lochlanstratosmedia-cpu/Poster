@@ -592,7 +592,7 @@ async function openLead(id) {
           ${c.email ? `<div><a href="mailto:${esc(c.email)}">${esc(c.email)}</a></div>` : ""}
           ${(c.extra?.phone_notes || []).map((t) => `<div class="alertbox ${/deceas|passed away|died|do\s*not|dnc|wrong number|disconnected/i.test(t) ? "danger" : "warn"}" style="margin-top:6px">CRM phone field says: ${esc(t)}</div>`).join("")}
           ${c.extra?.tags || c.extra?.source ? `<div class="sub">How we know them: ${esc([c.extra.tags, c.extra.source ? "source: " + c.extra.source : ""].filter(Boolean).join(" · "))}</div>` : ""}
-          ${c.extra?.last_note ? `<div class="sub" style="margin-top:4px">Last note (${esc([String(c.extra.last_note_at || "").slice(0, 10), c.extra.last_note_by].filter(Boolean).join(", "))}): <i>"${esc(c.extra.last_note)}"</i></div>` : ""}
+          ${c.extra?.last_note ? `<div class="lastnote-app"><div class="ln-head"><span>Read before calling</span><span>${esc([String(c.extra.last_note_at || "").slice(0, 10), c.extra.last_note_by].filter(Boolean).join(", "))}</span></div><div class="ln-text">"${esc(c.extra.last_note)}"</div></div>` : ""}
           <div class="sub">In our database as: ${esc(c.address_raw)}</div>
           ${c.notes ? `<div class="sub">Notes: ${esc(c.notes)}</div>` : ""}
         </div>`).join("") : `<p class="muted">No confirmed owner.</p>`}

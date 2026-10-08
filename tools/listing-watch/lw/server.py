@@ -259,6 +259,11 @@ dd small { color: #6e6e73; font-weight: 400; }
 .phone { font-size: 14pt; font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: .01em; }
 .phone small { font-size: 9pt; font-weight: 500; color: #6e6e73; margin-left: 6px; letter-spacing: 0; }
 .quote { font-style: italic; }
+.lastnote { margin: 8px 0 2px; border: 1.5px solid #1d1d1f; border-left: 7px solid #1d1d1f; background: #fff6d6; border-radius: 6px; padding: 7px 11px 8px;
+  -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+.ln-head { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; font-size: 8pt; letter-spacing: .1em; text-transform: uppercase; font-weight: 700; }
+.ln-head span:last-child { letter-spacing: .02em; text-transform: none; font-weight: 500; color: #3a3a3c; }
+.ln-text { font-size: 12pt; line-height: 1.4; font-weight: 600; margin-top: 3px; }
 .owner + .owner { margin-top: 8px; padding-top: 8px; border-top: 1px dashed #c7c7cc; }
 .warn { background: #ff3b30; color: #fff; font-weight: 700; padding: 3px 8px; border-radius: 5px; margin: 5px 0 2px; font-size: 9.5pt; }
 .pnote { color: #6e6e73; font-size: 9pt; }
@@ -357,15 +362,19 @@ def approach_pages(leads, settings, data_date, label="", sheet_id=None):
             orow.append(("How we know them", e(_how_we_know(c))))
             if cx.get("contact_owner"):
                 orow.append(("Contact owner", e(cx["contact_owner"])))
+            meta = ""
             if cx.get("last_note"):
                 when = cx.get("last_note_at", "")[:10]
                 who = cx.get("last_note_by", "")
                 meta = ", ".join(v for v in [_fmt_date(when) if re.fullmatch(r"\d{4}-\d{2}-\d{2}", when) else when, who] if v)
                 note = cx["last_note"].strip().replace("\n", " ")
                 note = note if len(note) <= 320 else note[:317].rsplit(" ", 1)[0] + "..."
-                orow.append(("Last note", f'{e(meta)}<br><span class="quote">"{e(note)}"</span>'))
+            callout = ""
+            if cx.get("last_note"):
+                callout = (f'<div class="lastnote"><div class="ln-head"><span>Read before calling</span><span>Last note in our CRM'
+                           f'{" · " + e(meta) if meta else ""}</span></div><div class="ln-text">"{e(note)}"</div></div>')
             orow.append(("In our CRM as", f'<small>{e(" ".join(c["address_raw"].split()))}</small>'))
-            owners.append(f'<div class="owner">{warns}<dl>' + "".join(f"<dt>{k}</dt><dd>{v}</dd>" for k, v in orow) + "</dl></div>")
+            owners.append(f'<div class="owner">{warns}<dl>' + "".join(f"<dt>{k}</dt><dd>{v}</dd>" for k, v in orow) + f"</dl>{callout}</div>")
 
         head_right = " · ".join(v for v in [f"For-sale data to {_fmt_date(data_date['listings'], '%-d %b %Y')}" if data_date.get("listings") else "",
                                              f"Sheet #{sheet_id}" if sheet_id else "", f"{n} of {len(leads)}"] if v)
@@ -378,7 +387,7 @@ def approach_pages(leads, settings, data_date, label="", sheet_id=None):
 <h2>The owner</h2>{"".join(owners) or '<p>No confirmed owner.</p>'}
 <h2>Before you make contact</h2>
 <div class="checks"><div><span class="box"></span>Checked against the Do Not Call Register</div><div><span class="box"></span>Confirmed it is still on the market</div>
-<div><span class="box"></span>Checked the agreement has lapsed</div><div><span class="box"></span>Read the last note above</div></div>
+<div><span class="box"></span>Checked the agreement has lapsed</div><div><span class="box"></span>Read the "Read before calling" note</div></div>
 <div class="given"><div>Agent: {e(label)}</div><div>Date given:</div></div>
 <h2>The call</h2>
 <table class="log"><tr><th style="width:24%">Date and time</th><th style="width:26%">Number called</th><th>What happened</th></tr>{"<tr><td></td><td></td><td></td></tr>" * 3}</table>
