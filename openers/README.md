@@ -24,7 +24,7 @@ Add a button for it in the `#style` group.
 | Height on screen | 30% | Where the bar sits, from the top |
 | Ending | Fade up | Zoom through, or stay on screen to cut away in the edit |
 | Clip after the bar leaves | 0.6 s | Background keeps rolling before the opener ends |
-| Background | Photo or clip | Green screen gives a flat #00b140 for keying in CapCut |
+| Background | Photo or clip | Green screen gives a flat #00b140 for keying in CapCut. Transparent saves a WebM with an alpha channel |
 | Slow push-in | On | 8% zoom over the length of the opener |
 | Sound effects | On | Pop, whoosh, key clicks and a tap, made from noise and sine waves, so there is nothing to license |
 
@@ -35,6 +35,11 @@ Settings stay in the browser between visits.
 The page records the preview in real time, so keep the tab in front until it
 finishes. Chrome 126 and later and Safari save H.264 MP4. Older Chrome saves
 WebM, which CapCut opens but Instagram may not; use `render.mjs` for those.
+
+With the Transparent background the page saves a VP9 WebM with alpha instead.
+Only Chrome and Edge can record that. Safari cannot, so use
+`render.mjs --alpha` there, which also gives a ProRes 4444 `.mov` with sound
+for Premiere, Final Cut, DaVinci Resolve and CapCut desktop.
 
 ## Frame-exact renders
 

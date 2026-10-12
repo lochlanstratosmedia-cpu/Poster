@@ -70,7 +70,7 @@ const encoders = clip
   ? [ffmpeg([...frameIn, "-c:v", "png", "-pix_fmt", "rgba", overlay])]
   : alpha
     ? [
-        ffmpeg([...frameIn, "-c:v", "prores_ks", "-profile:v", "4444", "-pix_fmt", "yuva444p10le", `${out}/${name}.mov`]),
+        ffmpeg([...frameIn, ...audioIn, ...(sound ? ["-map", "0:v", "-map", "1:a", "-c:a", "pcm_s16le"] : []), "-c:v", "prores_ks", "-profile:v", "4444", "-pix_fmt", "yuva444p10le", `${out}/${name}.mov`]),
         ffmpeg([...frameIn, ...audioIn, ...(sound ? ["-map", "0:v", "-map", "1:a", "-c:a", "libopus"] : []), "-c:v", "libvpx-vp9", "-pix_fmt", "yuva420p", "-b:v", "0", "-crf", "28", `${out}/${name}.webm`]),
       ]
     : [ffmpeg([...frameIn, ...audioIn, ...audioOut, "-c:v", "libx264", "-pix_fmt", "yuv420p", "-crf", "16", "-preset", "slow", "-movflags", "+faststart", "-shortest", `${out}/${name}.mp4`])];

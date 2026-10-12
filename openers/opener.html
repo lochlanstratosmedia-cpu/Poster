@@ -64,6 +64,8 @@ canvas#c { width: 100%; height: auto; display: block; border-radius: 6px; box-sh
 .meta { font: 12px/1.4 var(--mono); color: var(--muted); text-align: center; margin: 0; }
 .result { width: 100%; max-width: 380px; display: grid; gap: 8px; }
 .result video { width: 100%; border-radius: 6px; background: #000; }
+/* Checkerboard behind the preview when the background is transparent. */
+.checker canvas#c, .checker .result video { background: repeating-conic-gradient(#c8c8c8 0% 25%, #f2f2f2 0% 50%) 0 0 / 24px 24px; }
 .note { font-size: 12px; color: var(--muted); margin: 0; }
 
 /* Render mode: used by render.mjs. Canvas at native size, nothing else. */
@@ -101,6 +103,7 @@ body.render canvas#c { width: auto; border-radius: 0; box-shadow: none; backgrou
       <div class="seg" id="bg" role="group" aria-label="Background">
         <button type="button" data-v="clip" aria-pressed="true">Photo or clip</button>
         <button type="button" data-v="green">Green screen</button>
+        <button type="button" data-v="alpha">Transparent</button>
       </div>
       <label class="check"><input type="checkbox" id="push" checked> Slow push-in on the background</label>
     </fieldset>
@@ -492,6 +495,7 @@ function setPlaying(p) {
 }
 
 function changed() {
+  document.body.classList.toggle("checker", S.bg === "alpha");
   save(); replan(); updateOutputs();
   const { W, H } = size();
   if (canvas.width !== W || canvas.height !== H) { canvas.width = W; canvas.height = H; }
@@ -534,6 +538,9 @@ function bindSegSync(id) { $(id).querySelectorAll("button").forEach(b => b.setAt
 // ---------- export ----------
 let lastBlob = null, lastName = "";
 function pickMime() {
+  // Transparent video needs VP9 or VP8 WebM. Chrome and Edge keep the alpha
+  // channel there; Safari cannot record it.
+  if (S.bg === "alpha") return ["video/webm;codecs=vp9,opus", "video/webm;codecs=vp9", "video/webm;codecs=vp8,opus", "video/webm;codecs=vp8"].find(m => window.MediaRecorder && MediaRecorder.isTypeSupported(m)) || "";
   // H.264 MP4 first (Chrome 126+, Safari). A bare "video/mp4" goes last because
   // Chrome without H.264 fills it with VP9, which Instagram handles badly.
   const opts = ["video/mp4;codecs=avc1.640028,mp4a.40.2", "video/mp4;codecs=avc1,mp4a", "video/mp4;codecs=avc1", "video/webm;codecs=vp9,opus", "video/webm;codecs=vp8,opus", "video/webm", "video/mp4"];
@@ -556,6 +563,7 @@ async function saveBlob(blob, name) {
 
 async function exportVideo() {
   const mime = pickMime();
+  if (!mime && S.bg === "alpha") { status.textContent = "This browser cannot record transparent video. Use Chrome or Edge on a computer, or render with render.mjs --alpha."; return; }
   if (!mime || !canvas.captureStream) { status.textContent = "This browser cannot record video. Use Chrome, Edge or Safari, or render with render.mjs."; return; }
   const btn = $("export"); btn.disabled = true;
   soundArmed = true;
@@ -587,7 +595,7 @@ async function exportVideo() {
 
   const ext = mime.includes("mp4") ? "mp4" : "webm";
   lastBlob = new Blob(chunks, { type: mime.split(";")[0] });
-  lastName = `opener-${slug(S.text)}.${ext}`;
+  lastName = `opener-${slug(S.text)}${S.bg === "alpha" ? "-transparent" : ""}.${ext}`;
   $("out").src = URL.createObjectURL(lastBlob);
   $("result").hidden = false;
   status.textContent = `Recorded ${(lastBlob.size / 1e6).toFixed(1)} MB ${ext.toUpperCase()}.`;
