@@ -1,0 +1,107 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300..900&display=block" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#777;display:flex;flex-wrap:wrap;gap:40px;padding:40px}
+.ad{width:1080px;height:1920px;position:relative;overflow:hidden;font-family:Inter,sans-serif;font-optical-sizing:auto;-webkit-font-smoothing:antialiased;color:#fff}
+.bg{position:absolute;inset:0}
+.bg img{width:100%;height:100%;object-fit:cover;display:block}
+
+/* liquid glass material */
+.glass{position:absolute;overflow:hidden;
+  background:linear-gradient(145deg,rgba(255,255,255,.30) 0%,rgba(255,255,255,.10) 45%,rgba(255,255,255,.18) 100%);
+  -webkit-backdrop-filter:blur(34px) saturate(190%) brightness(1.05);backdrop-filter:blur(34px) saturate(190%) brightness(1.05);
+  box-shadow:inset 0 2px 1px rgba(255,255,255,.75),inset 0 -2px 2px rgba(255,255,255,.18),inset 2px 0 1px rgba(255,255,255,.25),inset -2px 0 1px rgba(255,255,255,.12),0 40px 80px rgba(0,0,0,.28)}
+.glass::before{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;
+  background:radial-gradient(120% 60% at 20% -10%,rgba(255,255,255,.45) 0%,rgba(255,255,255,0) 45%),radial-gradient(80% 40% at 100% 110%,rgba(255,255,255,.18) 0%,rgba(255,255,255,0) 60%)}
+.glass::after{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;padding:2px;
+  background:linear-gradient(160deg,rgba(255,255,255,.9),rgba(255,255,255,.1) 35%,rgba(255,255,255,.05) 65%,rgba(255,255,255,.6));
+  -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude}
+.glass.tint{background:linear-gradient(145deg,rgba(194,173,224,.55) 0%,rgba(123,92,168,.35) 60%,rgba(194,173,224,.45) 100%)}
+.glass.dark{background:linear-gradient(145deg,rgba(30,22,34,.45) 0%,rgba(30,22,34,.25) 100%)}
+.in{position:relative;z-index:1}
+.ts{text-shadow:0 2px 24px rgba(0,0,0,.25)}
+.small{font-size:32px;font-weight:500;letter-spacing:-.005em;opacity:.85}
+.pill{display:inline-flex;align-items:center;gap:20px;height:110px;padding:0 60px;border-radius:999px;font-size:40px;font-weight:600;letter-spacing:-.01em}
+.chev{display:inline-block;width:.42em;height:.42em;border-right:4px solid currentColor;border-top:4px solid currentColor;transform:rotate(45deg)}
+</style>
+</head>
+<body>
+
+<!-- A · single glass card over the house -->
+<section class="ad" id="glass-a-card">
+  <div class="bg"><img src="photos/house-colour.jpg" style="object-position:48% 50%;filter:saturate(1.1)"></div>
+  <div style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(57,43,61,.35) 0%,rgba(57,43,61,0) 40%,rgba(57,43,61,.25) 100%)"></div>
+  <div class="glass" style="left:80px;right:80px;top:280px;height:1120px;border-radius:84px;text-align:center">
+    <div class="in" style="padding-top:96px">
+      <div class="ts" style="font-size:38px;font-weight:600;opacity:.9">Postcode</div>
+      <div class="ts" style="font-size:330px;font-weight:800;letter-spacing:-.05em;line-height:.95;margin-top:8px">2287</div>
+      <div class="ts" style="font-size:80px;font-weight:700;letter-spacing:-.035em;line-height:1.05;margin-top:40px">Find out where<br>your home sits.</div>
+      <div style="margin-top:70px;position:relative;display:inline-block">
+        <span class="glass tint pill" style="position:relative;color:#fff"><span class="in">Book a Chat</span><span class="chev in"></span></span>
+      </div>
+      <div class="small ts" style="margin-top:34px">No Cost. No Commitment.</div>
+    </div>
+  </div>
+</section>
+
+<!-- B · glass widgets -->
+<section class="ad" id="glass-b-widgets">
+  <div class="bg"><img src="photos/house-colour.jpg" style="object-position:40% 50%;filter:saturate(1.1)"></div>
+  <div style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(57,43,61,.45) 0%,rgba(57,43,61,.05) 45%,rgba(57,43,61,.4) 100%)"></div>
+  <!-- big widget -->
+  <div class="glass" style="left:70px;right:70px;top:250px;height:560px;border-radius:76px">
+    <div class="in" style="padding:60px 70px">
+      <div style="display:flex;align-items:center;gap:20px">
+        <svg width="44" height="56" viewBox="0 0 100 130"><path d="M50 4C25 4 6 23 6 47c0 32 44 79 44 79s44-47 44-79C94 23 75 4 50 4z" fill="#C2ADE0"/><circle cx="50" cy="46" r="17" fill="#fff"/></svg>
+        <span class="ts" style="font-size:38px;font-weight:600">Postcode</span>
+      </div>
+      <div class="ts" style="font-size:340px;font-weight:800;letter-spacing:-.05em;line-height:1;margin-top:10px">2287</div>
+    </div>
+  </div>
+  <!-- headline widget -->
+  <div class="glass dark" style="left:70px;right:70px;top:840px;height:360px;border-radius:76px">
+    <div class="in ts" style="padding:64px 70px;font-size:92px;font-weight:700;letter-spacing:-.04em;line-height:1.02">Find out where <span style="color:#D9C8F0">your home</span> sits.</div>
+  </div>
+  <!-- CTA capsule -->
+  <div class="glass tint" style="left:70px;right:70px;top:1260px;height:160px;border-radius:999px">
+    <div class="in" style="display:flex;align-items:center;justify-content:space-between;height:100%;padding:0 30px 0 64px">
+      <span class="ts" style="font-size:42px;font-weight:600;letter-spacing:-.015em">Book a Chat. <span style="font-weight:500;opacity:.85">No Cost. No Commitment.</span></span>
+      <span style="width:100px;height:100px;border-radius:50%;background:rgba(255,255,255,.92);display:grid;place-items:center"><svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#392B3D" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span>
+    </div>
+  </div>
+</section>
+
+<!-- C · lock screen with notification -->
+<section class="ad" id="glass-c-lockscreen">
+  <div class="bg"><img src="photos/house-colour.jpg" style="object-position:50% 50%;filter:saturate(1.05) brightness(.92)"></div>
+  <div style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(57,43,61,.55) 0%,rgba(57,43,61,.1) 38%,rgba(20,14,24,.35) 100%)"></div>
+  <div style="position:absolute;left:0;right:0;top:250px;text-align:center">
+    <div class="ts" style="font-size:40px;font-weight:600;opacity:.92">Postcode</div>
+    <div style="font-size:380px;font-weight:700;letter-spacing:-.04em;line-height:1;margin-top:-6px;color:rgba(255,255,255,.88);text-shadow:0 2px 0 rgba(255,255,255,.35),0 10px 50px rgba(57,43,61,.45)">2287</div>
+  </div>
+  <!-- notification -->
+  <div class="glass" style="left:50px;right:50px;top:1060px;height:250px;border-radius:64px">
+    <div class="in" style="display:flex;gap:34px;padding:50px 50px">
+      <div style="flex:none;width:120px;height:120px;border-radius:30px;background:linear-gradient(145deg,#C2ADE0,#7B5CA8);display:grid;place-items:center;box-shadow:inset 0 2px 1px rgba(255,255,255,.6)">
+        <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/></svg>
+      </div>
+      <div style="flex:1">
+        <div class="ts" style="display:flex;justify-content:space-between;font-size:36px;font-weight:700"><span>Postcode 2287</span><span style="font-weight:500;opacity:.75">now</span></div>
+        <div class="ts" style="font-size:52px;font-weight:500;letter-spacing:-.02em;line-height:1.15;margin-top:12px">Find out where your home sits.</div>
+      </div>
+    </div>
+  </div>
+  <!-- action -->
+  <div class="glass tint" style="left:50px;right:50px;top:1336px;height:130px;border-radius:999px">
+    <div class="in" style="display:flex;align-items:center;justify-content:center;gap:18px;height:100%;font-size:40px;font-weight:600;letter-spacing:-.01em" >
+      <span class="ts">Book a Chat. <span style="font-weight:500;opacity:.85">No Cost. No Commitment.</span></span><span class="chev"></span>
+    </div>
+  </div>
+</section>
+
+</body>
+</html>
