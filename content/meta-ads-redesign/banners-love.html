@@ -1,0 +1,190 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Instrument+Serif:ital@0;1&family=Inter+Tight:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=block" rel="stylesheet">
+<style>
+:root{--fog:#D5D7D3; --plum:#392B3D; --ink:#16181B; --off:#F1F0EC; --lilac:#C2ADE0; --deep:#7B5CA8}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#777;display:flex;flex-direction:column;gap:40px;padding:40px}
+.ad{width:1200px;height:628px;position:relative;overflow:hidden;font-family:"Inter Tight",sans-serif;color:var(--ink)}
+.display{font-family:Anton,sans-serif;line-height:.86;letter-spacing:-.01em;text-transform:uppercase}
+.serif{font-family:"Instrument Serif",serif;font-weight:400}
+.it{font-style:italic}
+.mono{font-family:"JetBrains Mono",monospace;font-weight:700;letter-spacing:.14em;text-transform:uppercase;font-size:17px}
+.photo{position:absolute;overflow:hidden}
+.photo img{width:100%;height:100%;object-fit:cover;display:block;filter:contrast(1.08)}
+.photo::after{content:"";position:absolute;inset:0;opacity:.14;mix-blend-mode:overlay;
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='240' height='240'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='1.1' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>")}
+.shade{position:absolute;inset:0}
+.col{position:absolute;top:0;bottom:0;display:flex;flex-direction:column;justify-content:center}
+.head{font-size:54px;line-height:1;letter-spacing:-.035em;font-weight:700}
+.head .serif{font-weight:400;letter-spacing:-.01em;font-size:1.12em}
+.cta{display:inline-flex;align-items:center;gap:22px;height:72px;border-radius:999px;padding:0 10px 0 30px;font-size:22px;font-weight:500;letter-spacing:-.01em;align-self:flex-start;margin-top:34px}
+.cta b{font-weight:800}
+.cta .arrow{width:54px;height:54px;border-radius:50%;display:grid;place-items:center;background:var(--lilac)}
+.cta .arrow svg{width:26px;height:26px}
+.cta.dark{background:var(--ink);color:var(--off)}
+.cta.light{background:var(--off);color:var(--ink)}
+.pin{position:absolute;filter:drop-shadow(0 14px 14px rgba(0,0,0,.35))}
+.plaque{border-radius:24px;display:grid;place-items:center;position:relative;box-shadow:0 30px 50px rgba(0,0,0,.45),inset 0 0 0 8px rgba(0,0,0,.06)}
+.plaque .n{font-family:Anton;line-height:1;transform:translateY(4px)}
+.screw{position:absolute;width:22px;height:22px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#eee,#8d8d8d);box-shadow:inset 0 0 0 2px rgba(0,0,0,.25)}
+.screw::after{content:"";position:absolute;left:4px;right:4px;top:10px;height:3px;background:#555;transform:rotate(35deg)}
+.receipt{position:absolute;background:#F6F7F5;color:var(--ink);padding:34px 36px 54px;transform:rotate(-4deg);box-shadow:0 30px 50px rgba(0,0,0,.45);
+  -webkit-mask:radial-gradient(circle 11px at 50% 100%,transparent 97%,#000) 0 0/32px 100% repeat-x}
+.line{display:flex;align-items:center;gap:12px;margin:16px 0;font-family:"JetBrains Mono",monospace;font-size:22px;font-weight:500}
+.line .bar{height:14px;border-radius:3px;background:#D3D6D8}
+.line .dots{flex:1;border-bottom:3px dotted #bbb;transform:translateY(-4px)}
+.line.big{font-size:26px;font-weight:700;margin-top:30px}
+.stamp{position:absolute;right:26px;top:96px;transform:rotate(-14deg);border:6px solid var(--deep);color:var(--deep);border-radius:12px;padding:2px 14px 6px;font-family:Anton;font-size:64px;line-height:1;mix-blend-mode:multiply}
+</style>
+</head>
+<body>
+
+<!-- b01 · 2287 sits -->
+<section class="ad" id="banner-01-2287-home-sits" style="background:var(--fog)">
+  <div class="photo" style="left:0;top:0;width:560px;height:628px"><img src="photos/house-tree.jpg" style="object-position:35% 60%"></div>
+  <div class="col" style="left:620px;right:56px">
+    <div class="mono" style="margin-bottom:14px">Postcode 2287</div>
+    <div class="display" style="font-size:190px;position:relative">2287
+      <svg class="pin" style="left:400px;top:-14px;width:84px" viewBox="0 0 100 130"><path d="M50 4C25 4 6 23 6 47c0 32 44 79 44 79s44-47 44-79C94 23 75 4 50 4z" fill="#7B5CA8"/><circle cx="50" cy="46" r="17" fill="#F1F0EC"/></svg></div>
+    <div class="head" style="margin-top:22px">Find out where <span class="serif it">your home</span> sits.</div>
+    <div class="cta dark"><span>Book a Chat. <b>No Cost. No Commitment.</b></span><span class="arrow"><svg viewBox="0 0 24 24" fill="none" stroke="#16181B" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span></div>
+  </div>
+</section>
+
+<!-- b02 · 2284 sits -->
+<section class="ad" id="banner-02-2284-home-sits" style="background:var(--plum);color:var(--off)">
+  <div class="col" style="left:64px;width:680px">
+    <div class="mono" style="margin-bottom:14px;color:var(--lilac)">Postcode 2284</div>
+    <div class="display" style="font-size:190px">2284</div>
+    <div class="head" style="margin-top:22px">Find out where<br><span class="serif it">your home</span> sits.</div>
+    <div class="cta light"><span>Book a Chat. <b>No Cost. No Commitment.</b></span><span class="arrow"><svg viewBox="0 0 24 24" fill="none" stroke="#16181B" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span></div>
+  </div>
+  <div style="position:absolute;left:930px;top:314px">
+    <i style="position:absolute;left:-330px;top:-330px;width:660px;height:660px;border-radius:50%;border:2px solid rgba(194,173,224,.15)"></i>
+    <i style="position:absolute;left:-260px;top:-260px;width:520px;height:520px;border-radius:50%;border:2px solid rgba(194,173,224,.3)"></i>
+    <i style="position:absolute;left:-206px;top:-206px;width:412px;height:412px;border-radius:50%;border:4px solid #C2ADE0"></i>
+  </div>
+  <div class="photo" style="left:750px;top:134px;width:360px;height:360px;border-radius:50%"><img src="photos/kitchen.jpg" style="object-position:60% 50%"></div>
+</section>
+
+<!-- b03 · fees $0 -->
+<section class="ad" id="banner-03-zero-fees" style="background:var(--plum);color:var(--off)">
+  <div class="photo" style="left:0;top:0;width:640px;height:628px;opacity:.6"><img src="photos/street.jpg"></div>
+  <div class="shade" style="background:linear-gradient(90deg,rgba(57,43,61,.35) 0%,rgba(57,43,61,.7) 40%,rgba(57,43,61,1) 54%)"></div>
+  <div class="display" style="position:absolute;left:40px;top:70px;font-size:560px"><span style="font-size:.42em;vertical-align:.95em;color:var(--lilac)">$</span>0</div>
+  <div class="col" style="left:620px;right:56px">
+    <div class="head" style="font-size:44px">Tired of management fees eating into your rental return?</div>
+    <div class="serif it" style="font-size:50px;line-height:1;margin-top:20px;color:var(--lilac)">Pay zero management fees.</div>
+    <div class="cta light"><span>Book a Chat. <b>No Cost. No Commitment.</b></span><span class="arrow"><svg viewBox="0 0 24 24" fill="none" stroke="#16181B" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span></div>
+  </div>
+</section>
+
+<!-- b04 · fees receipt -->
+<section class="ad" id="banner-04-zero-fees-receipt" style="background:var(--ink);color:var(--off)">
+  <div class="col" style="left:64px;width:560px">
+    <div class="head" style="font-size:50px">Tired of management fees eating into <span class="serif it" style="color:var(--lilac)">your rental return?</span></div>
+    <div class="cta light"><span>Book a Chat. <b>No Cost. No Commitment.</b></span><span class="arrow"><svg viewBox="0 0 24 24" fill="none" stroke="#16181B" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span></div>
+  </div>
+  <div class="receipt" style="left:700px;top:70px;width:440px">
+    <div class="mono" style="font-size:15px;color:#666">Rental statement</div>
+    <div style="font-family:'JetBrains Mono';font-weight:700;font-size:24px;letter-spacing:.06em;margin:8px 0 18px">YOUR INVESTMENT</div>
+    <div class="line"><span class="bar" style="width:140px"></span><span class="dots"></span><span class="bar" style="width:70px"></span></div>
+    <div class="line"><span class="bar" style="width:180px"></span><span class="dots"></span><span class="bar" style="width:60px"></span></div>
+    <div style="border-top:3px dashed #222;margin:20px 0"></div>
+    <div class="line big"><span>Management fees</span><span class="dots"></span><span>$0</span></div>
+    <div class="stamp">ZERO</div>
+  </div>
+</section>
+
+<!-- b05 · more -->
+<section class="ad" id="banner-05-more-than-expected" style="background:var(--fog)">
+  <div class="photo" style="left:0;top:0;width:520px;height:628px"><img src="photos/alfresco.jpg" style="object-position:60% 50%"></div>
+  <div class="col" style="left:580px;right:56px">
+    <div class="serif it" style="font-size:58px;line-height:1">If a buyer presented</div>
+    <div class="display" style="font-size:200px;margin-top:6px;position:relative">More
+      <svg style="position:absolute;left:400px;top:4px;width:62px" viewBox="0 0 100 100" fill="none" stroke="#7B5CA8" stroke-width="11" stroke-linecap="round" stroke-linejoin="round"><path d="M20 80L80 20M35 20h45v45"/></svg></div>
+    <div class="head" style="font-size:44px;margin-top:14px">than you expected, would you consider it?</div>
+    <div class="cta dark"><span>Book a Chat. <b>No Cost. No Commitment.</b></span><span class="arrow"><svg viewBox="0 0 24 24" fill="none" stroke="#16181B" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span></div>
+  </div>
+</section>
+
+<!-- b06 · right price (type) -->
+<section class="ad" id="banner-06-right-price" style="background:var(--ink);color:var(--off)">
+  <div class="photo" style="left:0;top:0;width:1200px;height:628px;opacity:.3"><img src="photos/roofline.jpg" style="object-position:50% 70%"></div>
+  <div class="shade" style="background:linear-gradient(90deg,rgba(22,24,27,.95) 0%,rgba(22,24,27,.7) 60%,rgba(22,24,27,.3) 100%)"></div>
+  <div class="col" style="left:64px;right:64px">
+    <div class="display" style="font-size:88px;line-height:1.14">Would <span style="background:var(--lilac);color:var(--ink);padding:0 .12em">the right price</span><br>change your mind about selling?</div>
+    <div class="cta light"><span>Book a Chat. <b>No Cost. No Commitment.</b></span><span class="arrow"><svg viewBox="0 0 24 24" fill="none" stroke="#16181B" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span></div>
+  </div>
+</section>
+
+<!-- b07 · right price (tag + living) -->
+<section class="ad" id="banner-07-right-price-tag" style="background:var(--off)">
+  <div class="photo" style="left:0;top:0;width:500px;height:628px"><img src="photos/living.jpg" style="object-position:50% 85%"></div>
+  <svg style="position:absolute;left:270px;top:360px;width:360px;transform:rotate(-8deg)" viewBox="0 0 760 420">
+    <path d="M150 40 L700 40 Q740 40 740 80 L740 340 Q740 380 700 380 L150 380 L20 210 Z" fill="#16181B"/>
+    <circle cx="140" cy="210" r="30" fill="#C2ADE0"/>
+    <text x="440" y="190" text-anchor="middle" font-family="Instrument Serif" font-style="italic" font-size="96" fill="#F1F0EC">the right</text>
+    <text x="440" y="310" text-anchor="middle" font-family="Anton" font-size="120" fill="#C2ADE0" letter-spacing="4">PRICE</text>
+  </svg>
+  <div class="col" style="left:660px;right:44px">
+    <div class="head" style="font-size:52px">Would <span class="serif it">the right price</span> change your mind about selling?</div>
+    <div class="cta dark" style="font-size:19px;gap:16px;padding-left:24px"><span>Book a Chat. <b>No Cost. No Commitment.</b></span><span class="arrow"><svg viewBox="0 0 24 24" fill="none" stroke="#16181B" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span></div>
+  </div>
+</section>
+
+<!-- b08 · not planning -->
+<section class="ad" id="banner-08-not-planning-to-sell" style="background:var(--fog)">
+  <div class="col" style="left:64px;width:620px">
+    <div class="serif it" style="font-size:72px;line-height:.95">You might not be planning to sell.</div>
+    <div style="font-size:30px;line-height:1.15;letter-spacing:-.02em;font-weight:600;margin-top:20px">But if a buyer presented <span style="color:var(--deep)">more</span> than you expected, would you consider it?</div>
+    <div class="cta dark"><span>Book a Chat. <b>No Cost. No Commitment.</b></span><span class="arrow"><svg viewBox="0 0 24 24" fill="none" stroke="#16181B" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span></div>
+  </div>
+  <div class="photo" style="left:740px;top:0;width:460px;height:628px"><img src="photos/roofline.jpg" style="object-position:70% 100%"></div>
+  <div style="position:absolute;left:690px;top:430px;width:200px;height:110px;transform:rotate(5deg)">
+    <div style="position:absolute;inset:0;background:#fff;border-radius:8px;box-shadow:0 20px 40px rgba(0,0,0,.3);overflow:hidden"><div style="position:absolute;left:0;right:0;top:0;height:70px;background:#E2E5E7;clip-path:polygon(0 0,100% 0,50% 100%)"></div></div>
+    <div style="position:absolute;left:50%;top:70px;transform:translate(-50%,-50%);width:58px;height:58px;border-radius:50%;background:var(--deep);display:grid;place-items:center;color:var(--off);font-family:Anton;font-size:17px;letter-spacing:.04em">OFFER</div>
+  </div>
+</section>
+
+<!-- b09 · own in 2287 -->
+<section class="ad" id="banner-09-own-in-2287" style="background:var(--plum);color:var(--off)">
+  <div class="photo" style="left:0;top:0;width:700px;height:628px"><img src="photos/house-tree.jpg" style="object-position:40% 55%"></div>
+  <div class="shade" style="background:linear-gradient(90deg,rgba(22,24,27,.55) 0%,rgba(57,43,61,.6) 40%,rgba(57,43,61,1) 58%)"></div>
+  <div class="col" style="left:64px;width:520px;align-items:flex-start">
+    <div class="display" style="font-size:110px">Own in</div>
+    <div class="plaque" style="width:480px;height:230px;margin-top:22px;background:var(--off);color:var(--ink)">
+      <span class="screw" style="left:20px;top:20px"></span><span class="screw" style="right:20px;top:20px"></span>
+      <span class="screw" style="left:20px;bottom:20px"></span><span class="screw" style="right:20px;bottom:20px"></span>
+      <span class="n" style="font-size:180px">2287</span>
+    </div>
+  </div>
+  <div class="col" style="left:680px;right:56px">
+    <div style="font-size:40px;line-height:1.12;letter-spacing:-.02em;font-weight:600">Even if you've only thought about selling, we'd love to start <span class="serif it" style="font-weight:400;font-size:48px;color:var(--lilac)">a conversation.</span></div>
+    <div class="cta light" style="font-size:19px;gap:16px;padding-left:24px"><span>Book a Chat. <b>No Cost. No Commitment.</b></span><span class="arrow"><svg viewBox="0 0 24 24" fill="none" stroke="#16181B" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span></div>
+  </div>
+</section>
+
+<!-- b10 · own in 2284 -->
+<section class="ad" id="banner-10-own-in-2284" style="background:var(--fog)">
+  <div class="photo" style="left:0;top:0;width:700px;height:628px"><img src="photos/kitchen.jpg" style="object-position:50% 50%"></div>
+  <div class="shade" style="background:linear-gradient(90deg,rgba(22,24,27,.75) 0%,rgba(22,24,27,.5) 35%,rgba(213,215,211,.6) 52%,rgba(213,215,211,1) 60%)"></div>
+  <div class="col" style="left:64px;width:520px;align-items:flex-start">
+    <div class="display" style="font-size:110px;color:var(--off)">Own in</div>
+    <div class="plaque" style="width:480px;height:230px;margin-top:22px;background:var(--ink);color:var(--off)">
+      <span class="screw" style="left:20px;top:20px"></span><span class="screw" style="right:20px;top:20px"></span>
+      <span class="screw" style="left:20px;bottom:20px"></span><span class="screw" style="right:20px;bottom:20px"></span>
+      <span class="n" style="font-size:180px">2284</span>
+    </div>
+  </div>
+  <div class="col" style="left:680px;right:56px">
+    <div style="font-size:40px;line-height:1.12;letter-spacing:-.02em;font-weight:600">Even if you've only thought about selling, we'd love to start <span class="serif it" style="font-weight:400;font-size:48px;color:var(--deep)">a conversation.</span></div>
+    <div class="cta dark" style="font-size:19px;gap:16px;padding-left:24px"><span>Book a Chat. <b>No Cost. No Commitment.</b></span><span class="arrow"><svg viewBox="0 0 24 24" fill="none" stroke="#16181B" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span></div>
+  </div>
+</section>
+
+</body>
+</html>
