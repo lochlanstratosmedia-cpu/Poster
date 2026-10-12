@@ -1,0 +1,193 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter+Tight:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=block" rel="stylesheet">
+<style>
+:root{
+  --paper:#F5F1EA; --stone:#E6DFD3; --sage:#4B5B4D; --sagel:#D5DACB; --char:#1F201E; --navy:#1E2A37; --clay:#B26E4A; --muted:#8A8478;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#777;display:flex;flex-wrap:wrap;gap:40px;padding:40px}
+.ad{width:1080px;height:1920px;position:relative;overflow:hidden;font-family:"Inter Tight",sans-serif;color:var(--char)}
+.serif{font-family:"Instrument Serif",serif;font-weight:400}
+.it{font-style:italic}
+.mono{font-family:"JetBrains Mono",monospace;font-weight:500;letter-spacing:.22em;text-transform:uppercase;font-size:24px}
+.frame{position:absolute;inset:48px;border:1.5px solid currentColor;opacity:.22;pointer-events:none}
+.lab{position:absolute;top:240px;left:110px;right:110px;display:flex;justify-content:space-between;opacity:.7}
+
+.cta{position:absolute;left:110px;right:110px;bottom:340px;height:116px;border-radius:999px;border:1.5px solid currentColor;display:flex;align-items:center;justify-content:space-between;padding:0 16px 0 52px;font-size:34px;font-weight:400;letter-spacing:-.005em}
+.cta b{font-weight:600}
+.cta .arrow{width:84px;height:84px;border-radius:50%;display:grid;place-items:center;background:currentColor}
+.cta .arrow svg{width:36px;height:36px}
+
+.head{position:absolute;left:110px;right:110px;font-size:124px;line-height:1;letter-spacing:-.015em}
+.body{position:absolute;left:110px;right:110px;font-size:46px;line-height:1.3;font-weight:300;letter-spacing:-.01em}
+.rule{position:absolute;left:110px;height:1.5px;background:currentColor;opacity:.35}
+
+.bignum{position:absolute;left:0;right:0;text-align:center;font-family:"Instrument Serif",serif;line-height:.8;letter-spacing:-.03em}
+.topo{position:absolute;left:50%;top:760px;transform:translate(-50%,-50%);width:1500px;height:1500px;opacity:.28}
+.dot{position:absolute;width:26px;height:26px;border-radius:50%}
+.dot::after{content:"";position:absolute;inset:-22px;border-radius:50%;border:1.5px solid currentColor;opacity:.6}
+
+.ledger{position:absolute;left:110px;right:110px;top:820px}
+.lrow{display:flex;align-items:baseline;gap:22px;padding:34px 0;border-bottom:1.5px solid rgba(31,32,30,.18);font-size:40px;font-weight:300}
+.lrow .lead{flex:1;border-bottom:2px dotted rgba(31,32,30,.3);transform:translateY(-10px)}
+.lrow .ph{height:16px;border-radius:8px;background:rgba(31,32,30,.12)}
+.lrow.key{font-size:52px;font-weight:400;border-bottom:none}
+.lrow.key .v{font-family:"Instrument Serif",serif;font-size:120px;color:var(--clay);line-height:.8}
+
+.arch{position:absolute;left:190px;right:190px;top:470px;height:760px;border-radius:350px 350px 0 0;display:grid;place-items:center}
+.arch .n{font-family:"Instrument Serif",serif;font-size:300px;line-height:1;letter-spacing:-.02em;transform:translateY(40px)}
+</style>
+</head>
+<body>
+
+<!-- 08: 2287 sits (paper) -->
+<section class="ad" id="ad-08" style="background:var(--paper)">
+  <div class="frame"></div>
+  <div class="lab mono"><span>Postcode</span><span>2287</span></div>
+  <div class="bignum" style="top:420px;font-size:480px;color:var(--stone)">2287</div>
+  <div class="dot" style="left:652px;top:520px;background:var(--clay);color:var(--clay)"></div>
+  <div class="rule" style="top:880px;width:120px"></div>
+  <div class="head serif" style="top:940px">Find out where <span class="it" style="color:var(--clay)">your home</span> sits.</div>
+  <div class="cta"><span>Book a Chat. <b>No Cost. No Commitment.</b></span><span class="arrow"><svg viewBox="0 0 24 24" fill="none" stroke="#F5F1EA" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span></div>
+</section>
+
+<!-- 09: 2287 sits (sage, contours) -->
+<section class="ad" id="ad-09" style="background:var(--sage);color:var(--paper)">
+  <svg class="topo" viewBox="0 0 100 100" fill="none" stroke="#F5F1EA" stroke-width=".12">
+    <path d="M50 38c8 0 13 5 12 12s-6 11-13 11-11-5-11-11 4-12 12-12z"/>
+    <path d="M50 30c13 0 21 8 20 20s-9 19-21 19-19-8-19-19 7-20 20-20z"/>
+    <path d="M51 22c18 0 29 11 28 28s-12 27-29 27-27-11-27-27 10-28 28-28z"/>
+    <path d="M50 14c23 0 37 14 36 36s-15 35-37 35-35-14-35-35 13-36 36-36z"/>
+    <path d="M50 6c28 0 45 17 44 44s-18 43-45 43-43-17-43-43 16-44 44-44z"/>
+  </svg>
+  <div class="frame"></div>
+  <div class="lab mono"><span>Postcode</span><span>2287</span></div>
+  <div class="dot" style="left:527px;top:700px;background:var(--paper);color:var(--paper)"></div>
+  <div class="head serif" style="top:1000px;text-align:center">Find out where <span class="it" style="color:var(--sagel)">your 2287 home</span> sits.</div>
+  <div class="cta"><span>Book a Chat. <b>No Cost. No Commitment.</b></span><span class="arrow"><svg viewBox="0 0 24 24" fill="none" stroke="#4B5B4D" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span></div>
+</section>
+
+<!-- 10: 2284 sits (stone) -->
+<section class="ad" id="ad-10" style="background:var(--stone)">
+  <div class="frame"></div>
+  <div class="lab mono"><span>Postcode</span><span>2284</span></div>
+  <div class="bignum" style="top:420px;font-size:480px;color:#D8CFC0">2284</div>
+  <div class="dot" style="left:652px;top:520px;background:var(--sage);color:var(--sage)"></div>
+  <div class="rule" style="top:880px;width:120px"></div>
+  <div class="head serif" style="top:940px">Find out where <span class="it" style="color:var(--sage)">your home</span> sits.</div>
+  <div class="cta"><span>Book a Chat. <b>No Cost. No Commitment.</b></span><span class="arrow"><svg viewBox="0 0 24 24" fill="none" stroke="#E6DFD3" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span></div>
+</section>
+
+<!-- 11: 2284 sits (charcoal, contours) -->
+<section class="ad" id="ad-11" style="background:var(--char);color:var(--paper)">
+  <svg class="topo" viewBox="0 0 100 100" fill="none" stroke="#B26E4A" stroke-width=".12">
+    <path d="M50 38c8 0 13 5 12 12s-6 11-13 11-11-5-11-11 4-12 12-12z"/>
+    <path d="M50 30c13 0 21 8 20 20s-9 19-21 19-19-8-19-19 7-20 20-20z"/>
+    <path d="M51 22c18 0 29 11 28 28s-12 27-29 27-27-11-27-27 10-28 28-28z"/>
+    <path d="M50 14c23 0 37 14 36 36s-15 35-37 35-35-14-35-35 13-36 36-36z"/>
+    <path d="M50 6c28 0 45 17 44 44s-18 43-45 43-43-17-43-43 16-44 44-44z"/>
+  </svg>
+  <div class="frame"></div>
+  <div class="lab mono"><span>Postcode</span><span>2284</span></div>
+  <div class="dot" style="left:527px;top:700px;background:var(--clay);color:var(--clay)"></div>
+  <div class="head serif" style="top:1000px;text-align:center">Find out where <span class="it" style="color:var(--clay)">your 2284 home</span> sits.</div>
+  <div class="cta"><span>Book a Chat. <b>No Cost. No Commitment.</b></span><span class="arrow"><svg viewBox="0 0 24 24" fill="none" stroke="#1F201E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span></div>
+</section>
+
+<!-- 12: $0 (paper) -->
+<section class="ad" id="ad-12" style="background:var(--paper)">
+  <div class="frame"></div>
+  <div class="body" style="top:250px;font-size:52px">Tired of management fees eating into your rental return?</div>
+  <div class="bignum" style="top:560px;font-size:620px;color:var(--char)"><span style="font-size:.45em;vertical-align:.9em;color:var(--clay)">$</span>0</div>
+  <div class="rule" style="top:1160px;width:120px"></div>
+  <div class="head serif it" style="top:1210px;font-size:82px">Pay zero management fees.</div>
+  <div class="cta"><span>Book a Chat. <b>No Cost. No Commitment.</b></span><span class="arrow"><svg viewBox="0 0 24 24" fill="none" stroke="#F5F1EA" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span></div>
+</section>
+
+<!-- 13: ledger (stone) -->
+<section class="ad" id="ad-13" style="background:var(--stone)">
+  <div class="frame"></div>
+  <div class="head serif" style="top:250px;font-size:108px">Tired of management fees eating into <span class="it" style="color:var(--clay)">your rental return?</span></div>
+  <div class="ledger">
+    <div class="mono" style="opacity:.6;margin-bottom:10px">Rental statement</div>
+    <div class="lrow"><span class="ph" style="width:260px"></span><span class="lead"></span><span class="ph" style="width:120px"></span></div>
+    <div class="lrow"><span class="ph" style="width:200px"></span><span class="lead"></span><span class="ph" style="width:90px"></span></div>
+    <div class="lrow key"><span>Management fees</span><span class="lead"></span><span class="v">$0</span></div>
+  </div>
+  <div class="cta"><span>Book a Chat. <b>No Cost. No Commitment.</b></span><span class="arrow"><svg viewBox="0 0 24 24" fill="none" stroke="#E6DFD3" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span></div>
+</section>
+
+<!-- 14: more (navy) -->
+<section class="ad" id="ad-14" style="background:var(--navy);color:var(--paper)">
+  <div class="frame"></div>
+  <svg style="position:absolute;left:110px;top:250px;width:80px" viewBox="0 0 24 24" fill="none" stroke="#B26E4A" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 18L18 6M8 6h10v10"/></svg>
+  <div class="head serif" style="top:440px;font-size:126px;line-height:.98">If a buyer presented <span class="it" style="color:var(--clay)">more</span> than you expected, would you consider it?</div>
+  <div class="cta"><span>Book a Chat. <b>No Cost. No Commitment.</b></span><span class="arrow"><svg viewBox="0 0 24 24" fill="none" stroke="#1E2A37" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span></div>
+</section>
+
+<!-- 15: price tag line drawing (light sage) -->
+<section class="ad" id="ad-15" style="background:var(--sagel)">
+  <div class="frame"></div>
+  <svg style="position:absolute;left:300px;top:250px;width:480px;transform:rotate(-12deg)" viewBox="0 0 480 260" fill="none" stroke="#1F201E" stroke-width="2.5" stroke-linejoin="round">
+    <path d="M110 20 L450 20 Q462 20 462 32 L462 228 Q462 240 450 240 L110 240 L18 130 Z"/>
+    <circle cx="96" cy="130" r="16"/>
+    <path d="M96 114 C70 40 20 30 0 -10" stroke-linecap="round"/>
+  </svg>
+  <div class="head serif" style="top:820px">Would <span class="it" style="color:var(--sage)">the right price</span> change your mind about selling?</div>
+  <div class="cta"><span>Book a Chat. <b>No Cost. No Commitment.</b></span><span class="arrow"><svg viewBox="0 0 24 24" fill="none" stroke="#D5DACB" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span></div>
+</section>
+
+<!-- 16: big question mark (paper) -->
+<section class="ad" id="ad-16" style="background:var(--paper)">
+  <div class="frame"></div>
+  <div class="serif" style="position:absolute;right:40px;top:80px;font-size:1500px;line-height:.8;color:var(--stone)">?</div>
+  <div class="head serif" style="top:600px;font-size:140px;line-height:.98">Would the <span class="it" style="color:var(--clay)">right price</span> change your mind about selling?</div>
+  <div class="cta"><span>Book a Chat. <b>No Cost. No Commitment.</b></span><span class="arrow"><svg viewBox="0 0 24 24" fill="none" stroke="#F5F1EA" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span></div>
+</section>
+
+<!-- 17: envelope line drawing (stone) -->
+<section class="ad" id="ad-17" style="background:var(--stone)">
+  <div class="frame"></div>
+  <div class="head serif it" style="top:250px;font-size:130px">You might not be planning to sell.</div>
+  <div class="rule" style="top:600px;width:120px"></div>
+  <div class="body" style="top:650px;font-size:52px">But if a buyer presented more than you expected, would you consider it?</div>
+  <svg style="position:absolute;left:290px;top:1010px;width:500px;transform:rotate(-5deg)" viewBox="0 0 500 320" fill="none" stroke="#1F201E" stroke-width="2.5" stroke-linejoin="round">
+    <rect x="4" y="4" width="492" height="312" rx="6"/>
+    <path d="M4 10 L250 190 L496 10"/>
+    <circle cx="250" cy="190" r="34" fill="#B26E4A" stroke="none"/>
+  </svg>
+  <div class="cta"><span>Book a Chat. <b>No Cost. No Commitment.</b></span><span class="arrow"><svg viewBox="0 0 24 24" fill="none" stroke="#E6DFD3" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span></div>
+</section>
+
+<!-- 18: quiet two-line (charcoal) -->
+<section class="ad" id="ad-18" style="background:var(--char);color:var(--paper)">
+  <div class="frame"></div>
+  <div class="serif" style="position:absolute;left:100px;top:180px;font-size:400px;line-height:1;color:var(--clay);opacity:.9">&ldquo;</div>
+  <div class="body" style="top:560px;font-size:54px;opacity:.75">You might not be planning to sell.</div>
+  <div class="head serif" style="top:700px;font-size:124px">But if a buyer presented <span class="it" style="color:var(--clay)">more</span> than you expected, would you consider it?</div>
+  <div class="cta"><span>Book a Chat. <b>No Cost. No Commitment.</b></span><span class="arrow"><svg viewBox="0 0 24 24" fill="none" stroke="#1F201E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span></div>
+</section>
+
+<!-- 19: own in 2287, arch (paper) -->
+<section class="ad" id="ad-19" style="background:var(--paper)">
+  <div class="frame"></div>
+  <div class="head serif it" style="top:280px;text-align:center;font-size:120px">Own in</div>
+  <div class="arch" style="background:var(--sage);color:var(--paper)"><span class="n">2287</span></div>
+  <div class="body" style="top:1280px;text-align:center;font-size:44px">Even if you've only thought about selling, we'd love to start a conversation.</div>
+  <div class="cta"><span>Book a Chat. <b>No Cost. No Commitment.</b></span><span class="arrow"><svg viewBox="0 0 24 24" fill="none" stroke="#F5F1EA" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span></div>
+</section>
+
+<!-- 20: own in 2284, arch (sage) -->
+<section class="ad" id="ad-20" style="background:var(--sage);color:var(--paper)">
+  <div class="frame"></div>
+  <div class="head serif it" style="top:280px;text-align:center;font-size:120px">Own in</div>
+  <div class="arch" style="background:var(--paper);color:var(--sage)"><span class="n">2284</span></div>
+  <div class="body" style="top:1280px;text-align:center;font-size:44px">Even if you've only thought about selling, we'd love to start a conversation.</div>
+  <div class="cta"><span>Book a Chat. <b>No Cost. No Commitment.</b></span><span class="arrow"><svg viewBox="0 0 24 24" fill="none" stroke="#4B5B4D" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span></div>
+</section>
+
+</body>
+</html>
