@@ -14,3 +14,6 @@ inbox/*
 
 # Knights outro alpha master is large; rebuild with render.mjs
 outros/knights/renders/*.mov
+
+# Opener renders are per listing; rebuild with openers/render.mjs
+openers/renders/

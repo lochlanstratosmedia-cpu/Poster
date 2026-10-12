@@ -17,6 +17,8 @@ AI-writing patterns instead of its own instincts.
 | `.claude/skills/cover-shot/SKILL.md` | Turns a property photo into a magazine-grade social post via Higgsfield |
 | `scripts/cover_shot.py` | Photo analysis, prompt builder, caption overlay and compare sheet for cover shots |
 | `tools/cover-editor.html` | Listing Cover Studio: edit cover text and layout by hand in the browser |
+| `openers/opener.html` | Reel Opener Studio: animated search-bar intros for property reels, saved as video |
+| `openers/render.mjs` | Frame-exact opener renders with sound, over a photo, a clip or transparent |
 | `assets/fonts/` | Inter and Cormorant Garamond (OFL) for captions |
 
 ## How it works
