@@ -1,0 +1,122 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300..900&display=block" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:transparent;margin:0;padding:0;display:flex;flex-direction:column;gap:0}
+.ad{width:1080px;height:1920px;position:relative;overflow:hidden;font-family:Inter,sans-serif;font-optical-sizing:auto;-webkit-font-smoothing:antialiased;color:#fff}
+.bg{position:absolute;inset:0}
+.bg img{width:100%;height:100%;object-fit:cover;display:block}
+
+/* liquid glass material */
+.glass{position:absolute;overflow:hidden;
+  background:linear-gradient(145deg,rgba(255,255,255,.30) 0%,rgba(255,255,255,.10) 45%,rgba(255,255,255,.18) 100%);
+  -webkit-backdrop-filter:blur(34px) saturate(190%) brightness(1.05);backdrop-filter:blur(34px) saturate(190%) brightness(1.05);
+  box-shadow:inset 0 2px 1px rgba(255,255,255,.75),inset 0 -2px 2px rgba(255,255,255,.18),inset 2px 0 1px rgba(255,255,255,.25),inset -2px 0 1px rgba(255,255,255,.12),0 40px 80px rgba(0,0,0,.28)}
+.glass::before{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;
+  background:radial-gradient(120% 60% at 20% -10%,rgba(255,255,255,.45) 0%,rgba(255,255,255,0) 45%),radial-gradient(80% 40% at 100% 110%,rgba(255,255,255,.18) 0%,rgba(255,255,255,0) 60%)}
+.glass::after{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;padding:2px;
+  background:linear-gradient(160deg,rgba(255,255,255,.9),rgba(255,255,255,.1) 35%,rgba(255,255,255,.05) 65%,rgba(255,255,255,.6));
+  -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude}
+.glass.tint{background:linear-gradient(145deg,rgba(194,173,224,.55) 0%,rgba(123,92,168,.35) 60%,rgba(194,173,224,.45) 100%)}
+.glass.dark{background:linear-gradient(145deg,rgba(30,22,34,.45) 0%,rgba(30,22,34,.25) 100%)}
+.in{position:relative;z-index:1}
+.ts{text-shadow:0 2px 24px rgba(0,0,0,.25)}
+.small{font-size:32px;font-weight:500;letter-spacing:-.005em;opacity:.85}
+.pill{display:inline-flex;align-items:center;gap:20px;height:110px;padding:0 60px;border-radius:999px;font-size:40px;font-weight:600;letter-spacing:-.01em}
+.chev{display:inline-block;width:.42em;height:.42em;border-right:4px solid currentColor;border-top:4px solid currentColor;transform:rotate(45deg)}
+.b{width:1200px;height:628px}
+.frost .glass:not(.tint){background:linear-gradient(145deg,rgba(57,43,61,.64) 0%,rgba(57,43,61,.46) 50%,rgba(57,43,61,.58) 100%)}
+.frost .glass.tint{background:linear-gradient(145deg,rgba(123,92,168,.85) 0%,rgba(98,70,140,.75) 100%)}
+</style>
+</head>
+<body>
+<section class="ad" id="glass-card-own-in-2287-story"><div class="bg"><img src="photos/house-colour.jpg" style="object-position:48% 50%;filter:saturate(1.1)"></div>
+  <div style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(57,43,61,.35) 0%,rgba(57,43,61,0) 40%,rgba(57,43,61,.25) 100%)"></div>
+  <div class="glass" style="left:80px;right:80px;top:280px;height:1120px;border-radius:84px;text-align:center">
+    <div class="in" style="padding-top:110px">
+      <div class="ts" style="font-size:44px;font-weight:600;opacity:.92">Own in</div>
+      <div class="ts" style="font-size:330px;font-weight:800;letter-spacing:-.05em;line-height:.95;margin-top:4px">2287</div>
+      <div class="ts" style="font-size:62px;font-weight:700;letter-spacing:-.03em;line-height:1.12;margin:44px 70px 0">Even if you've only thought about selling, we'd love to start a conversation.</div>
+      <div style="margin-top:64px;position:relative;display:inline-block">
+        <span class="glass tint pill" style="position:relative;color:#fff"><span class="in">Book a Chat</span><span class="chev in"></span></span>
+      </div>
+      <div class="small ts" style="margin-top:34px">No Cost. No Commitment.</div>
+    </div>
+  </div></section>
+<section class="ad" id="glass-card-own-in-2287-story-clear">
+  <div class="glass" style="left:80px;right:80px;top:280px;height:1120px;border-radius:84px;text-align:center">
+    <div class="in" style="padding-top:110px">
+      <div class="ts" style="font-size:44px;font-weight:600;opacity:.92">Own in</div>
+      <div class="ts" style="font-size:330px;font-weight:800;letter-spacing:-.05em;line-height:.95;margin-top:4px">2287</div>
+      <div class="ts" style="font-size:62px;font-weight:700;letter-spacing:-.03em;line-height:1.12;margin:44px 70px 0">Even if you've only thought about selling, we'd love to start a conversation.</div>
+      <div style="margin-top:64px;position:relative;display:inline-block">
+        <span class="glass tint pill" style="position:relative;color:#fff"><span class="in">Book a Chat</span><span class="chev in"></span></span>
+      </div>
+      <div class="small ts" style="margin-top:34px">No Cost. No Commitment.</div>
+    </div>
+  </div></section>
+<section class="ad frost" id="glass-card-own-in-2287-story-frosted">
+  <div class="glass" style="left:80px;right:80px;top:280px;height:1120px;border-radius:84px;text-align:center">
+    <div class="in" style="padding-top:110px">
+      <div class="ts" style="font-size:44px;font-weight:600;opacity:.92">Own in</div>
+      <div class="ts" style="font-size:330px;font-weight:800;letter-spacing:-.05em;line-height:.95;margin-top:4px">2287</div>
+      <div class="ts" style="font-size:62px;font-weight:700;letter-spacing:-.03em;line-height:1.12;margin:44px 70px 0">Even if you've only thought about selling, we'd love to start a conversation.</div>
+      <div style="margin-top:64px;position:relative;display:inline-block">
+        <span class="glass tint pill" style="position:relative;color:#fff"><span class="in">Book a Chat</span><span class="chev in"></span></span>
+      </div>
+      <div class="small ts" style="margin-top:34px">No Cost. No Commitment.</div>
+    </div>
+  </div></section>
+<section class="ad b" id="glass-card-own-in-2287-banner"><div class="bg"><img src="photos/house-colour.jpg" style="object-position:48% 40%;filter:saturate(1.1)"></div>
+  <div style="position:absolute;inset:0;background:linear-gradient(90deg,rgba(57,43,61,.3) 0%,rgba(57,43,61,.1) 50%,rgba(57,43,61,.3) 100%)"></div>
+  <div class="glass" style="left:40px;right:40px;top:40px;bottom:40px;border-radius:56px">
+    <div class="in" style="display:flex;height:100%;align-items:center;padding:0 60px">
+      <div style="flex:0 0 420px;text-align:center">
+        <div class="ts" style="font-size:30px;font-weight:600;opacity:.92">Own in</div>
+        <div class="ts" style="font-size:196px;font-weight:800;letter-spacing:-.05em;line-height:.95">2287</div>
+      </div>
+      <div style="flex:1;padding-left:40px;text-align:left">
+        <div class="ts" style="font-size:38px;font-weight:700;letter-spacing:-.03em;line-height:1.14">Even if you've only thought about selling, we'd love to start a conversation.</div>
+        <div style="display:flex;align-items:center;gap:26px;margin-top:34px">
+          <span class="glass tint pill" style="position:relative;color:#fff;height:76px;padding:0 36px;font-size:28px;gap:14px;white-space:nowrap;flex:none"><span class="in">Book a Chat</span><span class="chev in"></span></span>
+          <span class="small ts" style="font-size:22px;white-space:nowrap">No Cost. No Commitment.</span>
+        </div>
+      </div>
+    </div>
+  </div></section>
+<section class="ad b" id="glass-card-own-in-2287-banner-clear">
+  <div class="glass" style="left:40px;right:40px;top:40px;bottom:40px;border-radius:56px">
+    <div class="in" style="display:flex;height:100%;align-items:center;padding:0 60px">
+      <div style="flex:0 0 420px;text-align:center">
+        <div class="ts" style="font-size:30px;font-weight:600;opacity:.92">Own in</div>
+        <div class="ts" style="font-size:196px;font-weight:800;letter-spacing:-.05em;line-height:.95">2287</div>
+      </div>
+      <div style="flex:1;padding-left:40px;text-align:left">
+        <div class="ts" style="font-size:38px;font-weight:700;letter-spacing:-.03em;line-height:1.14">Even if you've only thought about selling, we'd love to start a conversation.</div>
+        <div style="display:flex;align-items:center;gap:26px;margin-top:34px">
+          <span class="glass tint pill" style="position:relative;color:#fff;height:76px;padding:0 36px;font-size:28px;gap:14px;white-space:nowrap;flex:none"><span class="in">Book a Chat</span><span class="chev in"></span></span>
+          <span class="small ts" style="font-size:22px;white-space:nowrap">No Cost. No Commitment.</span>
+        </div>
+      </div>
+    </div>
+  </div></section>
+<section class="ad b frost" id="glass-card-own-in-2287-banner-frosted">
+  <div class="glass" style="left:40px;right:40px;top:40px;bottom:40px;border-radius:56px">
+    <div class="in" style="display:flex;height:100%;align-items:center;padding:0 60px">
+      <div style="flex:0 0 420px;text-align:center">
+        <div class="ts" style="font-size:30px;font-weight:600;opacity:.92">Own in</div>
+        <div class="ts" style="font-size:196px;font-weight:800;letter-spacing:-.05em;line-height:.95">2287</div>
+      </div>
+      <div style="flex:1;padding-left:40px;text-align:left">
+        <div class="ts" style="font-size:38px;font-weight:700;letter-spacing:-.03em;line-height:1.14">Even if you've only thought about selling, we'd love to start a conversation.</div>
+        <div style="display:flex;align-items:center;gap:26px;margin-top:34px">
+          <span class="glass tint pill" style="position:relative;color:#fff;height:76px;padding:0 36px;font-size:28px;gap:14px;white-space:nowrap;flex:none"><span class="in">Book a Chat</span><span class="chev in"></span></span>
+          <span class="small ts" style="font-size:22px;white-space:nowrap">No Cost. No Commitment.</span>
+        </div>
+      </div>
+    </div>
+  </div></section>
+</body></html>
