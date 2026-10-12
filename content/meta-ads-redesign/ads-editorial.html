@@ -1,0 +1,169 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,opsz,wght@0,6..96,400..700;1,6..96,400..700&family=Inter+Tight:wght@300;400;500;600&display=block" rel="stylesheet">
+<style>
+:root{--paper:#F3F0EA; --ink:#111111; --ox:#6E1F1F; --grey:#8C877F}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#777;display:flex;flex-wrap:wrap;gap:40px;padding:40px}
+.ad{width:1080px;height:1920px;position:relative;overflow:hidden;font-family:"Inter Tight",sans-serif;color:var(--ink);background:var(--paper)}
+.bod{font-family:"Bodoni Moda",serif;font-optical-sizing:auto;font-weight:400}
+.it{font-style:italic}
+.caps{font-family:"Inter Tight";font-weight:500;font-size:22px;letter-spacing:.32em;text-transform:uppercase}
+
+/* folio bar */
+.folio{position:absolute;left:80px;right:80px;display:flex;justify-content:space-between;align-items:center}
+.folio.top{top:236px}
+.hair{position:absolute;left:80px;right:80px;height:1px;background:currentColor;opacity:.5}
+
+/* photo with grain */
+.photo{position:absolute;overflow:hidden;background:#ccc}
+.photo img{width:100%;height:100%;object-fit:cover;display:block;filter:contrast(1.06)}
+.photo::after{content:"";position:absolute;inset:0;opacity:.16;mix-blend-mode:overlay;
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='240' height='240'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='1.1' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>")}
+.cap{position:absolute;font-family:"Bodoni Moda";font-style:italic;font-size:24px;color:var(--grey)}
+
+/* CTA: editorial block */
+.cta{position:absolute;left:80px;right:80px;bottom:330px;height:124px;display:flex;align-items:center;justify-content:space-between;padding:0 40px 0 44px;background:var(--ink);color:var(--paper)}
+.cta .l{font-family:"Bodoni Moda";font-style:italic;font-size:46px;letter-spacing:-.005em}
+.cta .r{display:flex;align-items:center;gap:26px;font-size:22px;font-weight:500;letter-spacing:.24em;text-transform:uppercase}
+.cta svg{width:44px;height:44px}
+.cta.light{background:var(--paper);color:var(--ink)}
+.cta.line{background:transparent;color:var(--ink);border-top:1.5px solid var(--ink);border-bottom:1.5px solid var(--ink);padding:0 4px}
+
+.head{position:absolute;left:80px;right:80px;line-height:1.02;letter-spacing:-.02em}
+.dropcap{float:left;font-family:"Bodoni Moda";font-size:330px;line-height:.74;margin:14px 26px 0 -6px;color:var(--ox)}
+</style>
+</head>
+<body>
+
+<!-- 08 · 2287 · cover with house photo -->
+<section class="ad" id="ad-08">
+  <div class="photo" style="left:0;top:0;width:1080px;height:1120px"><img src="photos/house-tree.jpg" style="object-position:50% 30%"><div style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.6) 0%,rgba(0,0,0,.25) 16%,rgba(0,0,0,0) 28%,rgba(0,0,0,0) 55%,rgba(0,0,0,.6) 100%)"></div></div>
+  <div class="folio top caps" style="color:var(--paper)"><span>No. 2287</span><span>The home issue</span></div>
+  <div class="bod" style="position:absolute;left:60px;top:830px;font-size:330px;line-height:1;color:var(--paper);letter-spacing:-.03em">2287</div>
+  <div class="head bod" style="top:1190px;font-size:92px">Find out where <span class="it" style="color:var(--ox)">your home</span> sits.</div>
+  <div class="cta"><span class="l">Book a Chat.</span><span class="r">No Cost. No Commitment.<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M3 12h18M15 6l6 6-6 6"/></svg></span></div>
+</section>
+
+<!-- 09 · 2287 · black page, framed print -->
+<section class="ad" id="ad-09" style="background:var(--ink);color:var(--paper)">
+  <div class="folio top caps"><span>Feature</span><span>Postcode 2287</span></div>
+  <div class="hair" style="top:290px"></div>
+  <div class="photo" style="left:150px;top:350px;width:780px;height:700px;outline:18px solid var(--paper)"><img src="photos/house-tree.jpg" style="object-position:30% 70%"></div>
+  <div class="head bod" style="top:1130px;font-size:104px;text-align:center">Find out where <span class="it">your 2287 home</span> sits.</div>
+  <div class="cta light"><span class="l">Book a Chat.</span><span class="r">No Cost. No Commitment.<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M3 12h18M15 6l6 6-6 6"/></svg></span></div>
+</section>
+
+<!-- 10 · 2284 · kitchen spread with drop numeral -->
+<section class="ad" id="ad-10">
+  <div class="photo" style="left:0;top:0;width:1080px;height:1000px"><img src="photos/kitchen.jpg"></div>
+  <div class="folio caps" style="top:1040px"><span>Interiors</span><span style="color:var(--ox)">No. 2284</span></div>
+  <div class="hair" style="top:1090px"></div>
+  <div class="head bod" style="top:1130px;font-size:100px">Find out where <span class="it">your home</span> sits.</div>
+  <div class="cta"><span class="l">Book a Chat.</span><span class="r">No Cost. No Commitment.<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M3 12h18M15 6l6 6-6 6"/></svg></span></div>
+</section>
+
+<!-- 11 · 2284 · contents-page layout -->
+<section class="ad" id="ad-11">
+  <div class="folio top caps"><span>Contents</span><span>Postcode 2284</span></div>
+  <div class="hair" style="top:290px"></div>
+  <div class="bod" style="position:absolute;left:70px;top:330px;font-size:250px;line-height:.9;letter-spacing:-.03em">22<br>84</div>
+  <div class="photo" style="left:500px;top:350px;width:500px;height:660px"><img src="photos/kitchen.jpg" style="object-position:62% 50%"></div>
+  <div class="hair" style="top:1100px"></div>
+  <div class="head bod" style="top:1150px;font-size:100px">Find out where <span class="it" style="color:var(--ox)">your 2284 home</span> sits.</div>
+  <div class="cta"><span class="l">Book a Chat.</span><span class="r">No Cost. No Commitment.<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M3 12h18M15 6l6 6-6 6"/></svg></span></div>
+</section>
+
+<!-- 12 · fees · street photo + $0 -->
+<section class="ad" id="ad-12">
+  <div class="photo" style="left:0;top:0;width:1080px;height:860px"><img src="photos/street.jpg"></div>
+  <div class="folio top caps" style="color:var(--ink)"><span>Investors</span><span>Rental return</span></div>
+  <div class="bod" style="position:absolute;right:70px;top:700px;font-size:400px;line-height:1;background:var(--paper);padding:0 30px 0 40px"><span class="it" style="font-size:.5em;vertical-align:.7em;color:var(--ox)">$</span>0</div>
+  <div class="head bod it" style="top:1130px;font-size:72px;right:80px">Tired of management fees eating into your rental return?</div>
+  <div class="caps" style="position:absolute;left:80px;top:1380px;color:var(--ox)">Pay zero management fees.</div>
+  <div class="cta"><span class="l">Book a Chat.</span><span class="r">No Cost. No Commitment.<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M3 12h18M15 6l6 6-6 6"/></svg></span></div>
+</section>
+
+<!-- 13 · fees · pull quote -->
+<section class="ad" id="ad-13" style="background:var(--ink);color:var(--paper)">
+  <div class="folio top caps"><span>Investors</span><span>A question</span></div>
+  <div class="hair" style="top:290px"></div>
+    <div class="head bod" style="top:520px;font-size:110px;line-height:1.04">Tired of management fees eating into your <span class="it">rental return?</span></div>
+  <div class="hair" style="top:1130px;right:auto;width:160px;opacity:1"></div>
+  <div class="bod it" style="position:absolute;left:80px;top:1170px;font-size:66px">Pay zero management fees.</div>
+  <div class="cta light"><span class="l">Book a Chat.</span><span class="r">No Cost. No Commitment.<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M3 12h18M15 6l6 6-6 6"/></svg></span></div>
+</section>
+
+<!-- 14 · more · alfresco + drop cap -->
+<section class="ad" id="ad-14">
+  <div class="photo" style="left:0;top:0;width:1080px;height:820px"><img src="photos/alfresco.jpg" style="object-position:50% 30%"></div>
+  <div class="folio top caps" style="color:var(--paper)"><span>Selling</span><span>The offer</span></div>
+  <div class="head bod" style="top:900px;font-size:86px;line-height:1.08"><span class="dropcap">I</span>f a buyer presented <span class="it" style="color:var(--ox)">more</span> than you expected, would you consider it?</div>
+  <div class="cta"><span class="l">Book a Chat.</span><span class="r">No Cost. No Commitment.<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M3 12h18M15 6l6 6-6 6"/></svg></span></div>
+</section>
+
+<!-- 15 · right price · living room -->
+<section class="ad" id="ad-15">
+  <div class="photo" style="left:80px;top:300px;width:920px;height:780px"><img src="photos/living.jpg" style="object-position:50% 85%"></div>
+  <div class="folio top caps"><span>Living</span><span>The question</span></div>
+  <div class="head bod" style="top:1160px;font-size:84px">Would <span class="it" style="color:var(--ox)">the right price</span> change your mind about selling?</div>
+  <div class="cta line"><span class="l">Book a Chat.</span><span class="r">No Cost. No Commitment.<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M3 12h18M15 6l6 6-6 6"/></svg></span></div>
+</section>
+
+<!-- 16 · right price · typographic cover -->
+<section class="ad" id="ad-16">
+  <div class="folio top caps"><span>Selling</span><span>The question</span></div>
+  <div class="hair" style="top:290px"></div>
+  <div class="bod" style="position:absolute;left:80px;right:80px;top:330px;line-height:.92;letter-spacing:-.035em">
+    <div style="font-size:150px">Would</div>
+    <div class="it" style="font-size:215px;color:var(--ox);margin-left:-8px">the right</div>
+    <div class="it" style="font-size:215px;color:var(--ox);text-align:right">price</div>
+    <div style="font-size:100px;margin-top:24px">change your mind</div>
+    <div style="font-size:100px">about selling?</div>
+  </div>
+  <div class="cta"><span class="l">Book a Chat.</span><span class="r">No Cost. No Commitment.<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M3 12h18M15 6l6 6-6 6"/></svg></span></div>
+</section>
+
+<!-- 17 · not planning · roofline -->
+<section class="ad" id="ad-17">
+  <div class="photo" style="left:0;top:0;width:1080px;height:860px"><img src="photos/roofline.jpg" style="object-position:50% 100%"></div>
+  <div class="folio top caps"><span>Selling</span><span>A thought</span></div>
+  <div class="head bod it" style="top:940px;font-size:96px">You might not be planning to sell.</div>
+  <div class="hair" style="top:1170px;right:auto;width:160px;opacity:1"></div>
+  <div class="bod" style="position:absolute;left:80px;right:80px;top:1200px;font-size:48px;line-height:1.3">But if a buyer presented more than you expected, would you consider it?</div>
+  <div class="cta"><span class="l">Book a Chat.</span><span class="r">No Cost. No Commitment.<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M3 12h18M15 6l6 6-6 6"/></svg></span></div>
+</section>
+
+<!-- 18 · not planning · black essay page -->
+<section class="ad" id="ad-18" style="background:var(--ink);color:var(--paper)">
+  <div class="folio top caps"><span>Essay</span><span>On selling</span></div>
+  <div class="hair" style="top:290px"></div>
+  <div class="photo" style="left:80px;top:340px;width:920px;height:420px"><img src="photos/roofline.jpg" style="object-position:50% 80%"></div>
+  <div class="head bod" style="top:830px;font-size:78px;line-height:1.12"><span class="dropcap" style="color:var(--paper);font-size:300px">Y</span>ou might not be planning to sell. <span class="it" style="color:#C9A9A0">But if a buyer presented more than you expected, would you consider it?</span></div>
+  <div class="cta light"><span class="l">Book a Chat.</span><span class="r">No Cost. No Commitment.<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M3 12h18M15 6l6 6-6 6"/></svg></span></div>
+</section>
+
+<!-- 19 · own in 2287 · cover -->
+<section class="ad" id="ad-19">
+  <div class="folio top caps"><span>The postcode</span><span>2287</span></div>
+  <div class="photo" style="left:180px;top:440px;width:720px;height:540px"><img src="photos/house-tree.jpg" style="object-position:20% 50%"></div>
+  <div class="bod it" style="position:absolute;left:0;right:0;text-align:center;top:300px;font-size:110px;line-height:1">Own in</div>
+  <div class="bod" style="position:absolute;left:0;right:0;top:990px;text-align:center;font-size:250px;line-height:1;letter-spacing:-.03em;color:var(--ox)">2287</div>
+  <div class="bod" style="position:absolute;left:120px;right:120px;top:1270px;font-size:44px;line-height:1.3;text-align:center">Even if you've only thought about selling, <span class="it">we'd love to start a conversation.</span></div>
+  <div class="cta"><span class="l">Book a Chat.</span><span class="r">No Cost. No Commitment.<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M3 12h18M15 6l6 6-6 6"/></svg></span></div>
+</section>
+
+<!-- 20 · own in 2284 · black cover -->
+<section class="ad" id="ad-20" style="background:var(--ink);color:var(--paper)">
+  <div class="folio top caps"><span>The postcode</span><span>2284</span></div>
+  <div class="photo" style="left:180px;top:440px;width:720px;height:540px"><img src="photos/kitchen.jpg" style="object-position:40% 50%"></div>
+  <div class="bod it" style="position:absolute;left:0;right:0;text-align:center;top:300px;font-size:110px;line-height:1">Own in</div>
+  <div class="bod" style="position:absolute;left:0;right:0;top:990px;text-align:center;font-size:250px;line-height:1;letter-spacing:-.03em;color:var(--paper)">2284</div>
+  <div class="bod" style="position:absolute;left:120px;right:120px;top:1270px;font-size:44px;line-height:1.3;text-align:center">Even if you've only thought about selling, <span class="it">we'd love to start a conversation.</span></div>
+  <div class="cta light"><span class="l">Book a Chat.</span><span class="r">No Cost. No Commitment.<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M3 12h18M15 6l6 6-6 6"/></svg></span></div>
+</section>
+
+</body>
+</html>
