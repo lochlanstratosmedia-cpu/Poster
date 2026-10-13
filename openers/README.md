@@ -8,9 +8,9 @@ Safari, add a photo or clip, type the search, and press Save video.
 | Style | What happens |
 |---|---|
 | Search bar | A white circle pops in over the photo, a magnifier draws inside it, the circle stretches into a search bar, the search types out with a caret, the bar is tapped, then it fades up or zooms through |
-| Notification | A notification banner drops in over the blurred photo with a ding, with the photo as its thumbnail. A finger taps it and the photo grows from the thumbnail to full screen |
-| Messages | Typing dots, then message bubbles pop up one at a time and push the older ones up. The last message is the photo, which grows to full screen when tapped |
-| Saved listing | A listing card slides up with the photo, title and bed, bath and car numbers. The heart is tapped, fills red and sends small hearts up, then "Saved to favourites" shows |
+| Notification | A notification banner drops in over the blurred photo with a ding, with the photo as its thumbnail. It presses in and the photo grows from the thumbnail to full screen |
+| Messages | Typing dots, then message bubbles pop up one at a time and push the older ones up. The last message is the photo, which presses in and grows to full screen |
+| Saved listing | A listing card slides up with the photo, title and bed, bath and car numbers. The heart fills red with a pop and sends small hearts up, then "Saved to favourites" shows |
 | Open home | A calendar card drops in and bounces with the day, date, time and place. A green tick draws on its corner and "Added to calendar" shows |
 
 New styles go in `STYLES` inside `opener.html`. Each one has a `plan()` that

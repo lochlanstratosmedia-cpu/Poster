@@ -193,7 +193,7 @@ body.render canvas#c { width: auto; border-radius: 0; box-shadow: none; backgrou
       <label><span class="lab">Hold before it leaves <output id="holdOut"></output></span>
         <input type="range" id="hold" min="0.3" max="3" step="0.1">
       </label>
-      <label class="check" data-for="search notify messages saved"><input type="checkbox" id="tap" checked> Show a finger tap</label>
+      <label class="check" data-for="search notify messages saved"><input type="checkbox" id="tap" checked> Press in before it leaves</label>
     </fieldset>
 
     <fieldset>
@@ -385,25 +385,6 @@ function drawExpand(rect, t, P, W, H) {
   drawPhoto(lerp(rect.x, 0, r), lerp(rect.y, 0, r), lerp(rect.w, W, r), lerp(rect.h, H, r), Array.isArray(rect.r) ? rect.r.map(v => lerp(v, 0, r)) : lerp(rect.r, 0, r), lerp(1, bgZoom(t), r));
   ctx.restore();
 }
-// A fingertip that presses at tTap and leaves a ripple.
-function drawFinger(x, y, t, tTap, u) {
-  const a = t - tTap;
-  if (a < -0.4 || a > 0.5) return;
-  const vis = a < 0 ? clamp((a + 0.4) / 0.15) : 1 - clamp((a - 0.15) / 0.3);
-  const rad = 54 * u * (a < 0 ? 1 + 0.25 * clamp(-a / 0.4) : 0.88 + 0.12 * clamp(a / 0.15));
-  ctx.save();
-  ctx.globalAlpha = vis;
-  shadow(24 * u, 6 * u, 0.25);
-  ctx.fillStyle = "rgba(255,255,255,0.55)"; ctx.beginPath(); ctx.arc(x, y, rad, 0, Math.PI * 2); ctx.fill();
-  noShadow();
-  ctx.strokeStyle = "rgba(255,255,255,0.9)"; ctx.lineWidth = 3 * u; ctx.stroke();
-  if (a >= 0) {
-    const k = clamp(a / 0.45);
-    ctx.globalAlpha = 0.6 * (1 - k);
-    ctx.lineWidth = 5 * u; ctx.beginPath(); ctx.arc(x, y, 54 * u + 150 * u * easeOutCubic(k), 0, Math.PI * 2); ctx.stroke();
-  }
-  ctx.restore();
-}
 function drawPill(text, cx, y, u, alpha) {
   if (alpha <= 0) return;
   ctx.save(); ctx.globalAlpha *= alpha;
@@ -534,7 +515,6 @@ const STYLES = {
         ctx.restore();
         ctx.restore();
       }
-      if (o.tap) drawFinger(cx + fullW * 0.18, cy, t, P.tTap, u * o.size);
     },
   },
 
@@ -580,7 +560,6 @@ const STYLES = {
         if (!zooming) drawPhoto(tx, ty, ts, ts, 18 * u);
         ctx.restore();
       }
-      if (o.tap) drawFinger(bx + bw * 0.42, by + bh * 0.55, t, P.tTap, u);
       if (zooming) drawExpand({ x: tx, y: ty, w: ts, h: ts, r: 18 * u }, t, P, W, H);
     },
   },
@@ -650,6 +629,10 @@ const STYLES = {
             ctx.beginPath(); ctx.arc(x + 40 * u + j * 35 * u, top + m.h / 2 - 5 * u * Math.max(0, b), 10 * u, 0, Math.PI * 2); ctx.fill();
           }
         } else if (m.it.photo) {
+          if (o.tap && t >= P.tTap) {
+            const pr = 1 - 0.04 * Math.sin(Math.PI * clamp((t - P.tTap) / 0.3)), pcx = x + m.w / 2, pcy = top + m.h / 2;
+            ctx.translate(pcx, pcy); ctx.scale(pr, pr); ctx.translate(-pcx, -pcy);
+          }
           shadow(20 * u, 4 * u, 0.15);
           ctx.fillStyle = "#e9e9eb"; rr(x, top, m.w, m.h, 36 * u); ctx.fill(); noShadow();
           drawPhoto(x, top, m.w, m.h, 36 * u);
@@ -661,7 +644,6 @@ const STYLES = {
         }
         ctx.restore();
       }
-      if (o.tap && photoRect) drawFinger(photoRect.x + photoRect.w * 0.55, photoRect.y + photoRect.h * 0.5, t, P.tTap, u);
       if (zooming && photoRect) drawExpand(photoRect, t, P, W, H);
     },
   },
@@ -724,7 +706,6 @@ const STYLES = {
         ctx.restore();
       }
       if (t >= P.tToast) drawPill("Saved to favourites", W / 2, cy + ch + 44 * u + (1 - easeOutCubic(clamp((t - P.tToast) / 0.3))) * 24 * u, u, easeOutCubic(clamp((t - P.tToast) / 0.3)) * L.alpha);
-      if (o.tap) drawFinger(hx, hy, t, P.tTap, u);
       if (zooming) drawExpand({ x: cx, y: cy, w: cw, h: ph, r: [44 * u, 44 * u, 0, 0] }, t, P, W, H);
     },
   },
