@@ -1,6 +1,7 @@
 <title>Reel Opener Studio</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<script src="https://cdn.jsdelivr.net/npm/mp4-muxer@5.1.3/build/mp4-muxer.js"></script>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&family=Instrument+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <style>
 /* Layout: control rail on the left, live 9:16 preview on the right; stacks on phones with the preview first. Same tokens as tools/cover-editor.html. */
@@ -71,6 +72,8 @@ canvas#c { width: 100%; height: auto; display: block; border-radius: 6px; box-sh
 .checker canvas#c, .checker .result video { background: repeating-conic-gradient(#c8c8c8 0% 25%, #f2f2f2 0% 50%) 0 0 / 24px 24px; }
 .note { font-size: 12px; color: var(--muted); margin: 0; }
 .clipopts { display: grid; gap: 10px; }
+#outFmt { justify-content: center; }
+#outFmt button:disabled { opacity: .45; cursor: default; }
 
 /* Render mode: used by render.mjs. Canvas at native size, nothing else. */
 body.render { padding: 0; background: transparent; }
@@ -246,10 +249,14 @@ body.render canvas#c { width: auto; border-radius: 0; box-shadow: none; backgrou
       <input type="range" id="scrub" min="0" max="1" step="0.001" value="0" aria-label="Scrub">
       <output id="clock">0.0 / 0.0 s</output>
     </div>
+    <div class="seg" id="outFmt" role="group" aria-label="File type">
+      <button type="button" data-v="mp4" aria-pressed="true">MP4 for posting</button>
+      <button type="button" data-v="mov">MOV with transparency</button>
+    </div>
     <div class="actions">
       <button type="button" class="btn" id="export">Save video</button>
     </div>
-    <p class="meta" id="status">Recording runs in real time. Keep this tab in front while it records.</p>
+    <p class="meta" id="status">Builds the video frame by frame, so it can take a minute.</p>
     <div class="result" id="result" hidden>
       <video id="out" controls playsinline></video>
       <div class="actions"><button type="button" class="btn ghost" id="saveAgain">Save again</button></div>
@@ -269,7 +276,7 @@ if (RENDER) document.body.classList.add("render");
 
 // ---------- settings ----------
 const DEFAULTS = {
-  style: "search", fmt: "9x16", size: 1, cps: 14, hold: 1.2, tap: true, ending: "fade", tail: 0.6, push: true, blur: true, bg: "clip", sound: true, fullClip: true, clipSound: true,
+  style: "search", fmt: "9x16", size: 1, cps: 14, hold: 1.2, tap: true, ending: "fade", tail: 0.6, push: true, blur: true, bg: "clip", sound: true, fullClip: true, clipSound: true, outFmt: "mp4",
   text: "Homes for Sale in Nords Wharf, NSW", pos: 0.3, width: 0.86,
   nApp: "Listings", nTitle: "New listing in Nords Wharf, NSW", nBody: "Tap to take a look inside",
   mLines: "Have you seen this one in Nords Wharf?\nme: No! Send it through", mBack: "screen", mTheme: "light", mName: "",
@@ -328,6 +335,7 @@ function wrap(s, maxW) {
 
 // ---------- photo and background ----------
 let media = null; // HTMLImageElement or HTMLVideoElement
+let mediaFile = null; // the file it came from, for decoding a clip's sound
 const isVideo = () => media instanceof HTMLVideoElement;
 let sampleCanvas = null;
 
@@ -1007,7 +1015,7 @@ window.audioWav = async () => {
 
 // ---------- interactive UI ----------
 const scrub = $("scrub"), playBtn = $("play"), clock = $("clock"), status = $("status");
-let playing = !RENDER, t0 = performance.now(), cur = 0, recording = false;
+let playing = !RENDER, t0 = performance.now(), cur = 0, recording = false, exporting = false;
 let actx = null, sfx = null;
 
 function stopSound() { try { sfx && sfx.stop(); } catch {} sfx = null; }
@@ -1059,6 +1067,7 @@ function restart() {
 }
 
 function tick(now) {
+  if (exporting) { requestAnimationFrame(tick); return; }
   if (playing) {
     cur = (now - t0) / 1000;
     if (cur > P.end) {
@@ -1081,6 +1090,10 @@ function setPlaying(p) {
 
 function showFor() {
   $("clipOpts").hidden = !isVideo();
+  // MP4 has no alpha channel, so a transparent opener always saves as MOV.
+  $("outFmt").querySelector('[data-v="mp4"]').disabled = S.bg === "alpha";
+  if (S.bg === "alpha") $("outFmt").querySelectorAll("button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.v === "mov")));
+  else segSync("outFmt");
   for (const el of document.querySelectorAll("[data-for]")) el.hidden = !el.dataset.for.split(" ").includes(S.style);
 }
 
@@ -1114,7 +1127,7 @@ async function setFile(f) {
   try {
     const m = await loadMedia(URL.createObjectURL(f), kind);
     if (isVideo()) media.pause();
-    media = m;
+    media = m; mediaFile = f;
     $("dropName").textContent = f.name;
     S.bg = "clip"; segSync("bg"); changed();
     restart();
@@ -1137,8 +1150,12 @@ function pickMime() {
 
 async function saveBlob(blob, name) {
   const dl = window.claude && window.claude.use ? await window.claude.use("downloads").catch(() => null) : null;
+  if (dl && name.endsWith(".mov")) {
+    status.textContent = "Packing the MOV into a zip…";
+    blob = await zipOne(name, blob); name = name.replace(/\.mov$/, ".zip");
+  }
   if (dl) {
-    try { await dl.save({ filename: name, data: blob }); status.textContent = `Saved ${name}.`; }
+    try { await dl.save({ filename: name, data: blob }); status.textContent = `Saved ${name}.${name.endsWith(".mp4") ? exportNote : ""}`; }
     catch (e) { status.textContent = e && e.code === "declined" ? "Save cancelled. Use Save again when you are ready." : `Could not save the file (${e && e.code || "error"}). Try Save again.`; }
     return;
   }
@@ -1148,7 +1165,8 @@ async function saveBlob(blob, name) {
   status.textContent = `Saved ${name}.`;
 }
 
-async function exportVideo() {
+// Fallback for browsers without WebCodecs: records the preview in real time.
+async function recordRealtime() {
   const mime = pickMime();
   if (!mime && S.bg === "alpha") { status.textContent = "This browser cannot record transparent video. Use Chrome or Edge on a computer, or render with render.mjs --alpha."; return; }
   if (!mime || !canvas.captureStream) { status.textContent = "This browser cannot record video. Use Chrome, Edge or Safari, or render with render.mjs."; return; }
@@ -1184,18 +1202,255 @@ async function exportVideo() {
   stream.getTracks().forEach(tr => tr.stop());
 
   const ext = mime.includes("mp4") ? "mp4" : "webm";
-  lastBlob = new Blob(chunks, { type: mime.split(";")[0] });
-  lastName = `${fileName()}${S.bg === "alpha" ? "-transparent" : ""}.${ext}`;
-  $("out").src = URL.createObjectURL(lastBlob);
-  $("result").hidden = false;
-  status.textContent = `Recorded ${(lastBlob.size / 1e6).toFixed(1)} MB ${ext.toUpperCase()}.`;
   btn.disabled = false;
+  await finish(new Blob(chunks, { type: mime.split(";")[0] }), ext);
+}
+
+// ---------- frame-exact export ----------
+// Renders every frame on its own clock, so nothing drops and the tab can sit
+// in the background. MP4 is H.264 through WebCodecs; MOV is a QuickTime file
+// with one PNG per frame, which keeps the alpha channel for editing apps.
+const FPS = 30;
+let exportNote = "";
+const tick0 = () => new Promise(r => setTimeout(r, 0));
+
+async function seekClip(t) {
+  if (!isVideo()) return;
+  const want = clamp(t - P.tClip, 0, Math.max(0, (media.duration || 0) - 0.04));
+  if (Math.abs(media.currentTime - want) < 0.002 && !media.seeking) return;
+  await new Promise(ok => {
+    const done = () => { media.removeEventListener("seeked", done); ok(); };
+    media.addEventListener("seeked", done);
+    media.currentTime = want;
+    setTimeout(done, 2000);
+  });
+}
+
+// Effects plus the clip's own sound from the reveal on, as one buffer.
+async function mixAudio() {
+  const withClip = isVideo() && S.clipSound && mediaFile;
+  if (!S.sound && !withClip) return null;
+  const sr = 48000, ac = new OfflineAudioContext(2, Math.ceil(P.end * sr), sr);
+  if (S.sound) { const s = ac.createBufferSource(); s.buffer = await buildAudio(); s.connect(ac.destination); s.start(0); }
+  if (withClip) {
+    try {
+      const buf = await ac.decodeAudioData(await mediaFile.arrayBuffer());
+      const s = ac.createBufferSource(); s.buffer = buf; s.connect(ac.destination); s.start(P.tClip);
+    } catch { /* the clip has no sound track */ }
+  }
+  return ac.startRendering();
+}
+
+async function pickAvc(W, H) {
+  if (!window.VideoEncoder) return null;
+  for (const codec of ["avc1.640028", "avc1.4d0028", "avc1.420028", "avc1.640033", "avc1.42e033"]) {
+    const cfg = { codec, width: W, height: H, bitrate: 12_000_000, framerate: FPS, avc: { format: "avc" } };
+    const r = await VideoEncoder.isConfigSupported(cfg).catch(() => null);
+    if (r && r.supported) return cfg;
+  }
+  return null;
+}
+
+async function encodeMp4(progress) {
+  const { W, H } = size();
+  const vcfg = await pickAvc(W, H);
+  if (!vcfg || !window.Mp4Muxer) return null;
+  const audio = await mixAudio();
+  let acfg = null;
+  if (audio && window.AudioEncoder) {
+    for (const [codec, key] of [["mp4a.40.2", "aac"], ["opus", "opus"]]) {
+      const cfg = { codec, sampleRate: 48000, numberOfChannels: 2, bitrate: 192000 };
+      const r = await AudioEncoder.isConfigSupported(cfg).catch(() => null);
+      if (r && r.supported) { acfg = { cfg, key }; break; }
+    }
+  }
+  exportNote = !audio ? "" : !acfg ? " This browser cannot encode sound, so the MP4 is silent. Pick MOV to keep the sound."
+    : acfg.key === "opus" ? " The sound is Opus, which some editing apps cannot read. Pick MOV if it goes missing." : "";
+  const muxer = new Mp4Muxer.Muxer({
+    target: new Mp4Muxer.ArrayBufferTarget(),
+    video: { codec: "avc", width: W, height: H, frameRate: FPS },
+    audio: acfg ? { codec: acfg.key, numberOfChannels: 2, sampleRate: 48000 } : undefined,
+    fastStart: "in-memory",
+  });
+  let fail = null;
+  const venc = new VideoEncoder({ output: (c, m) => muxer.addVideoChunk(c, m), error: e => { fail = e; } });
+  venc.configure(vcfg);
+  const N = Math.round(P.end * FPS);
+  for (let f = 0; f < N; f++) {
+    const t = f / FPS;
+    await seekClip(t); render(t);
+    const frame = new VideoFrame(canvas, { timestamp: Math.round(f * 1e6 / FPS), duration: Math.round(1e6 / FPS) });
+    venc.encode(frame, { keyFrame: f % (FPS * 2) === 0 }); frame.close();
+    if (venc.encodeQueueSize > 6) await new Promise(r => venc.addEventListener("dequeue", r, { once: true }));
+    if (fail) throw fail;
+    if (f % 3 === 0) { progress(f, N); await tick0(); }
+  }
+  await venc.flush(); venc.close();
+  if (acfg) {
+    const aenc = new AudioEncoder({ output: (c, m) => muxer.addAudioChunk(c, m), error: e => { fail = e; } });
+    aenc.configure(acfg.cfg);
+    const L = audio.getChannelData(0), R = audio.getChannelData(1), n = Math.min(audio.length, Math.round(P.end * 48000));
+    for (let i = 0; i < n; i += 1024) {
+      const len = Math.min(1024, n - i), data = new Float32Array(len * 2);
+      data.set(L.subarray(i, i + len), 0); data.set(R.subarray(i, i + len), len);
+      const ad = new AudioData({ format: "f32-planar", sampleRate: 48000, numberOfFrames: len, numberOfChannels: 2, timestamp: Math.round(i * 1e6 / 48000), data });
+      aenc.encode(ad); ad.close();
+    }
+    await aenc.flush(); aenc.close();
+    if (fail) throw fail;
+  }
+  muxer.finalize();
+  return new Blob([muxer.target.buffer], { type: "video/mp4" });
+}
+
+async function encodeMov(progress) {
+  const { W, H } = size();
+  const N = Math.round(P.end * FPS), frames = [];
+  for (let f = 0; f < N; f++) {
+    const t = f / FPS;
+    await seekClip(t); render(t);
+    frames.push(await new Promise(r => canvas.toBlob(r, "image/png")));
+    progress(f, N);
+  }
+  return buildMov(frames, W, H, FPS, await mixAudio());
+}
+
+// ---------- QuickTime writer (PNG video, 16-bit PCM audio) ----------
+function buildMov(frames, W, H, fps, audio) {
+  const enc = new TextEncoder();
+  const u8 = (...parts) => { const n = parts.reduce((a, p) => a + p.length, 0), o = new Uint8Array(n); let i = 0; for (const p of parts) { o.set(p, i); i += p.length; } return o; };
+  const num = (bytes, v) => { const b = new Uint8Array(bytes), d = new DataView(b.buffer); if (bytes === 2) d.setUint16(0, v); else if (bytes === 4) d.setUint32(0, v >>> 0); else d.setBigUint64(0, BigInt(v)); return b; };
+  const str = s => enc.encode(s);
+  const box = (type, ...parts) => { const body = u8(...parts); return u8(num(4, body.length + 8), str(type), body); };
+  const full = (type, vf, ...parts) => box(type, num(4, vf), ...parts);
+  const zeros = n => new Uint8Array(n);
+  const matrix = u8(...[0x10000, 0, 0, 0, 0x10000, 0, 0, 0, 0x40000000].map(v => num(4, v)));
+  const pascal = (s, len) => { const b = new Uint8Array(len ?? s.length + 1); b[0] = s.length; b.set(str(s), 1); return b; };
+
+  const vidBytes = frames.reduce((a, b) => a + b.size, 0);
+  let pcm = null;
+  if (audio) {
+    const n = Math.min(audio.length, Math.round(frames.length / fps * 48000)), L = audio.getChannelData(0), R = audio.getChannelData(1);
+    const dv = new DataView(new ArrayBuffer(n * 4));
+    for (let i = 0; i < n; i++) { dv.setInt16(i * 4, clamp(L[i], -1, 1) * 0x7fff, true); dv.setInt16(i * 4 + 2, clamp(R[i], -1, 1) * 0x7fff, true); }
+    pcm = new Uint8Array(dv.buffer);
+  }
+  const ftyp = box("ftyp", str("qt  "), num(4, 0x200), str("qt  "));
+  const mdatHead = u8(num(4, 1), str("mdat"), num(8, 16 + vidBytes + (pcm ? pcm.length : 0)));
+  const dataStart = ftyp.length + mdatHead.length;
+  const durMs = Math.round(frames.length / fps * 1000);
+
+  const hdlr = (comp, sub, name) => full("hdlr", 0, str(comp), str(sub), zeros(12), pascal(name));
+  const dinf = box("dinf", full("dref", 0, num(4, 1), full("alis", 1)));
+  const tkhd = (id, audioTrack) => full("tkhd", 0xf, zeros(8), num(4, id), zeros(4), num(4, durMs), zeros(8), num(2, 0), num(2, 0), num(2, audioTrack ? 0x100 : 0), zeros(2), matrix, num(4, audioTrack ? 0 : W * 65536), num(4, audioTrack ? 0 : H * 65536));
+  const mdhd = (scale, dur) => full("mdhd", 0, zeros(8), num(4, scale), num(4, dur), num(2, 0x55c4), num(2, 0));
+
+  // Video track: one PNG per sample, one sample per chunk.
+  const pngEntry = box("png ", zeros(6), num(2, 1), num(2, 0), num(2, 0), zeros(4), num(4, 0), num(4, 512), num(2, W), num(2, H),
+    num(4, 0x480000), num(4, 0x480000), num(4, 0), num(2, 1), pascal("PNG", 32), num(2, 32), num(2, 0xffff));
+  let off = dataStart;
+  const sizes = [], offsets = [];
+  for (const b of frames) { sizes.push(num(4, b.size)); offsets.push(num(8, off)); off += b.size; }
+  const vstbl = box("stbl",
+    full("stsd", 0, num(4, 1), pngEntry),
+    full("stts", 0, num(4, 1), num(4, frames.length), num(4, 1)),
+    full("stsc", 0, num(4, 1), num(4, 1), num(4, 1), num(4, 1)),
+    full("stsz", 0, num(4, 0), num(4, frames.length), ...sizes),
+    full("co64", 0, num(4, frames.length), ...offsets));
+  const vtrak = box("trak", tkhd(1, false), box("mdia", mdhd(fps, frames.length), hdlr("mhlr", "vide", "VideoHandler"),
+    box("minf", full("vmhd", 1, num(2, 0x40), zeros(6)), hdlr("dhlr", "alis", "DataHandler"), dinf, vstbl)));
+
+  let atrak = null;
+  if (pcm) {
+    const n = pcm.length / 4;
+    const sowt = box("sowt", zeros(6), num(2, 1), num(2, 0), num(2, 0), zeros(4), num(2, 2), num(2, 16), num(2, 0), num(2, 0), num(4, 48000 * 65536));
+    const astbl = box("stbl",
+      full("stsd", 0, num(4, 1), sowt),
+      full("stts", 0, num(4, 1), num(4, n), num(4, 1)),
+      full("stsc", 0, num(4, 1), num(4, 1), num(4, n), num(4, 1)),
+      full("stsz", 0, num(4, 4), num(4, n)),
+      full("co64", 0, num(4, 1), num(8, off)));
+    atrak = box("trak", tkhd(2, true), box("mdia", mdhd(48000, n), hdlr("mhlr", "soun", "SoundHandler"),
+      box("minf", full("smhd", 0, zeros(4)), hdlr("dhlr", "alis", "DataHandler"), dinf, astbl)));
+  }
+  const mvhd = full("mvhd", 0, zeros(8), num(4, 1000), num(4, durMs), num(4, 0x10000), num(2, 0x100), zeros(10), matrix, zeros(24), num(4, pcm ? 3 : 2));
+  const moov = atrak ? box("moov", mvhd, vtrak, atrak) : box("moov", mvhd, vtrak);
+  return new Blob([ftyp, mdatHead, ...frames, ...(pcm ? [pcm] : []), moov], { type: "video/quicktime" });
+}
+
+// ---------- zip (stored, no compression) ----------
+// The claude.ai viewer only saves some file types and .mov is not one, so a
+// MOV saved from there comes inside a .zip.
+const CRC = (() => { const t = new Uint32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
+async function zipOne(name, blob) {
+  let crc = 0xffffffff;
+  const reader = blob.stream().getReader();
+  for (;;) { const { done, value } = await reader.read(); if (done) break; for (let i = 0; i < value.length; i++) crc = CRC[(crc ^ value[i]) & 0xff] ^ (crc >>> 8); }
+  crc = (crc ^ 0xffffffff) >>> 0;
+  const nm = new TextEncoder().encode(name), size = blob.size, big = size >= 0xffffffff;
+  const le = (bytes, v) => { const b = new Uint8Array(bytes), d = new DataView(b.buffer); if (bytes === 2) d.setUint16(0, v, true); else if (bytes === 4) d.setUint32(0, v >>> 0, true); else d.setBigUint64(0, BigInt(v), true); return b; };
+  const cat = (...p) => { const n = p.reduce((a, x) => a + x.length, 0), o = new Uint8Array(n); let i = 0; for (const x of p) { o.set(x, i); i += x.length; } return o; };
+  const ver = big ? 45 : 20, s32 = big ? 0xffffffff : size;
+  const extraL = big ? cat(le(2, 1), le(2, 16), le(8, size), le(8, size)) : new Uint8Array(0);
+  const local = cat(le(4, 0x04034b50), le(2, ver), le(2, 0), le(2, 0), le(4, 0), le(4, crc), le(4, s32), le(4, s32), le(2, nm.length), le(2, extraL.length), nm, extraL);
+  const extraC = big ? cat(le(2, 1), le(2, 24), le(8, size), le(8, size), le(8, 0)) : new Uint8Array(0);
+  const central = cat(le(4, 0x02014b50), le(2, ver), le(2, ver), le(2, 0), le(2, 0), le(4, 0), le(4, crc), le(4, s32), le(4, s32), le(2, nm.length), le(2, extraC.length), le(2, 0), le(2, 0), le(2, 0), le(4, 0), le(4, big ? 0xffffffff : 0), nm, extraC);
+  const cdOff = local.length + size;
+  let tail;
+  if (big) {
+    const z64 = cat(le(4, 0x06064b50), le(8, 44), le(2, 45), le(2, 45), le(4, 0), le(4, 0), le(8, 1), le(8, 1), le(8, central.length), le(8, cdOff));
+    const loc = cat(le(4, 0x07064b50), le(4, 0), le(8, cdOff + central.length), le(4, 1));
+    tail = cat(z64, loc, le(4, 0x06054b50), le(2, 0), le(2, 0), le(2, 0xffff), le(2, 0xffff), le(4, 0xffffffff), le(4, 0xffffffff), le(2, 0));
+  } else tail = cat(le(4, 0x06054b50), le(2, 0), le(2, 0), le(2, 1), le(2, 1), le(4, central.length), le(4, cdOff), le(2, 0));
+  return new Blob([local, blob, central, tail], { type: "application/zip" });
+}
+
+async function exportVideo() {
+  const mov = S.bg === "alpha" || S.outFmt === "mov";
+  const btn = $("export"); btn.disabled = true;
+  setPlaying(false); stopSound();
+  exporting = true;
+  const progress = (f, N) => { status.textContent = `Building frame ${f + 1} of ${N}…`; };
+  let blob = null;
+  try {
+    if (isVideo()) media.pause();
+    blob = mov ? await encodeMov(progress) : await encodeMp4(progress);
+  } catch (e) {
+    exporting = false; btn.disabled = false;
+    status.textContent = `Could not build the video (${e && e.message || e}). Try again, or use render.mjs.`;
+    return;
+  }
+  if (!blob) {
+    // No H.264 encoder here. Record an MP4 in real time if the browser can,
+    // otherwise build a MOV, which every editing app takes.
+    exporting = false; btn.disabled = false;
+    if (pickMime().includes("mp4")) { status.textContent = "Recording the MP4 in real time. Keep this tab in front."; await tick0(); return recordRealtime(); }
+    exporting = true; btn.disabled = true;
+    blob = await encodeMov(progress).catch(() => null);
+    exporting = false; btn.disabled = false;
+    if (!blob) { status.textContent = "Could not build the video. Try Chrome or Safari, or use render.mjs."; return; }
+    await finish(blob, "mov");
+    status.textContent += " This browser cannot make MP4, so it saved a MOV.";
+    return;
+  }
+  exporting = false; btn.disabled = false;
+  await finish(blob, mov ? "mov" : "mp4");
+}
+
+async function finish(blob, ext) {
+  lastBlob = blob;
+  lastName = `${fileName()}${S.bg === "alpha" ? "-transparent" : ""}.${ext}`;
+  const playable = ext !== "mov";
+  $("out").hidden = !playable;
+  if (playable) $("out").src = URL.createObjectURL(blob);
+  $("result").hidden = false;
+  status.textContent = `Built ${(blob.size / 1e6).toFixed(1)} MB ${ext.toUpperCase()}.${ext === "mp4" ? exportNote : ""}`;
   setPlaying(false); cur = 0; restart();
   await saveBlob(lastBlob, lastName);
 }
 
 if (!RENDER) {
-  for (const id of ["style", "bg", "fmt", "ending", "mBack", "mTheme"]) bindSeg(id);
+  for (const id of ["style", "bg", "fmt", "ending", "mBack", "mTheme", "outFmt"]) bindSeg(id);
   for (const el of document.querySelectorAll("[data-key]")) {
     const k = el.dataset.key;
     el.value = S[k];

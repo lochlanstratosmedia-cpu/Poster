@@ -58,14 +58,26 @@ Settings stay in the browser between visits.
 
 ## Saving
 
-The page records the preview in real time, so keep the tab in front until it
-finishes. Chrome 126 and later and Safari save H.264 MP4. Older Chrome saves
-WebM, which CapCut opens but Instagram may not; use `render.mjs` for those.
+Save video builds the file frame by frame, so nothing drops and the tab can
+sit in the background. It takes longer than the opener runs, more so with a
+long clip, because the clip is stepped through one frame at a time.
 
-With the Transparent background the page saves a VP9 WebM with alpha instead.
-Only Chrome and Edge can record that. Safari cannot, so use
-`render.mjs --alpha` there, which also gives a ProRes 4444 `.mov` with sound
-for Premiere, Final Cut, DaVinci Resolve and CapCut desktop.
+| File | What it is | Use it for |
+|---|---|---|
+| MP4 for posting | H.264 video with AAC sound, built with WebCodecs and [mp4-muxer](https://github.com/Vanilagy/mp4-muxer) | Instagram, TikTok, CapCut, anything |
+| MOV with transparency | QuickTime with one PNG per frame (alpha kept) and 16-bit PCM sound | Premiere, Final Cut, DaVinci Resolve, After Effects |
+
+A transparent background always saves as MOV, since MP4 has no alpha channel.
+The MOV is large (about 30 MB for 8 seconds of the Messages opener) because
+every frame is lossless. Saved from the claude.ai page it comes inside a
+`.zip`, because the page cannot save `.mov` files directly; opened from this
+repo it saves the `.mov` itself.
+
+Desktop Chrome, Edge and Safari can all build the MP4. A browser with no
+H.264 encoder records the MP4 in real time if it can, and builds the MOV if it
+cannot.
+
+For true ProRes 4444, use `render.mjs --alpha`.
 
 ## Frame-exact renders
 
