@@ -1,7 +1,7 @@
 <title>Reel Opener Studio</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500&family=Instrument+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&family=Instrument+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <style>
 /* Layout: control rail on the left, live 9:16 preview on the right; stacks on phones with the preview first. Same tokens as tools/cover-editor.html. */
 :root {
@@ -29,6 +29,7 @@
   color-scheme: dark;
 }
 * { box-sizing: border-box; }
+[hidden] { display: none !important; }
 body { background: var(--bg); color: var(--ink); font: 14px/1.45 var(--ui); padding-inline: 16px; padding-block: 20px 40px; margin: 0; }
 .wrap { max-width: 1100px; margin: 0 auto; display: grid; gap: 20px; grid-template-columns: minmax(0, 360px) minmax(0, 1fr); align-items: start; }
 @media (max-width: 820px) { .wrap { grid-template-columns: minmax(0, 1fr); } .proof { order: -1; } }
@@ -41,9 +42,11 @@ legend { font: 500 11px/1 var(--mono); letter-spacing: 0.08em; text-transform: u
 label { display: grid; gap: 4px; font-size: 12.5px; color: var(--muted); min-width: 0; }
 label output { font: 12px var(--mono); color: var(--ink); font-variant-numeric: tabular-nums; }
 .lab { display: flex; justify-content: space-between; gap: 8px; }
-input[type=text], select { width: 100%; font: 14px/1.35 var(--ui); color: var(--ink); background: var(--field); border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; }
-input:focus-visible, select:focus-visible, button:focus-visible, .drop:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+input[type=text], textarea, select { width: 100%; font: 14px/1.35 var(--ui); color: var(--ink); background: var(--field); border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; }
+textarea { resize: vertical; min-height: 84px; }
+input:focus-visible, textarea:focus-visible, select:focus-visible, button:focus-visible, .drop:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 .row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.row3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
 .seg { display: flex; flex-wrap: wrap; gap: 6px; }
 .seg button { font: 500 12.5px/1 var(--ui); color: var(--ink); background: var(--field); border: 1px solid var(--line); border-radius: 999px; padding: 7px 11px; cursor: pointer; }
 .seg button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
@@ -79,7 +82,7 @@ body.render canvas#c { width: auto; border-radius: 0; box-shadow: none; backgrou
 <header class="top">
   <div>
     <h1>Reel Opener Studio</h1>
-    <p class="sub">Add a property photo or clip, type the search, save the opener.</p>
+    <p class="sub">Pick a style, add a property photo or clip, save the opener.</p>
   </div>
   <p class="sub" id="dims">1080 × 1920 px · 9:16 Reel</p>
 </header>
@@ -90,6 +93,10 @@ body.render canvas#c { width: auto; border-radius: 0; box-shadow: none; backgrou
       <legend>Style</legend>
       <div class="seg" id="style" role="group" aria-label="Opener style">
         <button type="button" data-v="search" aria-pressed="true">Search bar</button>
+        <button type="button" data-v="notify">Notification</button>
+        <button type="button" data-v="messages">Messages</button>
+        <button type="button" data-v="saved">Saved listing</button>
+        <button type="button" data-v="reminder">Open home</button>
       </div>
     </fieldset>
 
@@ -106,20 +113,87 @@ body.render canvas#c { width: auto; border-radius: 0; box-shadow: none; backgrou
         <button type="button" data-v="alpha">Transparent</button>
       </div>
       <label class="check"><input type="checkbox" id="push" checked> Slow push-in on the background</label>
+      <label class="check" data-for="notify messages saved reminder"><input type="checkbox" id="blur" checked> Blur the photo until the reveal</label>
+    </fieldset>
+
+    <fieldset data-for="search">
+      <legend>Search bar</legend>
+      <label>Search text
+        <input type="text" id="text" data-key="text" maxlength="80">
+      </label>
+      <label><span class="lab">Height on screen <output id="posOut"></output></span>
+        <input type="range" id="pos" min="0.12" max="0.85" step="0.01">
+      </label>
+      <label><span class="lab">Bar width <output id="widthOut"></output></span>
+        <input type="range" id="width" min="0.6" max="0.95" step="0.01">
+      </label>
+    </fieldset>
+
+    <fieldset data-for="notify">
+      <legend>Notification</legend>
+      <label>App name
+        <input type="text" id="nApp" data-key="nApp" maxlength="30">
+      </label>
+      <label>Title
+        <input type="text" id="nTitle" data-key="nTitle" maxlength="70">
+      </label>
+      <label>Message
+        <input type="text" id="nBody" data-key="nBody" maxlength="90">
+      </label>
+      <p class="note">The photo shows as a thumbnail on the banner. With Zoom through, it grows from there to full screen.</p>
+    </fieldset>
+
+    <fieldset data-for="messages">
+      <legend>Messages</legend>
+      <label>Conversation
+        <textarea id="mLines" data-key="mLines" rows="4"></textarea>
+      </label>
+      <p class="note">One message per line. Start a line with <code>me:</code> for a blue bubble on the right. The photo is sent last.</p>
+    </fieldset>
+
+    <fieldset data-for="saved">
+      <legend>Listing card</legend>
+      <label>Title
+        <input type="text" id="cTitle" data-key="cTitle" maxlength="50">
+      </label>
+      <label>Second line
+        <input type="text" id="cSub" data-key="cSub" maxlength="60">
+      </label>
+      <div class="row3">
+        <label>Beds <input type="text" id="beds" data-key="beds" inputmode="numeric" maxlength="3"></label>
+        <label>Baths <input type="text" id="baths" data-key="baths" inputmode="numeric" maxlength="3"></label>
+        <label>Cars <input type="text" id="cars" data-key="cars" inputmode="numeric" maxlength="3"></label>
+      </div>
+      <p class="note">Leave a number blank to hide it.</p>
+    </fieldset>
+
+    <fieldset data-for="reminder">
+      <legend>Open home</legend>
+      <div class="row">
+        <label>Day <input type="text" id="rDay" data-key="rDay" maxlength="4"></label>
+        <label>Date <input type="text" id="rDate" data-key="rDate" maxlength="2" inputmode="numeric"></label>
+      </div>
+      <label>Title
+        <input type="text" id="rTitle" data-key="rTitle" maxlength="40">
+      </label>
+      <label>Time
+        <input type="text" id="rWhen" data-key="rWhen" maxlength="40">
+      </label>
+      <label>Place
+        <input type="text" id="rWhere" data-key="rWhere" maxlength="50">
+      </label>
+      <p class="note">The day, date and time start as examples. Set them to the real open home before saving.</p>
     </fieldset>
 
     <fieldset>
-      <legend>Search</legend>
-      <label>Search text
-        <input type="text" id="text" value="Homes for Sale in Nords Wharf, NSW" maxlength="80">
+      <legend>Timing</legend>
+      <label data-for="search messages"><span class="lab">Typing speed <output id="cpsOut"></output></span>
+        <input type="range" id="cps" min="6" max="30" step="1">
       </label>
-      <label><span class="lab">Typing speed <output id="cpsOut"></output></span>
-        <input type="range" id="cps" min="6" max="30" step="1" value="14">
+      <label><span class="lab">Hold before it leaves <output id="holdOut"></output></span>
+        <input type="range" id="hold" min="0.3" max="3" step="0.1">
       </label>
-      <label><span class="lab">Hold after typing <output id="holdOut"></output></span>
-        <input type="range" id="hold" min="0.3" max="3" step="0.1" value="1.2">
-      </label>
-      <label class="check"><input type="checkbox" id="tap" checked> Tap the bar before it leaves</label>
+      <label class="check" data-for="search notify messages saved"><input type="checkbox" id="tap" checked> Show a finger tap</label>
     </fieldset>
 
     <fieldset>
@@ -128,17 +202,9 @@ body.render canvas#c { width: auto; border-radius: 0; box-shadow: none; backgrou
         <button type="button" data-v="9x16" aria-pressed="true">9:16 Reel</button>
         <button type="button" data-v="4x5">4:5 Feed</button>
       </div>
-      <label><span class="lab">Height on screen <output id="posOut"></output></span>
-        <input type="range" id="pos" min="0.12" max="0.85" step="0.01" value="0.3">
+      <label><span class="lab">Size <output id="sizeOut"></output></span>
+        <input type="range" id="size" min="0.7" max="1.4" step="0.05">
       </label>
-      <div class="row">
-        <label><span class="lab">Bar width <output id="widthOut"></output></span>
-          <input type="range" id="width" min="0.6" max="0.95" step="0.01" value="0.86">
-        </label>
-        <label><span class="lab">Bar size <output id="sizeOut"></output></span>
-          <input type="range" id="size" min="0.7" max="1.4" step="0.05" value="1">
-        </label>
-      </div>
     </fieldset>
 
     <fieldset>
@@ -148,10 +214,10 @@ body.render canvas#c { width: auto; border-radius: 0; box-shadow: none; backgrou
         <button type="button" data-v="zoom">Zoom through</button>
         <button type="button" data-v="stay">Stay on screen</button>
       </div>
-      <label><span class="lab">Clip after the bar leaves <output id="tailOut"></output></span>
-        <input type="range" id="tail" min="0" max="3" step="0.1" value="0.6">
+      <label><span class="lab">Clip after it leaves <output id="tailOut"></output></span>
+        <input type="range" id="tail" min="0" max="3" step="0.1">
       </label>
-      <label class="check"><input type="checkbox" id="sound" checked> Sound effects (pop, whoosh, key clicks)</label>
+      <label class="check"><input type="checkbox" id="sound" checked> Sound effects</label>
     </fieldset>
   </form>
 
@@ -183,9 +249,16 @@ const RENDER = params.has("render");
 if (RENDER) document.body.classList.add("render");
 
 // ---------- settings ----------
-const DEFAULTS = { style: "search", text: "Homes for Sale in Nords Wharf, NSW", fmt: "9x16", pos: 0.3, width: 0.86, size: 1, cps: 14, hold: 1.2, tap: true, ending: "fade", tail: 0.6, push: true, bg: "clip", sound: true };
+const DEFAULTS = {
+  style: "search", fmt: "9x16", size: 1, cps: 14, hold: 1.2, tap: true, ending: "fade", tail: 0.6, push: true, blur: true, bg: "clip", sound: true,
+  text: "Homes for Sale in Nords Wharf, NSW", pos: 0.3, width: 0.86,
+  nApp: "Listings", nTitle: "New listing in Nords Wharf, NSW", nBody: "Tap to take a look inside",
+  mLines: "Have you seen this one in Nords Wharf?\nme: No! Send it through",
+  cTitle: "Nords Wharf, NSW", cSub: "For sale", beds: "", baths: "", cars: "",
+  rDay: "SAT", rDate: "18", rTitle: "Open home", rWhen: "10:00 to 10:30am", rWhere: "Nords Wharf, NSW",
+};
 const NUM = ["pos", "width", "size", "cps", "hold", "tail"];
-const BOOL = ["tap", "push", "sound"];
+const BOOL = ["tap", "push", "blur", "sound"];
 let S = { ...DEFAULTS };
 if (!RENDER) { try { Object.assign(S, JSON.parse(localStorage.getItem("reel-opener") || "{}")); } catch {} }
 for (const [k, v] of params) {
@@ -193,57 +266,199 @@ for (const [k, v] of params) {
   S[k] = NUM.includes(k) ? Number(v) : BOOL.includes(k) ? v !== "0" && v !== "false" : v;
 }
 const save = () => { try { localStorage.setItem("reel-opener", JSON.stringify(S)); } catch {} };
-
 const size = () => ({ W: 1080, H: S.fmt === "4x5" ? 1350 : 1920 });
 
 // ---------- helpers ----------
 const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
+const lerp = (a, b, k) => a + (b - a) * k;
 const easeOutBack = x => { const c1 = 1.70158, c3 = c1 + 1; return 1 + c3 * (x - 1) ** 3 + c1 * (x - 1) ** 2; };
 const easeInOutCubic = x => x < 0.5 ? 4 * x ** 3 : 1 - (-2 * x + 2) ** 3 / 2;
 const easeOutCubic = x => 1 - (1 - x) ** 3;
 const easeInCubic = x => x ** 3;
+function easeOutBounce(x) {
+  const n = 7.5625, d = 2.75;
+  if (x < 1 / d) return n * x * x;
+  if (x < 2 / d) return n * (x -= 1.5 / d) * x + 0.75;
+  if (x < 2.5 / d) return n * (x -= 2.25 / d) * x + 0.9375;
+  return n * (x -= 2.625 / d) * x + 0.984375;
+}
 const hash = i => { const s = Math.sin(i * 12.9898 + 78.233) * 43758.5453; return s - Math.floor(s); };
 function mulberry32(a) { return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+const slug = s => String(s).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 48) || "opener";
 
-// ---------- background ----------
-let media = null; // HTMLImageElement or HTMLVideoElement
-const isVideo = () => media instanceof HTMLVideoElement;
-
-function drawBackground(t, end, W, H) {
-  if (S.bg === "alpha") { ctx.clearRect(0, 0, W, H); return; }
-  if (S.bg === "green") { ctx.fillStyle = "#00b140"; ctx.fillRect(0, 0, W, H); return; }
-  const zoom = S.push ? 1 + 0.08 * clamp(t / Math.max(end, 0.1)) : 1;
-  const ready = media && (isVideo() ? media.readyState >= 2 : media.complete && media.naturalWidth);
-  if (!ready) { drawSampleSky(W, H, zoom); return; }
-  const mw = isVideo() ? media.videoWidth : media.naturalWidth;
-  const mh = isVideo() ? media.videoHeight : media.naturalHeight;
-  const k = Math.max(W / mw, H / mh) * zoom;
-  const dw = mw * k, dh = mh * k;
-  ctx.drawImage(media, (W - dw) / 2, (H - dh) / 2, dw, dh);
+const FONT = 'Roboto, "Helvetica Neue", Arial, sans-serif';
+const font = (w, px) => `${w} ${px}px ${FONT}`;
+function rr(x, y, w, h, r) { ctx.beginPath(); ctx.roundRect(x, y, w, h, r); }
+function shadow(blur, oy, a) { ctx.shadowColor = `rgba(0,0,0,${a})`; ctx.shadowBlur = blur; ctx.shadowOffsetY = oy; }
+function noShadow() { ctx.shadowColor = "transparent"; ctx.shadowBlur = 0; ctx.shadowOffsetY = 0; }
+function fitText(s, maxW) {
+  if (ctx.measureText(s).width <= maxW) return s;
+  let lo = 0, hi = s.length;
+  while (lo < hi) { const m = (lo + hi + 1) >> 1; if (ctx.measureText(s.slice(0, m) + "…").width <= maxW) lo = m; else hi = m - 1; }
+  return s.slice(0, lo).trimEnd() + "…";
+}
+function wrap(s, maxW) {
+  const lines = []; let cur = "";
+  for (const w of s.split(/\s+/).filter(Boolean)) {
+    const next = cur ? cur + " " + w : w;
+    if (!cur || ctx.measureText(next).width <= maxW) cur = next; else { lines.push(cur); cur = w; }
+  }
+  if (cur) lines.push(cur);
+  return lines.length ? lines : [""];
 }
 
+// ---------- photo and background ----------
+let media = null; // HTMLImageElement or HTMLVideoElement
+const isVideo = () => media instanceof HTMLVideoElement;
+let sampleCanvas = null;
+
 // Stand-in until a photo is added: a dusk sky and a low roofline.
-function drawSampleSky(W, H, zoom) {
-  ctx.save();
-  ctx.translate(W / 2, H / 2); ctx.scale(zoom, zoom); ctx.translate(-W / 2, -H / 2);
-  const g = ctx.createLinearGradient(0, 0, 0, H);
+function sample(W, H) {
+  if (sampleCanvas && sampleCanvas.width === W && sampleCanvas.height === H) return sampleCanvas;
+  sampleCanvas = document.createElement("canvas"); sampleCanvas.width = W; sampleCanvas.height = H;
+  const c = sampleCanvas.getContext("2d");
+  const g = c.createLinearGradient(0, 0, 0, H);
   g.addColorStop(0, "#27304a"); g.addColorStop(0.45, "#5d6283"); g.addColorStop(0.75, "#a89aa6"); g.addColorStop(1, "#d8b89a");
-  ctx.fillStyle = g; ctx.fillRect(-W, -H, W * 3, H * 3);
+  c.fillStyle = g; c.fillRect(0, 0, W, H);
   const y = H * 0.62;
-  ctx.fillStyle = "#3a3d47";
-  ctx.beginPath();
-  ctx.moveTo(-W, H * 2); ctx.lineTo(-W, y + 40); ctx.lineTo(W * 0.12, y + 40); ctx.lineTo(W * 0.3, y - 70); ctx.lineTo(W * 0.48, y + 40);
-  ctx.lineTo(W * 0.55, y + 40); ctx.lineTo(W * 0.72, y - 40); ctx.lineTo(W * 0.9, y + 40); ctx.lineTo(W * 2, y + 40); ctx.lineTo(W * 2, H * 2); ctx.fill();
-  ctx.fillStyle = "#f2c879";
-  for (const [x, w] of [[0.2, 0.06], [0.33, 0.06], [0.62, 0.1], [0.78, 0.06]]) ctx.fillRect(W * x, y + 110, W * w, H * 0.06);
+  c.fillStyle = "#3a3d47";
+  c.beginPath();
+  c.moveTo(0, H); c.lineTo(0, y + 40); c.lineTo(W * 0.12, y + 40); c.lineTo(W * 0.3, y - 70); c.lineTo(W * 0.48, y + 40);
+  c.lineTo(W * 0.55, y + 40); c.lineTo(W * 0.72, y - 40); c.lineTo(W * 0.9, y + 40); c.lineTo(W, y + 40); c.lineTo(W, H); c.fill();
+  c.fillStyle = "#f2c879";
+  for (const [x, w] of [[0.2, 0.06], [0.33, 0.06], [0.62, 0.1], [0.78, 0.06]]) c.fillRect(W * x, y + 110, W * w, H * 0.06);
+  return sampleCanvas;
+}
+
+// Draws the photo (or clip, or stand-in) cover-fitted into a rounded rect.
+function drawPhoto(x, y, w, h, r, zoom = 1) {
+  const { W, H } = size();
+  const ready = media && (isVideo() ? media.readyState >= 2 : media.complete && media.naturalWidth);
+  const src = ready ? media : sample(W, H);
+  const mw = ready ? (isVideo() ? media.videoWidth : media.naturalWidth) : W;
+  const mh = ready ? (isVideo() ? media.videoHeight : media.naturalHeight) : H;
+  const k = Math.max(w / mw, h / mh) * zoom;
+  const dw = mw * k, dh = mh * k;
+  ctx.save();
+  if (r) { rr(x, y, w, h, r); ctx.clip(); }
+  ctx.drawImage(src, x + (w - dw) / 2, y + (h - dh) / 2, dw, dh);
   ctx.restore();
 }
 
-// ---------- style: search bar ----------
-// Each style returns a plan (its timeline) and draws one frame at time t.
-// New styles go in STYLES and get a button in #style.
+const bgZoom = t => S.push ? 1 + 0.08 * clamp(t / Math.max(P.end, 0.1)) : 1;
+
+function drawBackground(t, W, H, blurK) {
+  if (S.bg === "alpha") { ctx.clearRect(0, 0, W, H); return; }
+  if (S.bg === "green") { ctx.fillStyle = "#00b140"; ctx.fillRect(0, 0, W, H); return; }
+  if (blurK > 0.001) {
+    ctx.filter = `blur(${Math.round(30 * blurK * W / 1080)}px)`;
+    drawPhoto(0, 0, W, H, 0, bgZoom(t) * (1 + 0.08 * blurK));
+    ctx.filter = "none";
+    ctx.fillStyle = `rgba(0,0,0,${0.28 * blurK})`; ctx.fillRect(0, 0, W, H);
+  } else drawPhoto(0, 0, W, H, 0, bgZoom(t));
+}
+
+// ---------- shared pieces for the phone styles ----------
+const revealK = (t, P) => P.revDur ? clamp((t - P.tRev) / P.revDur) : 0;
+const revDurFor = o => o.ending === "zoom" ? 0.7 : o.ending === "fade" ? 0.55 : 0;
+function bgBlur(t, o, P) {
+  if (!o.blur) return 0;
+  const k = easeOutCubic(clamp(t / 0.4));
+  return o.ending === "stay" ? k : k * (1 - easeInOutCubic(revealK(t, P)));
+}
+// How the card or bubble leaves: Fade up moves it up and fades it; Zoom
+// through fades it fast while the photo grows out of it.
+function leave(t, o, P, u) {
+  const r = revealK(t, P);
+  if (o.ending === "fade") return { alpha: 1 - easeInCubic(r), dy: -80 * u * easeInCubic(r), r };
+  if (o.ending === "zoom") return { alpha: 1 - clamp(r * 3), dy: 0, r };
+  return { alpha: 1, dy: 0, r };
+}
+// The photo grows from a rect inside the card to the full frame.
+function drawExpand(rect, t, P, W, H) {
+  const r = easeInOutCubic(revealK(t, P));
+  const after = t - (P.tRev + P.revDur);
+  if (S.bg === "clip" && after > 0) return; // the sharp background is the same frame now
+  const alpha = S.bg === "clip" ? 1 : 1 - clamp(after / 0.3);
+  if (alpha <= 0) return;
+  ctx.save(); ctx.globalAlpha = alpha;
+  drawPhoto(lerp(rect.x, 0, r), lerp(rect.y, 0, r), lerp(rect.w, W, r), lerp(rect.h, H, r), Array.isArray(rect.r) ? rect.r.map(v => lerp(v, 0, r)) : lerp(rect.r, 0, r), lerp(1, bgZoom(t), r));
+  ctx.restore();
+}
+// A fingertip that presses at tTap and leaves a ripple.
+function drawFinger(x, y, t, tTap, u) {
+  const a = t - tTap;
+  if (a < -0.4 || a > 0.5) return;
+  const vis = a < 0 ? clamp((a + 0.4) / 0.15) : 1 - clamp((a - 0.15) / 0.3);
+  const rad = 54 * u * (a < 0 ? 1 + 0.25 * clamp(-a / 0.4) : 0.88 + 0.12 * clamp(a / 0.15));
+  ctx.save();
+  ctx.globalAlpha = vis;
+  shadow(24 * u, 6 * u, 0.25);
+  ctx.fillStyle = "rgba(255,255,255,0.55)"; ctx.beginPath(); ctx.arc(x, y, rad, 0, Math.PI * 2); ctx.fill();
+  noShadow();
+  ctx.strokeStyle = "rgba(255,255,255,0.9)"; ctx.lineWidth = 3 * u; ctx.stroke();
+  if (a >= 0) {
+    const k = clamp(a / 0.45);
+    ctx.globalAlpha = 0.6 * (1 - k);
+    ctx.lineWidth = 5 * u; ctx.beginPath(); ctx.arc(x, y, 54 * u + 150 * u * easeOutCubic(k), 0, Math.PI * 2); ctx.stroke();
+  }
+  ctx.restore();
+}
+function drawPill(text, cx, y, u, alpha) {
+  if (alpha <= 0) return;
+  ctx.save(); ctx.globalAlpha *= alpha;
+  ctx.font = font(500, 32 * u);
+  const w = ctx.measureText(text).width + 72 * u, h = 78 * u;
+  shadow(30 * u, 8 * u, 0.25);
+  ctx.fillStyle = "rgba(28,28,30,0.92)"; rr(cx - w / 2, y, w, h, h / 2); ctx.fill(); noShadow();
+  ctx.fillStyle = "#fff"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  ctx.fillText(text, cx, y + h / 2 + u);
+  ctx.restore();
+}
+function heartPath(x, y, s) {
+  ctx.beginPath();
+  ctx.moveTo(x, y + s * 0.38);
+  ctx.bezierCurveTo(x - s * 0.62, y - s * 0.02, x - s * 0.42, y - s * 0.52, x, y - s * 0.22);
+  ctx.bezierCurveTo(x + s * 0.42, y - s * 0.52, x + s * 0.62, y - s * 0.02, x, y + s * 0.38);
+  ctx.closePath();
+}
+function houseGlyph(cx, cy, s, fg, bg) {
+  ctx.fillStyle = fg;
+  ctx.beginPath(); ctx.moveTo(cx, cy - s * 0.5); ctx.lineTo(cx + s * 0.52, cy - s * 0.04); ctx.lineTo(cx - s * 0.52, cy - s * 0.04); ctx.closePath(); ctx.fill();
+  ctx.fillRect(cx - s * 0.36, cy - s * 0.1, s * 0.72, s * 0.56);
+  ctx.fillStyle = bg; ctx.fillRect(cx - s * 0.09, cy + s * 0.14, s * 0.18, s * 0.32);
+}
+function featureIcon(kind, x, y, s, u) {
+  ctx.save();
+  ctx.strokeStyle = "#3a3a3c"; ctx.fillStyle = "#3a3a3c"; ctx.lineWidth = 3.5 * u; ctx.lineCap = "round"; ctx.lineJoin = "round";
+  if (kind === "bed") {
+    ctx.beginPath(); ctx.moveTo(x, y - s * 0.42); ctx.lineTo(x, y + s * 0.4); ctx.stroke();
+    rr(x, y - s * 0.02, s, s * 0.26, 4 * u); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x + s, y + s * 0.24); ctx.lineTo(x + s, y + s * 0.4); ctx.stroke();
+    rr(x + s * 0.12, y - s * 0.26, s * 0.32, s * 0.18, 4 * u); ctx.stroke();
+  } else if (kind === "bath") {
+    ctx.beginPath(); ctx.moveTo(x, y - s * 0.02); ctx.lineTo(x + s, y - s * 0.02); ctx.stroke();
+    rr(x + s * 0.06, y - s * 0.02, s * 0.88, s * 0.36, [0, 0, s * 0.16, s * 0.16]); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x + s * 0.2, y - s * 0.02); ctx.lineTo(x + s * 0.2, y - s * 0.42); ctx.lineTo(x + s * 0.42, y - s * 0.42); ctx.stroke();
+  } else {
+    rr(x, y - s * 0.08, s, s * 0.3, 7 * u); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x + s * 0.16, y - s * 0.08); ctx.lineTo(x + s * 0.3, y - s * 0.36); ctx.lineTo(x + s * 0.7, y - s * 0.36); ctx.lineTo(x + s * 0.84, y - s * 0.08); ctx.stroke();
+    for (const wx of [0.25, 0.75]) { ctx.beginPath(); ctx.arc(x + s * wx, y + s * 0.24, s * 0.1, 0, Math.PI * 2); ctx.fill(); }
+  }
+  ctx.restore();
+}
+function parseMsgs(o) {
+  return o.mLines.split("\n").map(l => l.trim()).filter(Boolean)
+    .map(l => /^me:/i.test(l) ? { me: true, text: l.replace(/^me:\s*/i, "") } : { me: false, text: l });
+}
+
+// ---------- styles ----------
+// Each style returns a plan (its timeline and sound cues) and draws one frame
+// at time t. A new style goes in STYLES and gets a button in #style.
 const STYLES = {
   search: {
+    blur: false,
+    label: o => o.text,
     plan(o) {
       const tPop = 0.15, tIcon = 0.4, tExpand = 0.95, expandDur = 0.6;
       const tType = tExpand + expandDur + 0.2;
@@ -258,13 +473,14 @@ const STYLES = {
       const exitDur = o.ending === "stay" ? 0 : o.ending === "zoom" ? 0.6 : 0.5;
       const end = tExit + exitDur + o.tail;
       const sounds = [{ t: tPop, kind: "pop" }, { t: tExpand, kind: "whoosh", dur: expandDur }];
-      keys.forEach((t, i) => { if (o.text[i] !== " ") sounds.push({ t, kind: "key", i }); else sounds.push({ t, kind: "space", i }); });
+      keys.forEach((t, i) => sounds.push({ t, kind: o.text[i] === " " ? "space" : "key", i }));
       if (o.tap) sounds.push({ t: tTap, kind: "tap" });
       if (o.ending !== "stay") sounds.push({ t: tExit, kind: "whoosh", dur: exitDur, out: true });
       return { tPop, tIcon, tExpand, expandDur, tType, keys, tTyped, tTap, tExit, exitDur, end, sounds };
     },
     draw(t, o, P, W, H) {
       if (t < P.tPop) return;
+      const u = W / 1080;
       const bh = Math.round(W * 0.112 * o.size);
       const fullW = Math.max(bh, W * o.width);
       const cx = W / 2, cy = H * o.pos;
@@ -281,49 +497,303 @@ const STYLES = {
         if (o.ending === "fade") { alpha = 1 - easeInCubic(k) * 0.999; dy = -H * 0.05 * easeInCubic(k); }
         else { grow = 1 + 7 * easeInCubic(k); alpha = 1 - clamp((k - 0.3) / 0.7); }
       }
-      if (alpha <= 0.002) return;
+      if (alpha > 0.002) {
+        ctx.save();
+        ctx.globalAlpha = alpha;
+        ctx.translate(cx, cy + dy);
+        const sc = s * press * grow; ctx.scale(sc, sc);
 
-      ctx.save();
-      ctx.globalAlpha = alpha;
-      ctx.translate(cx, cy + dy);
-      const sc = s * press * grow; ctx.scale(sc, sc);
+        const x = -w / 2, y = -bh / 2, r = bh / 2;
+        shadow(bh * 0.35, bh * 0.08, 0.22);
+        ctx.fillStyle = "#ffffff"; rr(x, y, w, bh, r); ctx.fill();
+        noShadow();
 
-      // Pill with a soft shadow.
-      const x = -w / 2, y = -bh / 2, r = bh / 2;
-      ctx.shadowColor = "rgba(0,0,0,0.22)"; ctx.shadowBlur = bh * 0.35; ctx.shadowOffsetY = bh * 0.08;
-      ctx.fillStyle = "#ffffff";
-      ctx.beginPath(); ctx.roundRect(x, y, w, bh, r); ctx.fill();
-      ctx.shadowColor = "transparent";
+        // Magnifier: draws itself in, then shrinks and slides left as the bar opens.
+        const ip = easeOutCubic(clamp((t - P.tIcon) / 0.45));
+        drawMagnifier(x + r + bh * 0.04 * e, 0, bh * (0.5 - 0.16 * e), ip);
 
-      // Magnifier: draws itself in, then shrinks and slides left as the bar opens.
-      const ip = easeOutCubic(clamp((t - P.tIcon) / 0.45));
-      const isz = bh * (0.5 - 0.16 * e);
-      drawMagnifier(x + r + bh * 0.04 * e, 0, isz, ip);
+        const typed = P.keys.filter(k => k <= t).length;
+        const textX = x + bh * 0.95;
+        const room = fullW - bh * 0.95 - bh * 0.45;
+        ctx.font = font(400, bh * 0.36);
+        const fs = bh * 0.36 * Math.min(1, room / Math.max(1, ctx.measureText(o.text).width));
+        ctx.font = font(400, fs);
+        ctx.save();
+        rr(x, y, w, bh, r); ctx.clip();
+        const str = o.text.slice(0, typed);
+        ctx.fillStyle = "#3c4043"; ctx.textBaseline = "middle";
+        ctx.fillText(str, textX, bh * 0.02);
+        if (e >= 1 && t >= P.tType - 0.35 && !(o.tap && t >= P.tTap)) {
+          const last = typed ? P.keys[typed - 1] : P.tType - 0.35;
+          const on = t < P.tTyped + 0.3 || ((t - last) % 1.0) < 0.55;
+          if (on) {
+            ctx.fillStyle = "#1a73e8";
+            ctx.fillRect(textX + ctx.measureText(str).width + fs * 0.06, -fs * 0.62, Math.max(2, fs * 0.07), fs * 1.24);
+          }
+        }
+        ctx.restore();
+        ctx.restore();
+      }
+      if (o.tap) drawFinger(cx + fullW * 0.18, cy, t, P.tTap, u * o.size);
+    },
+  },
 
-      // Typed text and caret.
-      const typed = P.keys.filter(k => k <= t).length;
-      const textX = x + bh * 0.95;
-      const room = fullW - bh * 0.95 - bh * 0.45;
-      ctx.font = `400 ${bh * 0.36}px Roboto, "Helvetica Neue", Arial, sans-serif`;
-      const fs = bh * 0.36 * Math.min(1, room / Math.max(1, ctx.measureText(o.text).width));
-      ctx.font = `400 ${fs}px Roboto, "Helvetica Neue", Arial, sans-serif`;
-      ctx.save();
-      ctx.beginPath(); ctx.roundRect(x, y, w, bh, r); ctx.clip();
-      const str = o.text.slice(0, typed);
-      ctx.fillStyle = "#3c4043"; ctx.textBaseline = "middle";
-      ctx.fillText(str, textX, bh * 0.02);
-      if (e >= 1 && t >= P.tType - 0.35 && !(o.tap && t >= P.tTap)) {
-        const last = typed ? P.keys[typed - 1] : P.tType - 0.35;
-        const typing = t < P.tTyped + 0.3;
-        const on = typing || ((t - last) % 1.0) < 0.55;
-        if (on) {
-          ctx.fillStyle = "#1a73e8";
-          const cxr = textX + ctx.measureText(str).width + fs * 0.06;
-          ctx.fillRect(cxr, -fs * 0.62, Math.max(2, fs * 0.07), fs * 1.24);
+  notify: {
+    blur: true,
+    label: o => o.nTitle,
+    plan(o) {
+      const tIn = 0.35, inDur = 0.6;
+      const tTap = tIn + inDur + 0.9 + o.hold;
+      const tRev = tTap + (o.tap ? 0.22 : 0), revDur = revDurFor(o);
+      const sounds = [{ t: tIn + 0.08, kind: "ding" }];
+      if (o.tap) sounds.push({ t: tTap, kind: "tap" });
+      if (revDur) sounds.push({ t: tRev, kind: "whoosh", dur: revDur, out: true });
+      return { tIn, inDur, tTap, tRev, revDur, end: tRev + revDur + o.tail, sounds };
+    },
+    draw(t, o, P, W, H) {
+      if (t < P.tIn) return;
+      const u = W / 1080 * o.size;
+      const bw = Math.min(W * 0.94, 1000 * u), bh = 212 * u, bx = (W - bw) / 2;
+      const L = leave(t, o, P, u);
+      const by = lerp(-bh - 40 * u, H * 0.05, easeOutBack(clamp((t - P.tIn) / P.inDur))) + L.dy;
+      const ts = 108 * u, tx = bx + bw - 28 * u - ts, ty = by + bh - 28 * u - ts;
+      const zooming = o.ending === "zoom" && L.r > 0;
+      if (L.alpha > 0) {
+        let press = 1;
+        if (o.tap && t >= P.tTap) press = 1 - 0.03 * Math.sin(Math.PI * clamp((t - P.tTap) / 0.3));
+        ctx.save(); ctx.globalAlpha = L.alpha;
+        ctx.translate(W / 2, by + bh / 2); ctx.scale(press, press); ctx.translate(-W / 2, -(by + bh / 2));
+        shadow(40 * u, 10 * u, 0.25);
+        ctx.fillStyle = "rgba(248,248,250,0.96)"; rr(bx, by, bw, bh, 44 * u); ctx.fill(); noShadow();
+        const is = 92 * u, ix = bx + 28 * u, iy = by + 28 * u;
+        ctx.fillStyle = "#1f4d3a"; rr(ix, iy, is, is, 22 * u); ctx.fill();
+        houseGlyph(ix + is / 2, iy + is / 2 + 2 * u, is * 0.52, "#ffffff", "#1f4d3a");
+        const txL = ix + is + 24 * u, txR = tx - 24 * u;
+        ctx.textBaseline = "alphabetic"; ctx.textAlign = "left";
+        ctx.font = font(500, 27 * u); ctx.fillStyle = "#6e6e73";
+        ctx.fillText(fitText(o.nApp.toUpperCase(), txR - txL), txL, by + 60 * u);
+        ctx.textAlign = "right"; ctx.font = font(400, 26 * u); ctx.fillStyle = "#8e8e93";
+        ctx.fillText("now", bx + bw - 28 * u, by + 60 * u);
+        ctx.textAlign = "left";
+        ctx.font = font(700, 34 * u); ctx.fillStyle = "#111111"; ctx.fillText(fitText(o.nTitle, txR - txL), txL, by + 114 * u);
+        ctx.font = font(400, 32 * u); ctx.fillStyle = "#3a3a3c"; ctx.fillText(fitText(o.nBody, txR - txL), txL, by + 160 * u);
+        if (!zooming) drawPhoto(tx, ty, ts, ts, 18 * u);
+        ctx.restore();
+      }
+      if (o.tap) drawFinger(bx + bw * 0.42, by + bh * 0.55, t, P.tTap, u);
+      if (zooming) drawExpand({ x: tx, y: ty, w: ts, h: ts, r: 18 * u }, t, P, W, H);
+    },
+  },
+
+  messages: {
+    blur: true,
+    label: o => (parseMsgs(o)[0] || { text: "messages" }).text,
+    plan(o) {
+      const items = [], sounds = []; let t = 0.35;
+      for (const m of parseMsgs(o)) {
+        if (m.me) {
+          const tb = t + 0.2;
+          items.push({ ...m, tb }); sounds.push({ t: tb, kind: "send" });
+          t = tb + 0.45 + m.text.length * 0.012;
+        } else {
+          const dd = clamp(m.text.length / o.cps * 0.45 + 0.35, 0.6, 1.5);
+          items.push({ ...m, tDots: t, tb: t + dd }); sounds.push({ t: t + dd, kind: "bubble" });
+          t = t + dd + 0.45 + m.text.length * 0.015;
         }
       }
+      const photo = { photo: true, me: false, tDots: t, tb: t + 0.8 };
+      items.push(photo); sounds.push({ t: photo.tb, kind: "bubble" });
+      const tTap = photo.tb + 0.9 + o.hold;
+      const tRev = tTap + (o.tap ? 0.22 : 0), revDur = revDurFor(o);
+      if (o.tap) sounds.push({ t: tTap, kind: "tap" });
+      if (revDur) sounds.push({ t: tRev, kind: "whoosh", dur: revDur, out: true });
+      return { items, tTap, tRev, revDur, end: tRev + revDur + o.tail, sounds };
+    },
+    draw(t, o, P, W, H) {
+      const u = W / 1080 * o.size;
+      const fs = 40 * u, lh = 52 * u, padX = 32 * u, padY = 22 * u, gap = 16 * u, side = W * 0.06;
+      const maxBW = Math.min(W * 0.72, 760 * u), dotsW = 150 * u, dotsH = 88 * u;
+      const pw = Math.min(W * 0.62, 640 * u), ph = pw * 1.2;
+      const L = leave(t, o, P, u);
+      ctx.font = font(400, fs);
+      const live = P.items.map(it => {
+        const start = it.tDots ?? it.tb;
+        if (t < start) return null;
+        const dots = it.tDots != null && t < it.tb;
+        let w, h, lines = null;
+        if (dots) { w = dotsW; h = dotsH; }
+        else if (it.photo) { w = pw; h = ph; }
+        else { lines = wrap(it.text, maxBW - 2 * padX); w = Math.max(...lines.map(l => ctx.measureText(l).width)) + 2 * padX; h = lines.length * lh + 2 * padY; }
+        const hl = !dots && it.tDots != null ? lerp(dotsH, h, easeOutCubic(clamp((t - it.tb) / 0.22))) : h;
+        return { it, dots, w, h, hl, lines, a: easeOutCubic(clamp((t - start) / 0.25)), pop: easeOutBack(clamp((t - (dots ? start : it.tb)) / 0.32)) };
+      });
+      // Stack from the bottom up so new messages push the older ones up.
+      let y = H * (S.fmt === "4x5" ? 0.86 : 0.8) + L.dy;
+      for (let i = live.length - 1; i >= 0; i--) { const m = live[i]; if (!m) continue; m.bot = y; y -= m.hl * m.a + gap * m.a; }
+
+      let photoRect = null;
+      const zooming = o.ending === "zoom" && L.r > 0;
+      for (const m of live) {
+        if (!m) continue;
+        const x = m.it.me ? W - side - m.w : side, top = m.bot - m.h;
+        if (m.it.photo && !m.dots) photoRect = { x, y: top, w: m.w, h: m.h, r: 36 * u };
+        if (m.it.photo && !m.dots && zooming) continue;
+        ctx.save();
+        ctx.globalAlpha = L.alpha * m.a;
+        const px = m.it.me ? x + m.w : x;
+        ctx.translate(px, m.bot); ctx.scale(m.pop, m.pop); ctx.translate(-px, -m.bot);
+        if (m.dots) {
+          ctx.fillStyle = "#e9e9eb"; rr(x, top, m.w, m.h, m.h / 2); ctx.fill();
+          for (let j = 0; j < 3; j++) {
+            const b = Math.sin((t * 7) - j * 0.9);
+            ctx.fillStyle = `rgba(142,142,147,${0.55 + 0.45 * Math.max(0, b)})`;
+            ctx.beginPath(); ctx.arc(x + 40 * u + j * 35 * u, top + m.h / 2 - 5 * u * Math.max(0, b), 10 * u, 0, Math.PI * 2); ctx.fill();
+          }
+        } else if (m.it.photo) {
+          shadow(20 * u, 4 * u, 0.15);
+          ctx.fillStyle = "#e9e9eb"; rr(x, top, m.w, m.h, 36 * u); ctx.fill(); noShadow();
+          drawPhoto(x, top, m.w, m.h, 36 * u);
+        } else {
+          ctx.fillStyle = m.it.me ? "#0a84ff" : "#e9e9eb";
+          rr(x, top, m.w, m.h, Math.min(40 * u, m.h / 2)); ctx.fill();
+          ctx.fillStyle = m.it.me ? "#ffffff" : "#111111"; ctx.font = font(400, fs); ctx.textBaseline = "middle"; ctx.textAlign = "left";
+          m.lines.forEach((l, i) => ctx.fillText(l, x + padX, top + padY + (i + 0.5) * lh + u));
+        }
+        ctx.restore();
+      }
+      if (o.tap && photoRect) drawFinger(photoRect.x + photoRect.w * 0.55, photoRect.y + photoRect.h * 0.5, t, P.tTap, u);
+      if (zooming && photoRect) drawExpand(photoRect, t, P, W, H);
+    },
+  },
+
+  saved: {
+    blur: true,
+    label: o => o.cTitle,
+    plan(o) {
+      const tIn = 0.3, inDur = 0.75;
+      const tTap = tIn + inDur + 0.7, tToast = tTap + 0.3;
+      const tRev = tToast + 0.9 + o.hold, revDur = revDurFor(o);
+      const sounds = [{ t: tIn, kind: "whoosh", dur: 0.45, soft: true }, { t: tTap, kind: "heart" }];
+      if (o.tap) sounds.push({ t: tTap, kind: "tap" });
+      if (revDur) sounds.push({ t: tRev, kind: "whoosh", dur: revDur, out: true });
+      return { tIn, inDur, tTap, tToast, tRev, revDur, end: tRev + revDur + o.tail, sounds };
+    },
+    draw(t, o, P, W, H) {
+      if (t < P.tIn) return;
+      const u = W / 1080 * o.size;
+      const feats = [["bed", o.beds], ["bath", o.baths], ["car", o.cars]].filter(f => String(f[1]).trim());
+      const cw = Math.min(W * 0.9, 880 * u), ph = cw * 0.66, ch = ph + (feats.length ? 236 : 168) * u, cx = (W - cw) / 2;
+      const L = leave(t, o, P, u);
+      const cy = H * 0.46 - ch / 2 + (1 - easeOutBack(clamp((t - P.tIn) / P.inDur))) * H * 0.7 + L.dy;
+      const zooming = o.ending === "zoom" && L.r > 0;
+      const hx = cx + cw - 78 * u, hy = cy + 78 * u, filled = t >= P.tTap;
+      if (L.alpha > 0) {
+        ctx.save(); ctx.globalAlpha = L.alpha;
+        shadow(50 * u, 14 * u, 0.28);
+        ctx.fillStyle = "#ffffff"; rr(cx, cy, cw, ch, 44 * u); ctx.fill(); noShadow();
+        if (!zooming) drawPhoto(cx, cy, cw, ph, [44 * u, 44 * u, 0, 0]);
+        ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
+        ctx.font = font(700, 46 * u); ctx.fillStyle = "#111111"; ctx.fillText(fitText(o.cTitle, cw - 80 * u), cx + 40 * u, cy + ph + 70 * u);
+        ctx.font = font(400, 32 * u); ctx.fillStyle = "#6e6e73"; ctx.fillText(fitText(o.cSub, cw - 80 * u), cx + 40 * u, cy + ph + 116 * u);
+        let fx = cx + 40 * u; const fy = cy + ph + 184 * u;
+        for (const [kind, val] of feats) {
+          featureIcon(kind, fx, fy, 42 * u, u);
+          ctx.font = font(500, 34 * u); ctx.fillStyle = "#1c1c1e"; ctx.textBaseline = "middle";
+          ctx.fillText(String(val).trim(), fx + 58 * u, fy + 2 * u);
+          fx += 58 * u + ctx.measureText(String(val).trim()).width + 48 * u;
+        }
+        // Heart button.
+        shadow(16 * u, 4 * u, 0.2);
+        ctx.fillStyle = "rgba(255,255,255,0.96)"; ctx.beginPath(); ctx.arc(hx, hy, 48 * u, 0, Math.PI * 2); ctx.fill(); noShadow();
+        const pop = filled ? 1 + 0.35 * Math.sin(Math.PI * clamp((t - P.tTap) / 0.3)) : 1;
+        heartPath(hx, hy + 3 * u, 50 * u * pop);
+        if (filled) { ctx.fillStyle = "#ff2d55"; ctx.fill(); }
+        else { ctx.strokeStyle = "#1c1c1e"; ctx.lineWidth = 5 * u; ctx.lineJoin = "round"; ctx.stroke(); }
+        ctx.restore();
+      }
+      // Little hearts float off the button.
+      const pk = (t - P.tTap) / 1.1;
+      if (pk > 0 && pk < 1) {
+        ctx.save();
+        for (let i = 0; i < 7; i++) {
+          const ang = -Math.PI / 2 + (hash(i + 3) - 0.5) * 1.8, dist = (110 + 160 * hash(i + 9)) * u * easeOutCubic(pk);
+          ctx.globalAlpha = (1 - pk) * L.alpha;
+          heartPath(hx + Math.cos(ang) * dist, hy + Math.sin(ang) * dist, (18 + 16 * hash(i + 5)) * u);
+          ctx.fillStyle = "#ff2d55"; ctx.fill();
+        }
+        ctx.restore();
+      }
+      if (t >= P.tToast) drawPill("Saved to favourites", W / 2, cy + ch + 44 * u + (1 - easeOutCubic(clamp((t - P.tToast) / 0.3))) * 24 * u, u, easeOutCubic(clamp((t - P.tToast) / 0.3)) * L.alpha);
+      if (o.tap) drawFinger(hx, hy, t, P.tTap, u);
+      if (zooming) drawExpand({ x: cx, y: cy, w: cw, h: ph, r: [44 * u, 44 * u, 0, 0] }, t, P, W, H);
+    },
+  },
+
+  reminder: {
+    blur: true,
+    label: o => `${o.rTitle} ${o.rWhere}`,
+    plan(o) {
+      const tIn = 0.3, inDur = 0.8;
+      const tTick = tIn + inDur + 0.35, tPill = tTick + 0.35;
+      const tRev = tPill + 0.9 + o.hold, revDur = revDurFor(o);
+      const sounds = [{ t: tIn, kind: "whoosh", dur: 0.3, soft: true }, { t: tIn + inDur * 0.36, kind: "thud" }, { t: tTick, kind: "tick" }];
+      if (revDur) sounds.push({ t: tRev, kind: "whoosh", dur: revDur, out: true });
+      return { tIn, inDur, tTick, tPill, tRev, revDur, end: tRev + revDur + o.tail, sounds };
+    },
+    draw(t, o, P, W, H) {
+      if (t < P.tIn) return;
+      const u = W / 1080 * o.size;
+      const cw = Math.min(W * 0.9, 900 * u), ch = 300 * u, cx = (W - cw) / 2, cyT = H * 0.42 - ch / 2;
+      const r = revealK(t, P);
+      let alpha = 1, dy = 0, grow = 1;
+      if (o.ending === "fade") { alpha = 1 - easeInCubic(r); dy = -80 * u * easeInCubic(r); }
+      if (o.ending === "zoom") { grow = 1 + 7 * easeInCubic(r); alpha = 1 - clamp((r - 0.3) / 0.7); }
+      if (alpha <= 0.002) return;
+      const cy = cyT - (1 - easeOutBounce(clamp((t - P.tIn) / P.inDur))) * (cyT + ch + 60 * u) + dy;
+      ctx.save(); ctx.globalAlpha = alpha;
+      ctx.translate(W / 2, cy + ch / 2); ctx.scale(grow, grow); ctx.translate(-W / 2, -(cy + ch / 2));
+      shadow(50 * u, 14 * u, 0.28);
+      ctx.fillStyle = "#ffffff"; rr(cx, cy, cw, ch, 44 * u); ctx.fill(); noShadow();
+      // Calendar tile.
+      const ts = 200 * u, tx = cx + 44 * u, ty = cy + (ch - ts) / 2, band = 62 * u;
+      ctx.save(); rr(tx, ty, ts, ts, 30 * u); ctx.clip();
+      ctx.fillStyle = "#f2f2f7"; ctx.fillRect(tx, ty, ts, ts);
+      ctx.fillStyle = "#e5483b"; ctx.fillRect(tx, ty, ts, band);
       ctx.restore();
+      ctx.textAlign = "center"; ctx.textBaseline = "middle";
+      ctx.font = font(700, 32 * u); ctx.fillStyle = "#ffffff"; ctx.fillText(o.rDay.toUpperCase(), tx + ts / 2, ty + band / 2 + 2 * u);
+      ctx.font = font(700, 100 * u); ctx.fillStyle = "#111111"; ctx.fillText(o.rDate, tx + ts / 2, ty + band + (ts - band) / 2 + 6 * u);
+      // Event text.
+      const x = tx + ts + 40 * u, maxW = cx + cw - 44 * u - x;
+      ctx.textAlign = "left";
+      ctx.font = font(700, 50 * u); ctx.fillStyle = "#111111"; ctx.fillText(fitText(o.rTitle, maxW), x, cy + ch / 2 - 56 * u);
+      ctx.font = font(400, 36 * u); ctx.fillStyle = "#3a3a3c"; ctx.fillText(fitText(o.rWhen, maxW), x, cy + ch / 2 + 6 * u);
+      ctx.font = font(400, 34 * u); ctx.fillStyle = "#6e6e73"; ctx.fillText(fitText(o.rWhere, maxW), x, cy + ch / 2 + 60 * u);
+      // Tick badge on the corner.
+      if (t >= P.tTick) {
+        const s = easeOutBack(clamp((t - P.tTick) / 0.35)), bx = cx + cw - 26 * u, by = cy + 26 * u;
+        ctx.save(); ctx.translate(bx, by); ctx.scale(s, s);
+        shadow(16 * u, 4 * u, 0.25);
+        ctx.fillStyle = "#34c759"; ctx.beginPath(); ctx.arc(0, 0, 48 * u, 0, Math.PI * 2); ctx.fill(); noShadow();
+        ctx.strokeStyle = "#ffffff"; ctx.lineWidth = 6 * u; ctx.stroke();
+        const p = clamp((t - P.tTick - 0.1) / 0.3);
+        if (p > 0) {
+          const pts = [[-18, 1], [-5, 14], [20, -13]].map(([a, b]) => [a * u, b * u]);
+          const seg1 = Math.hypot(pts[1][0] - pts[0][0], pts[1][1] - pts[0][1]), seg2 = Math.hypot(pts[2][0] - pts[1][0], pts[2][1] - pts[1][1]);
+          let d = p * (seg1 + seg2);
+          ctx.lineWidth = 9 * u; ctx.lineCap = "round"; ctx.lineJoin = "round";
+          ctx.beginPath(); ctx.moveTo(...pts[0]);
+          if (d <= seg1) ctx.lineTo(lerp(pts[0][0], pts[1][0], d / seg1), lerp(pts[0][1], pts[1][1], d / seg1));
+          else { ctx.lineTo(...pts[1]); d -= seg1; ctx.lineTo(lerp(pts[1][0], pts[2][0], d / seg2), lerp(pts[1][1], pts[2][1], d / seg2)); }
+          ctx.stroke();
+        }
+        ctx.restore();
+      }
       ctx.restore();
+      if (t >= P.tPill && grow === 1) {
+        const a = easeOutCubic(clamp((t - P.tPill) / 0.3));
+        drawPill("Added to calendar", W / 2, cy + ch + 44 * u + (1 - a) * 24 * u, u, a * alpha);
+      }
     },
   },
 };
@@ -344,21 +814,25 @@ function drawMagnifier(x, y, sz, p) {
 }
 
 // ---------- frame ----------
-let P = STYLES[S.style].plan(S);
-function replan() { P = STYLES[S.style].plan(S); scrub.max = P.end; }
+const style = () => STYLES[S.style] || STYLES.search;
+let P = style().plan(S);
+function replan() { P = style().plan(S); scrub.max = P.end; }
 function render(t) {
   const { W, H } = size();
-  drawBackground(t, P.end, W, H);
-  STYLES[S.style].draw(t, S, P, W, H);
+  ctx.save();
+  drawBackground(t, W, H, style().blur ? bgBlur(t, S, P) : 0);
+  style().draw(t, S, P, W, H);
+  ctx.restore();
 }
+const fileName = () => `opener-${S.style}-${slug(style().label(S))}`;
 
 // ---------- sound ----------
 // Synthesised from noise and sine, so there is nothing to license.
 let audioCache = { key: "", buf: null };
 async function buildAudio() {
-  const key = JSON.stringify([S.style, S.text, S.cps, S.hold, S.tap, S.ending, S.tail]);
+  const key = JSON.stringify([S, P.end]);
   if (audioCache.key === key) return audioCache.buf;
-  const sr = 48000, ac = new OfflineAudioContext(2, Math.ceil((P.end + 0.3) * sr), sr);
+  const sr = 48000, ac = new OfflineAudioContext(2, Math.ceil((P.end + 0.6) * sr), sr);
   const rnd = mulberry32(7);
   const noise = ac.createBuffer(1, sr, sr);
   const nd = noise.getChannelData(0);
@@ -381,23 +855,31 @@ async function buildAudio() {
     const g = ac.createGain(); env(g, t, peak, a, d);
     o.connect(g); panTo(g, pan); o.start(t); o.stop(t + a + d + 0.05);
   };
+  const whoosh = (t, d, out, soft) => {
+    const bp = noiseHit(t, 600, 0.7, (out ? 0.22 : 0.3) * (soft ? 0.6 : 1), d * 0.55, d * 0.6, 0, 0.3);
+    bp.frequency.setValueAtTime(out ? 2600 : 450, t);
+    bp.frequency.exponentialRampToValueAtTime(out ? 500 : 2600, t + d);
+  };
 
   for (const s of P.sounds) {
     const t = s.t;
-    if (s.kind === "pop") { tone(t, 380, 900, 0.5, 0.006, 0.16); noiseHit(t, 3000, 1.2, 0.12, 0.002, 0.03); }
-    else if (s.kind === "whoosh") {
-      const d = s.dur || 0.5;
-      const bp = noiseHit(t, 600, 0.7, s.out ? 0.22 : 0.3, d * 0.55, d * 0.6, 0, 0.3);
-      bp.frequency.setValueAtTime(s.out ? 2600 : 450, t);
-      bp.frequency.exponentialRampToValueAtTime(s.out ? 500 : 2600, t + d);
+    switch (s.kind) {
+      case "pop": tone(t, 380, 900, 0.5, 0.006, 0.16); noiseHit(t, 3000, 1.2, 0.12, 0.002, 0.03); break;
+      case "whoosh": whoosh(t, s.dur || 0.5, s.out, s.soft); break;
+      case "key": case "space": {
+        const r = hash(s.i * 3.1 + 2), pan = (r - 0.5) * 0.3;
+        noiseHit(t, s.kind === "space" ? 1500 : 2600 + r * 1600, 2.5, s.kind === "space" ? 0.35 : 0.45, 0.001, 0.035, pan, r * 0.5);
+        tone(t, 220 + r * 40, 140, 0.12, 0.002, 0.03, "sine", pan);
+        break;
+      }
+      case "tap": tone(t, 320, 160, 0.4, 0.003, 0.08); noiseHit(t, 2000, 1.5, 0.2, 0.001, 0.02); break;
+      case "ding": tone(t, 1318, 1318, 0.3, 0.004, 0.9); tone(t + 0.11, 1976, 1976, 0.18, 0.004, 0.7); break;
+      case "bubble": tone(t, 520, 1100, 0.35, 0.004, 0.09); break;
+      case "send": whoosh(t - 0.05, 0.22, true, true); tone(t, 700, 1300, 0.25, 0.003, 0.08); break;
+      case "heart": tone(t, 660, 1320, 0.35, 0.004, 0.16); tone(t + 0.06, 1320, 1980, 0.18, 0.004, 0.25); noiseHit(t, 7000, 1, 0.08, 0.002, 0.12); break;
+      case "tick": tone(t, 1046, 1046, 0.26, 0.004, 0.35); tone(t + 0.12, 1568, 1568, 0.2, 0.004, 0.6); break;
+      case "thud": tone(t, 150, 60, 0.6, 0.004, 0.22); noiseHit(t, 400, 0.7, 0.25, 0.002, 0.08); break;
     }
-    else if (s.kind === "key" || s.kind === "space") {
-      const r = hash(s.i * 3.1 + 2);
-      const pan = (r - 0.5) * 0.3;
-      noiseHit(t, s.kind === "space" ? 1500 : 2600 + r * 1600, 2.5, s.kind === "space" ? 0.35 : 0.45, 0.001, 0.035, pan, r * 0.5);
-      tone(t, 220 + r * 40, 140, 0.12, 0.002, 0.03, "sine", pan);
-    }
-    else if (s.kind === "tap") { tone(t, 320, 160, 0.4, 0.003, 0.08); noiseHit(t, 2000, 1.5, 0.2, 0.001, 0.02); }
   }
   const buf = await ac.startRendering();
   audioCache = { key, buf };
@@ -429,13 +911,13 @@ async function loadMedia(src, kind) {
   await img.decode();
   return img;
 }
-const fontsReady = Promise.all(["400 40px Roboto", "500 40px Roboto"].map(f => document.fonts.load(f).catch(() => null)));
+const fontsReady = Promise.all(["400 40px Roboto", "500 40px Roboto", "700 40px Roboto"].map(f => document.fonts.load(f).catch(() => null)));
 window.ready = (async () => {
   await fontsReady;
   if (RENDER && params.get("photo")) media = await loadMedia(params.get("photo"), "image");
   const { W, H } = size(); canvas.width = W; canvas.height = H;
   replan();
-  return { end: P.end, W, H };
+  return { end: P.end, W, H, name: fileName() };
 })();
 window.draw = t => render(t);
 window.audioWav = async () => {
@@ -494,9 +976,13 @@ function setPlaying(p) {
   else { syncVideo(cur, false); stopSound(); }
 }
 
+function showFor() {
+  for (const el of document.querySelectorAll("[data-for]")) el.hidden = !el.dataset.for.split(" ").includes(S.style);
+}
+
 function changed() {
   document.body.classList.toggle("checker", S.bg === "alpha");
-  save(); replan(); updateOutputs();
+  save(); replan(); updateOutputs(); showFor();
   const { W, H } = size();
   if (canvas.width !== W || canvas.height !== H) { canvas.width = W; canvas.height = H; }
   $("dims").textContent = `${W} × ${H} px · ${S.fmt === "4x5" ? "4:5 feed" : "9:16 Reel"}`;
@@ -512,11 +998,10 @@ function updateOutputs() {
   $("tailOut").value = `${S.tail.toFixed(1)} s`;
 }
 
+function segSync(id) { $(id).querySelectorAll("button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.v === S[id]))); }
 function bindSeg(id) {
-  const el = $(id);
-  const sync = () => el.querySelectorAll("button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.v === S[id])));
-  el.addEventListener("click", e => { const b = e.target.closest("button"); if (!b) return; S[id] = b.dataset.v; sync(); changed(); restart(); });
-  sync();
+  $(id).addEventListener("click", e => { const b = e.target.closest("button"); if (!b) return; S[id] = b.dataset.v; segSync(id); changed(); restart(); });
+  segSync(id);
 }
 
 async function setFile(f) {
@@ -527,26 +1012,24 @@ async function setFile(f) {
     if (isVideo()) media.pause();
     media = m;
     $("dropName").textContent = f.name;
-    S.bg = "clip"; bindSegSync("bg");
+    S.bg = "clip"; segSync("bg"); changed();
     restart();
   } catch (err) {
     status.textContent = kind === "image" ? "That photo could not be read. HEIC files need converting to JPG first." : err.message;
   }
 }
-function bindSegSync(id) { $(id).querySelectorAll("button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.v === S[id]))); }
 
 // ---------- export ----------
 let lastBlob = null, lastName = "";
 function pickMime() {
+  const ok = m => window.MediaRecorder && MediaRecorder.isTypeSupported(m);
   // Transparent video needs VP9 or VP8 WebM. Chrome and Edge keep the alpha
   // channel there; Safari cannot record it.
-  if (S.bg === "alpha") return ["video/webm;codecs=vp9,opus", "video/webm;codecs=vp9", "video/webm;codecs=vp8,opus", "video/webm;codecs=vp8"].find(m => window.MediaRecorder && MediaRecorder.isTypeSupported(m)) || "";
+  if (S.bg === "alpha") return ["video/webm;codecs=vp9,opus", "video/webm;codecs=vp9", "video/webm;codecs=vp8,opus", "video/webm;codecs=vp8"].find(ok) || "";
   // H.264 MP4 first (Chrome 126+, Safari). A bare "video/mp4" goes last because
   // Chrome without H.264 fills it with VP9, which Instagram handles badly.
-  const opts = ["video/mp4;codecs=avc1.640028,mp4a.40.2", "video/mp4;codecs=avc1,mp4a", "video/mp4;codecs=avc1", "video/webm;codecs=vp9,opus", "video/webm;codecs=vp8,opus", "video/webm", "video/mp4"];
-  return opts.find(m => window.MediaRecorder && MediaRecorder.isTypeSupported(m)) || "";
+  return ["video/mp4;codecs=avc1.640028,mp4a.40.2", "video/mp4;codecs=avc1,mp4a", "video/mp4;codecs=avc1", "video/webm;codecs=vp9,opus", "video/webm;codecs=vp8,opus", "video/webm", "video/mp4"].find(ok) || "";
 }
-const slug = s => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 48) || "opener";
 
 async function saveBlob(blob, name) {
   const dl = window.claude && window.claude.use ? await window.claude.use("downloads").catch(() => null) : null;
@@ -595,7 +1078,7 @@ async function exportVideo() {
 
   const ext = mime.includes("mp4") ? "mp4" : "webm";
   lastBlob = new Blob(chunks, { type: mime.split(";")[0] });
-  lastName = `opener-${slug(S.text)}${S.bg === "alpha" ? "-transparent" : ""}.${ext}`;
+  lastName = `${fileName()}${S.bg === "alpha" ? "-transparent" : ""}.${ext}`;
   $("out").src = URL.createObjectURL(lastBlob);
   $("result").hidden = false;
   status.textContent = `Recorded ${(lastBlob.size / 1e6).toFixed(1)} MB ${ext.toUpperCase()}.`;
@@ -606,11 +1089,15 @@ async function exportVideo() {
 
 if (!RENDER) {
   for (const id of ["style", "bg", "fmt", "ending"]) bindSeg(id);
-  $("text").value = S.text;
+  for (const el of document.querySelectorAll("[data-key]")) {
+    const k = el.dataset.key;
+    el.value = S[k];
+    el.addEventListener("input", () => { S[k] = el.value; changed(); });
+    el.addEventListener("change", restart);
+  }
   for (const id of NUM) { $(id).value = S[id]; $(id).addEventListener("input", () => { S[id] = Number($(id).value); changed(); }); }
-  for (const id of BOOL) { $(id).checked = S[id]; $(id).addEventListener("change", () => { S[id] = $(id).checked; changed(); if (id === "sound") { soundArmed = true; restart(); } }); }
-  $("text").addEventListener("input", () => { S.text = $("text").value; changed(); });
-  for (const id of ["text", "cps", "hold", "tail"]) $(id).addEventListener("change", restart);
+  for (const id of BOOL) { $(id).checked = S[id]; $(id).addEventListener("change", () => { S[id] = $(id).checked; changed(); if (id === "sound") soundArmed = true; restart(); }); }
+  for (const id of ["cps", "hold", "tail"]) $(id).addEventListener("change", restart);
 
   const drop = $("drop"), file = $("file");
   drop.addEventListener("click", () => file.click());

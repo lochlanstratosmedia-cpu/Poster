@@ -6,8 +6,14 @@
 //   node openers/render.mjs --green --text "..."               # green screen
 //
 // Any setting from the page can be passed as --name value:
-//   --fmt 4x5  --pos 0.3  --width 0.86  --size 1  --cps 14  --hold 1.2
-//   --ending fade|zoom|stay  --tail 0.6  --tap 0  --push 0  --sound 0
+//   --style search|notify|messages|saved|reminder
+//   --fmt 4x5  --size 1  --cps 14  --hold 1.2  --ending fade|zoom|stay
+//   --tail 0.6  --tap 0  --push 0  --blur 0  --sound 0
+//   search:   --text  --pos 0.3  --width 0.86
+//   notify:   --nApp  --nTitle  --nBody
+//   messages: --mLines "Seen this one?\nme: Send it"   (\n between messages)
+//   saved:    --cTitle  --cSub  --beds  --baths  --cars
+//   reminder: --rDay SAT  --rDate 18  --rTitle  --rWhen  --rWhere
 // Also: --fps 30  --out openers/renders  --name my-opener
 //
 // Photos render in the page. A --clip is composited under a transparent
@@ -33,15 +39,14 @@ for (let i = 0; i < args.length; i++) {
 }
 const fps = Number(opts.fps || 30);
 const out = resolve(opts.out || resolve(here, "renders"));
-const slug = s => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 48) || "opener";
-const text = opts.text || "Homes for Sale in Nords Wharf, NSW";
-const name = opts.name || `opener-${slug(text)}`;
 const clip = opts.clip ? resolve(opts.clip) : null;
 const alpha = flags.has("alpha") || !!clip;
 mkdirSync(out, { recursive: true });
 
-const q = new URLSearchParams({ render: "1", text });
-for (const k of ["fmt", "pos", "width", "size", "cps", "hold", "ending", "tail", "tap", "push", "sound"]) if (opts[k] != null) q.set(k, opts[k]);
+// Everything else is a page setting: --style notify --nTitle "..." and so on.
+const OWN = new Set(["fps", "out", "name", "photo", "clip"]);
+const q = new URLSearchParams({ render: "1" });
+for (const [k, v] of Object.entries(opts)) if (!OWN.has(k)) q.set(k, v.replace(/\\n/g, "\n"));
 if (alpha) q.set("bg", "alpha");
 else if (flags.has("green")) q.set("bg", "green");
 if (opts.photo) q.set("photo", pathToFileURL(resolve(opts.photo)).href);
@@ -56,7 +61,9 @@ const write = (stream, buf) => new Promise(ok => (stream.write(buf) ? ok() : str
 const browser = await chromium.launch();
 const page = await browser.newPage({ viewport: { width: 1080, height: 1920 }, deviceScaleFactor: 1 });
 await page.goto(pathToFileURL(resolve(here, "opener.html")).href + "?" + q);
-const { end, W, H } = await page.evaluate(() => window.ready);
+const ready = await page.evaluate(() => window.ready);
+const { end, W, H } = ready;
+const name = opts.name || ready.name;
 
 const wav = resolve(out, `${name}.sfx.wav`);
 const sound = opts.sound !== "0";
