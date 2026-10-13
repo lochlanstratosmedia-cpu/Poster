@@ -28,6 +28,13 @@ avatar, or leave it blank for a plain one. Pick "Blurred photo" to use the
 photo behind the chat like the other styles. With Green screen or
 Transparent, only the bubbles show.
 
+With a video clip loaded, Notification, Messages and Saved listing show the
+clip's first frame with a play badge. When it is pressed it grows to full
+screen and plays from the start, and the saved video carries on to the end of
+the clip with the clip's own sound. Untick "Play the whole clip after the
+opener" to stop at the opener, or "Keep the clip's own sound" to keep only the
+effects. Behind the search bar the clip plays from the first second.
+
 The listing card hides any bed, bath or car number left blank. The open home
 day, date and time start as examples, so set them to the real open home
 before saving.
@@ -68,6 +75,7 @@ ffmpeg, so nothing drops.
 ```bash
 node openers/render.mjs --photo house.jpg --text "Homes for Sale in Nords Wharf, NSW"
 node openers/render.mjs --clip drone.mp4 --text "..."    # bar over a video clip
+node openers/render.mjs --style messages --ending zoom --clip walkthrough.mp4   # opener, then the whole clip
 node openers/render.mjs --alpha --text "..."             # transparent .mov and .webm
 node openers/render.mjs --photo house.jpg --ending zoom --fmt 4x5 --cps 18
 ```

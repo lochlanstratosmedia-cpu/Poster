@@ -70,6 +70,7 @@ canvas#c { width: 100%; height: auto; display: block; border-radius: 6px; box-sh
 /* Checkerboard behind the preview when the background is transparent. */
 .checker canvas#c, .checker .result video { background: repeating-conic-gradient(#c8c8c8 0% 25%, #f2f2f2 0% 50%) 0 0 / 24px 24px; }
 .note { font-size: 12px; color: var(--muted); margin: 0; }
+.clipopts { display: grid; gap: 10px; }
 
 /* Render mode: used by render.mjs. Canvas at native size, nothing else. */
 body.render { padding: 0; background: transparent; }
@@ -113,6 +114,11 @@ body.render canvas#c { width: auto; border-radius: 0; box-shadow: none; backgrou
         <button type="button" data-v="alpha">Transparent</button>
       </div>
       <label class="check"><input type="checkbox" id="push" checked> Slow push-in on the background</label>
+      <div class="clipopts" id="clipOpts" hidden>
+        <label class="check"><input type="checkbox" id="fullClip" checked> Play the whole clip after the opener</label>
+        <label class="check"><input type="checkbox" id="clipSound" checked> Keep the clip's own sound</label>
+        <p class="note">In Notification, Messages and Saved listing the clip waits on its first frame with a play badge, then starts from the beginning as it grows to full screen.</p>
+      </div>
       <label class="check" data-for="notify messages saved reminder"><input type="checkbox" id="blur" checked> Blur the photo until the reveal</label>
     </fieldset>
 
@@ -258,11 +264,12 @@ const canvas = $("c");
 const ctx = canvas.getContext("2d");
 const params = new URLSearchParams(location.search);
 const RENDER = params.has("render");
+const CLIP_STILL = params.has("clipStill"); // render.mjs: the photo is a clip's first frame
 if (RENDER) document.body.classList.add("render");
 
 // ---------- settings ----------
 const DEFAULTS = {
-  style: "search", fmt: "9x16", size: 1, cps: 14, hold: 1.2, tap: true, ending: "fade", tail: 0.6, push: true, blur: true, bg: "clip", sound: true,
+  style: "search", fmt: "9x16", size: 1, cps: 14, hold: 1.2, tap: true, ending: "fade", tail: 0.6, push: true, blur: true, bg: "clip", sound: true, fullClip: true, clipSound: true,
   text: "Homes for Sale in Nords Wharf, NSW", pos: 0.3, width: 0.86,
   nApp: "Listings", nTitle: "New listing in Nords Wharf, NSW", nBody: "Tap to take a look inside",
   mLines: "Have you seen this one in Nords Wharf?\nme: No! Send it through", mBack: "screen", mTheme: "light", mName: "",
@@ -270,7 +277,7 @@ const DEFAULTS = {
   rDay: "SAT", rDate: "18", rTitle: "Open home", rWhen: "10:00 to 10:30am", rWhere: "Nords Wharf, NSW",
 };
 const NUM = ["pos", "width", "size", "cps", "hold", "tail"];
-const BOOL = ["tap", "push", "blur", "sound"];
+const BOOL = ["tap", "push", "blur", "sound", "fullClip", "clipSound"];
 let S = { ...DEFAULTS };
 if (!RENDER) { try { Object.assign(S, JSON.parse(localStorage.getItem("reel-opener") || "{}")); } catch {} }
 for (const [k, v] of params) {
@@ -406,6 +413,16 @@ function drawPill(text, cx, y, u, alpha) {
   ctx.fillStyle = "rgba(28,28,30,0.92)"; rr(cx - w / 2, y, w, h, h / 2); ctx.fill(); noShadow();
   ctx.fillStyle = "#fff"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
   ctx.fillText(text, cx, y + h / 2 + u);
+  ctx.restore();
+}
+// Round play badge so a clip reads as a video before it is opened.
+function playBadge(x, y, w, h, t, P) {
+  if (!(isVideo() || CLIP_STILL) || t >= P.tClip) return;
+  const r = Math.min(w, h) * 0.16, cx = x + w / 2, cy = y + h / 2;
+  ctx.save();
+  ctx.fillStyle = "rgba(0,0,0,0.45)"; ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = "#ffffff"; ctx.beginPath();
+  ctx.moveTo(cx - r * 0.3, cy - r * 0.45); ctx.lineTo(cx + r * 0.5, cy); ctx.lineTo(cx - r * 0.3, cy + r * 0.45); ctx.closePath(); ctx.fill();
   ctx.restore();
 }
 function heartPath(x, y, s) {
@@ -619,7 +636,7 @@ const STYLES = {
         ctx.textAlign = "left";
         ctx.font = font(700, 34 * u); ctx.fillStyle = "#111111"; ctx.fillText(fitText(o.nTitle, txR - txL), txL, by + 114 * u);
         ctx.font = font(400, 32 * u); ctx.fillStyle = "#3a3a3c"; ctx.fillText(fitText(o.nBody, txR - txL), txL, by + 160 * u);
-        if (!zooming) drawPhoto(tx, ty, ts, ts, 18 * u);
+        if (!zooming) { drawPhoto(tx, ty, ts, ts, 18 * u); playBadge(tx, ty, ts, ts, t, P); }
         ctx.restore();
       }
       if (zooming) drawExpand({ x: tx, y: ty, w: ts, h: ts, r: 18 * u }, t, P, W, H);
@@ -705,7 +722,7 @@ const STYLES = {
           }
           shadow(20 * u, 4 * u, 0.15);
           ctx.fillStyle = pal.them; rr(x, top, m.w, m.h, 36 * u); ctx.fill(); noShadow();
-          drawPhoto(x, top, m.w, m.h, 36 * u);
+          drawPhoto(x, top, m.w, m.h, 36 * u); playBadge(x, top, m.w, m.h, t, P);
         } else {
           ctx.fillStyle = m.it.me ? "#0a84ff" : pal.them;
           rr(x, top, m.w, m.h, Math.min(40 * u, m.h / 2)); ctx.fill();
@@ -745,7 +762,7 @@ const STYLES = {
         ctx.save(); ctx.globalAlpha = L.alpha;
         shadow(50 * u, 14 * u, 0.28);
         ctx.fillStyle = "#ffffff"; rr(cx, cy, cw, ch, 44 * u); ctx.fill(); noShadow();
-        if (!zooming) drawPhoto(cx, cy, cw, ph, [44 * u, 44 * u, 0, 0]);
+        if (!zooming) { drawPhoto(cx, cy, cw, ph, [44 * u, 44 * u, 0, 0]); playBadge(cx, cy, cw, ph, t, P); }
         ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
         ctx.font = font(700, 46 * u); ctx.fillStyle = "#111111"; ctx.fillText(fitText(o.cTitle, cw - 80 * u), cx + 40 * u, cy + ph + 70 * u);
         ctx.font = font(400, 32 * u); ctx.fillStyle = "#6e6e73"; ctx.fillText(fitText(o.cSub, cw - 80 * u), cx + 40 * u, cy + ph + 116 * u);
@@ -869,7 +886,15 @@ function drawMagnifier(x, y, sz, p) {
 // ---------- frame ----------
 const style = () => STYLES[S.style] || STYLES.search;
 let P = style().plan(S);
-function replan() { P = style().plan(S); scrub.max = P.end; }
+// A clip plays from the start of the opener behind the search bar. In the
+// phone styles it holds on its first frame until the reveal, then plays from
+// the beginning as it grows to full screen.
+function replan() {
+  P = style().plan(S);
+  P.tClip = style().blur ? P.tRev : 0;
+  if (isVideo() && S.fullClip && isFinite(media.duration)) P.end = Math.max(P.end, P.tClip + media.duration);
+  scrub.max = P.end;
+}
 function render(t) {
   const { W, H } = size();
   ctx.save();
@@ -998,15 +1023,38 @@ async function startSound(at, dest) {
 }
 let soundArmed = false; // only after the viewer has pressed something
 
-function syncVideo(t, play) {
+// Keeps the clip on the opener's clock: held on frame one until P.tClip,
+// then playing in step with the preview or the recording.
+function driveVideo(t, play) {
   if (!isVideo()) return;
-  if (Math.abs(media.currentTime - t) > 0.08) media.currentTime = Math.min(t, (media.duration || t) - 0.01);
-  if (play) media.play().catch(() => {}); else media.pause();
+  const dur = media.duration || 0, want = clamp(t - P.tClip, 0, Math.max(0, dur - 0.05));
+  const run = play && t >= P.tClip && t - P.tClip < dur;
+  if (run) {
+    if (media.paused) { media.currentTime = want; media.play().catch(() => {}); }
+    else if (Math.abs(media.currentTime - want) > 0.3) media.currentTime = want;
+  } else {
+    if (!media.paused) media.pause();
+    if (!media.seeking && Math.abs(media.currentTime - want) > 0.05) media.currentTime = want;
+  }
+}
+// The clip's sound goes through the same audio context as the effects, so
+// the recording can pick it up.
+function clipAudio() {
+  if (!isVideo() || !soundArmed) return null;
+  actx = actx || new AudioContext();
+  if (!media._gain) {
+    media._gain = actx.createGain();
+    actx.createMediaElementSource(media).connect(media._gain);
+    media._gain.connect(actx.destination);
+  }
+  media.muted = false;
+  media._gain.gain.value = S.clipSound ? 1 : 0;
+  return media._gain;
 }
 
 function restart() {
   t0 = performance.now(); cur = 0;
-  syncVideo(0, playing);
+  clipAudio();
   if (playing && soundArmed) startSound(0);
 }
 
@@ -1018,6 +1066,7 @@ function tick(now) {
       else restart();
     }
   }
+  driveVideo(cur, playing);
   render(cur);
   scrub.value = cur;
   clock.value = `${cur.toFixed(1)} / ${P.end.toFixed(1)} s`;
@@ -1026,11 +1075,12 @@ function tick(now) {
 
 function setPlaying(p) {
   playing = p; playBtn.textContent = p ? "Pause" : "Play";
-  if (p) { t0 = performance.now() - cur * 1000; syncVideo(cur, true); if (soundArmed) startSound(cur); }
-  else { syncVideo(cur, false); stopSound(); }
+  if (p) { t0 = performance.now() - cur * 1000; clipAudio(); if (soundArmed) startSound(cur); }
+  else stopSound();
 }
 
 function showFor() {
+  $("clipOpts").hidden = !isVideo();
   for (const el of document.querySelectorAll("[data-for]")) el.hidden = !el.dataset.for.split(" ").includes(S.style);
 }
 
@@ -1106,14 +1156,17 @@ async function exportVideo() {
   soundArmed = true;
   setPlaying(false); stopSound();
   cur = 0; render(0);
-  if (isVideo()) { media.currentTime = 0; await new Promise(ok => { media.onseeked = ok; setTimeout(ok, 800); }); }
+  if (isVideo()) { media.pause(); media.currentTime = 0; await new Promise(ok => { media.onseeked = ok; setTimeout(ok, 800); }); }
 
   const stream = canvas.captureStream(30);
-  if (S.sound) {
+  const clipOut = clipAudio();
+  let dest = null;
+  if (S.sound || (clipOut && S.clipSound)) {
     actx = actx || new AudioContext();
     await actx.resume().catch(() => {});
-    const dest = actx.createMediaStreamDestination();
-    await startSound(0, dest);
+    dest = actx.createMediaStreamDestination();
+    if (S.sound) await startSound(0, dest);
+    if (clipOut) clipOut.connect(dest);
     dest.stream.getAudioTracks().forEach(tr => stream.addTrack(tr));
   }
   const rec = new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: 14_000_000 });
@@ -1123,11 +1176,11 @@ async function exportVideo() {
   recording = true;
   rec.start(250);
   t0 = performance.now(); playing = true; playBtn.textContent = "Pause";
-  syncVideo(0, true);
   const timer = setInterval(() => { status.textContent = `Recording ${cur.toFixed(1)} of ${P.end.toFixed(1)} s. Keep this tab in front.`; }, 100);
   await new Promise(ok => setTimeout(ok, P.end * 1000 + 150));
   rec.stop(); await done;
   clearInterval(timer); recording = false; stopSound();
+  if (clipOut && dest) clipOut.disconnect(dest);
   stream.getTracks().forEach(tr => tr.stop());
 
   const ext = mime.includes("mp4") ? "mp4" : "webm";
@@ -1162,7 +1215,7 @@ if (!RENDER) {
   drop.addEventListener("drop", e => { e.preventDefault(); drop.classList.remove("over"); setFile(e.dataTransfer.files[0]); });
 
   playBtn.addEventListener("click", () => { soundArmed = true; setPlaying(!playing); });
-  scrub.addEventListener("input", () => { setPlaying(false); cur = Number(scrub.value); syncVideo(cur, false); });
+  scrub.addEventListener("input", () => { setPlaying(false); cur = Number(scrub.value); });
   $("export").addEventListener("click", exportVideo);
   $("saveAgain").addEventListener("click", () => lastBlob && saveBlob(lastBlob, lastName));
   document.addEventListener("submit", e => e.preventDefault());
