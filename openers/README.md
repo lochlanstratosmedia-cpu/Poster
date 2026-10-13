@@ -9,7 +9,7 @@ Safari, add a photo or clip, type the search, and press Save video.
 |---|---|
 | Search bar | A white circle pops in over the photo, a magnifier draws inside it, the circle stretches into a search bar, the search types out with a caret, the bar is tapped, then it fades up or zooms through |
 | Notification | A notification banner drops in over the blurred photo with a ding, with the photo as its thumbnail. It presses in and the photo grows from the thumbnail to full screen |
-| Messages | Typing dots, then message bubbles pop up one at a time and push the older ones up. The last message is the photo, which presses in and grows to full screen |
+| Messages | A phone chat screen with the contact at the top and a message field at the bottom. Typing dots, then bubbles pop up one at a time and push the older ones up. The last message is the photo, which presses in and grows to full screen |
 | Saved listing | A listing card slides up with the photo, title and bed, bath and car numbers. The heart fills red with a pop and sends small hearts up, then "Saved to favourites" shows |
 | Open home | A calendar card drops in and bounces with the day, date, time and place. A green tick draws on its corner and "Added to calendar" shows |
 
@@ -21,6 +21,12 @@ The four phone styles start with the photo blurred and darkened, and it
 sharpens as the card leaves. Zoom through grows the photo out of the card
 (or, for Open home, flies through the card). Untick "Blur the photo until the
 reveal" to keep it sharp the whole time.
+
+Messages has its own chat screen in light or dark, so the photo only shows in
+the photo bubble and the reveal. Add a contact name for initials in the
+avatar, or leave it blank for a plain one. Pick "Blurred photo" to use the
+photo behind the chat like the other styles. With Green screen or
+Transparent, only the bubbles show.
 
 The listing card hides any bed, bath or car number left blank. The open home
 day, date and time start as examples, so set them to the real open home

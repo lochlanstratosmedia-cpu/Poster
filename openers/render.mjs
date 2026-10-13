@@ -12,6 +12,7 @@
 //   search:   --text  --pos 0.3  --width 0.86
 //   notify:   --nApp  --nTitle  --nBody
 //   messages: --mLines "Seen this one?\nme: Send it"   (\n between messages)
+//             --mName "Sam Lee"  --mBack screen|photo  --mTheme light|dark
 //   saved:    --cTitle  --cSub  --beds  --baths  --cars
 //   reminder: --rDay SAT  --rDate 18  --rTitle  --rWhen  --rWhere
 // Also: --fps 30  --out openers/renders  --name my-opener

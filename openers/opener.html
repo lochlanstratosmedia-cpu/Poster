@@ -149,6 +149,18 @@ body.render canvas#c { width: auto; border-radius: 0; box-shadow: none; backgrou
         <textarea id="mLines" data-key="mLines" rows="4"></textarea>
       </label>
       <p class="note">One message per line. Start a line with <code>me:</code> for a blue bubble on the right. The photo is sent last.</p>
+      <label>Contact name
+        <input type="text" id="mName" data-key="mName" maxlength="24" placeholder="Leave blank for a plain avatar">
+      </label>
+      <div class="seg" id="mBack" role="group" aria-label="Behind the chat">
+        <button type="button" data-v="screen" aria-pressed="true">Chat screen</button>
+        <button type="button" data-v="photo">Blurred photo</button>
+      </div>
+      <div class="seg" id="mTheme" role="group" aria-label="Chat screen colour">
+        <button type="button" data-v="light" aria-pressed="true">Light</button>
+        <button type="button" data-v="dark">Dark</button>
+      </div>
+      <p class="note">The chat screen hides your photo until it is sent. With Green screen or Transparent, only the bubbles show.</p>
     </fieldset>
 
     <fieldset data-for="saved">
@@ -253,7 +265,7 @@ const DEFAULTS = {
   style: "search", fmt: "9x16", size: 1, cps: 14, hold: 1.2, tap: true, ending: "fade", tail: 0.6, push: true, blur: true, bg: "clip", sound: true,
   text: "Homes for Sale in Nords Wharf, NSW", pos: 0.3, width: 0.86,
   nApp: "Listings", nTitle: "New listing in Nords Wharf, NSW", nBody: "Tap to take a look inside",
-  mLines: "Have you seen this one in Nords Wharf?\nme: No! Send it through",
+  mLines: "Have you seen this one in Nords Wharf?\nme: No! Send it through", mBack: "screen", mTheme: "light", mName: "",
   cTitle: "Nords Wharf, NSW", cSub: "For sale", beds: "", baths: "", cars: "",
   rDay: "SAT", rDate: "18", rTitle: "Open home", rWhen: "10:00 to 10:30am", rWhere: "Nords Wharf, NSW",
 };
@@ -428,6 +440,56 @@ function featureIcon(kind, x, y, s, u) {
   }
   ctx.restore();
 }
+const CHAT = {
+  light: { screen: "#ffffff", bar: "rgba(246,246,248,0.97)", line: "#d8d8dc", them: "#e9e9eb", themInk: "#111111", ink: "#111111", soft: "#8e8e93", field: "#c7c7cc", plus: "#e9e9eb" },
+  dark: { screen: "#000000", bar: "rgba(28,28,30,0.97)", line: "#38383a", them: "#262628", themInk: "#ffffff", ink: "#ffffff", soft: "#8e8e93", field: "#3a3a3c", plus: "#2c2c2e" },
+};
+// The little hook at the bottom corner of a text bubble.
+function bubbleTail(edge, bot, me, u) {
+  const d = me ? 1 : -1;
+  ctx.beginPath();
+  ctx.moveTo(edge - d * 26 * u, bot - 34 * u);
+  ctx.quadraticCurveTo(edge - d * 2 * u, bot - 6 * u, edge + d * 12 * u, bot);
+  ctx.quadraticCurveTo(edge - d * 14 * u, bot + 2 * u, edge - d * 40 * u, bot - 12 * u);
+  ctx.closePath(); ctx.fill();
+}
+// Header with the contact and the message field at the bottom.
+function chatChrome(o, pal, W, H, u) {
+  const hh = 290 * u;
+  ctx.fillStyle = pal.bar; ctx.fillRect(0, 0, W, hh);
+  ctx.fillStyle = pal.line; ctx.fillRect(0, hh - 2 * u, W, 2 * u);
+  // Back chevron.
+  ctx.strokeStyle = "#0a84ff"; ctx.lineWidth = 7 * u; ctx.lineCap = "round"; ctx.lineJoin = "round";
+  ctx.beginPath(); ctx.moveTo(78 * u, 108 * u); ctx.lineTo(52 * u, 134 * u); ctx.lineTo(78 * u, 160 * u); ctx.stroke();
+  // Avatar.
+  const ax = W / 2, ay = 128 * u, ar = 56 * u;
+  const g = ctx.createLinearGradient(0, ay - ar, 0, ay + ar);
+  g.addColorStop(0, "#a9adb8"); g.addColorStop(1, "#858995");
+  ctx.fillStyle = g; ctx.beginPath(); ctx.arc(ax, ay, ar, 0, Math.PI * 2); ctx.fill();
+  const name = o.mName.trim();
+  ctx.fillStyle = "#ffffff"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  if (name) {
+    ctx.font = font(500, 44 * u);
+    ctx.fillText(name.split(/\s+/).slice(0, 2).map(w => w[0]).join("").toUpperCase(), ax, ay + 2 * u);
+  } else {
+    ctx.save(); ctx.beginPath(); ctx.arc(ax, ay, ar, 0, Math.PI * 2); ctx.clip();
+    ctx.beginPath(); ctx.arc(ax, ay - 12 * u, 20 * u, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(ax, ay + 42 * u, 38 * u, 30 * u, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+  }
+  ctx.font = font(400, 30 * u); ctx.fillStyle = pal.ink;
+  ctx.fillText(name ? fitText(name, W * 0.6) + "  ›" : " ", ax, ay + ar + 40 * u);
+  // Message field.
+  const fy = H - 128 * u, fh = 76 * u;
+  ctx.fillStyle = pal.bar; ctx.fillRect(0, fy - 34 * u, W, H - fy + 34 * u);
+  ctx.fillStyle = pal.plus; ctx.beginPath(); ctx.arc(82 * u, fy + fh / 2, 36 * u, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = pal.soft; ctx.lineWidth = 5 * u;
+  ctx.beginPath(); ctx.moveTo(82 * u, fy + fh / 2 - 15 * u); ctx.lineTo(82 * u, fy + fh / 2 + 15 * u); ctx.moveTo(67 * u, fy + fh / 2); ctx.lineTo(97 * u, fy + fh / 2); ctx.stroke();
+  ctx.strokeStyle = pal.field; ctx.lineWidth = 2.5 * u;
+  rr(140 * u, fy, W - 180 * u, fh, fh / 2); ctx.stroke();
+  ctx.fillStyle = pal.soft; ctx.font = font(400, 32 * u); ctx.textAlign = "left";
+  ctx.fillText("Message", 170 * u, fy + fh / 2 + u);
+}
 function parseMsgs(o) {
   return o.mLines.split("\n").map(l => l.trim()).filter(Boolean)
     .map(l => /^me:/i.test(l) ? { me: true, text: l.replace(/^me:\s*/i, "") } : { me: false, text: l });
@@ -566,6 +628,7 @@ const STYLES = {
 
   messages: {
     blur: true,
+    ownScreen: o => o.mBack === "screen" && S.bg === "clip",
     label: o => (parseMsgs(o)[0] || { text: "messages" }).text,
     plan(o) {
       const items = [], sounds = []; let t = 0.35;
@@ -606,8 +669,15 @@ const STYLES = {
         const hl = !dots && it.tDots != null ? lerp(dotsH, h, easeOutCubic(clamp((t - it.tb) / 0.22))) : h;
         return { it, dots, w, h, hl, lines, a: easeOutCubic(clamp((t - start) / 0.25)), pop: easeOutBack(clamp((t - (dots ? start : it.tb)) / 0.32)) };
       });
+      // Phone chat screen behind the bubbles. It goes once the photo has
+      // grown to full screen (Zoom through) or fades with the bubbles.
+      const screen = this.ownScreen(o);
+      const pal = CHAT[screen ? o.mTheme : "light"];
+      const after = t - (P.tRev + P.revDur);
+      const screenA = !screen ? 0 : o.ending === "fade" ? 1 - easeInCubic(L.r) : o.ending === "zoom" && L.r > 0 && after > 0 ? 0 : 1;
+      if (screenA > 0) { ctx.save(); ctx.globalAlpha = screenA; ctx.fillStyle = pal.screen; ctx.fillRect(0, 0, W, H); ctx.restore(); }
       // Stack from the bottom up so new messages push the older ones up.
-      let y = H * (S.fmt === "4x5" ? 0.86 : 0.8) + L.dy;
+      let y = (screen ? H - 190 * u : H * (S.fmt === "4x5" ? 0.86 : 0.8)) + L.dy;
       for (let i = live.length - 1; i >= 0; i--) { const m = live[i]; if (!m) continue; m.bot = y; y -= m.hl * m.a + gap * m.a; }
 
       let photoRect = null;
@@ -622,7 +692,7 @@ const STYLES = {
         const px = m.it.me ? x + m.w : x;
         ctx.translate(px, m.bot); ctx.scale(m.pop, m.pop); ctx.translate(-px, -m.bot);
         if (m.dots) {
-          ctx.fillStyle = "#e9e9eb"; rr(x, top, m.w, m.h, m.h / 2); ctx.fill();
+          ctx.fillStyle = pal.them; rr(x, top, m.w, m.h, m.h / 2); ctx.fill();
           for (let j = 0; j < 3; j++) {
             const b = Math.sin((t * 7) - j * 0.9);
             ctx.fillStyle = `rgba(142,142,147,${0.55 + 0.45 * Math.max(0, b)})`;
@@ -634,16 +704,18 @@ const STYLES = {
             ctx.translate(pcx, pcy); ctx.scale(pr, pr); ctx.translate(-pcx, -pcy);
           }
           shadow(20 * u, 4 * u, 0.15);
-          ctx.fillStyle = "#e9e9eb"; rr(x, top, m.w, m.h, 36 * u); ctx.fill(); noShadow();
+          ctx.fillStyle = pal.them; rr(x, top, m.w, m.h, 36 * u); ctx.fill(); noShadow();
           drawPhoto(x, top, m.w, m.h, 36 * u);
         } else {
-          ctx.fillStyle = m.it.me ? "#0a84ff" : "#e9e9eb";
+          ctx.fillStyle = m.it.me ? "#0a84ff" : pal.them;
           rr(x, top, m.w, m.h, Math.min(40 * u, m.h / 2)); ctx.fill();
-          ctx.fillStyle = m.it.me ? "#ffffff" : "#111111"; ctx.font = font(400, fs); ctx.textBaseline = "middle"; ctx.textAlign = "left";
+          bubbleTail(m.it.me ? x + m.w : x, m.bot, m.it.me, u);
+          ctx.fillStyle = m.it.me ? "#ffffff" : pal.themInk; ctx.font = font(400, fs); ctx.textBaseline = "middle"; ctx.textAlign = "left";
           m.lines.forEach((l, i) => ctx.fillText(l, x + padX, top + padY + (i + 0.5) * lh + u));
         }
         ctx.restore();
       }
+      if (screenA > 0) { ctx.save(); ctx.globalAlpha = screenA; chatChrome(o, pal, W, H, u); ctx.restore(); }
       if (zooming && photoRect) drawExpand(photoRect, t, P, W, H);
     },
   },
@@ -801,7 +873,8 @@ function replan() { P = style().plan(S); scrub.max = P.end; }
 function render(t) {
   const { W, H } = size();
   ctx.save();
-  drawBackground(t, W, H, style().blur ? bgBlur(t, S, P) : 0);
+  const own = style().ownScreen && style().ownScreen(S);
+  drawBackground(t, W, H, style().blur && !own ? bgBlur(t, S, P) : 0);
   style().draw(t, S, P, W, H);
   ctx.restore();
 }
@@ -1069,7 +1142,7 @@ async function exportVideo() {
 }
 
 if (!RENDER) {
-  for (const id of ["style", "bg", "fmt", "ending"]) bindSeg(id);
+  for (const id of ["style", "bg", "fmt", "ending", "mBack", "mTheme"]) bindSeg(id);
   for (const el of document.querySelectorAll("[data-key]")) {
     const k = el.dataset.key;
     el.value = S[k];
