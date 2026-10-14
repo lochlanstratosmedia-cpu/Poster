@@ -43,6 +43,7 @@ PILL_TOP = 1220
 PILL_H = 154
 LOGO_W = 340
 LOGO_TOP = 1450
+LOGO_TOP_NO_STATS = 1370
 
 
 def inter(weight, size):
@@ -108,11 +109,11 @@ def stats_pill(canvas, stats):
         x += tw + group_gap
 
 
-def logo(canvas):
+def logo(canvas, top):
     lg = Image.open(ASSETS / "love-dark.png").convert("RGBA")
     lg = lg.resize((LOGO_W, round(lg.height * LOGO_W / lg.width)), Image.LANCZOS)
-    canvas.alpha_composite(lg, ((W - lg.width) // 2, LOGO_TOP))
-    return LOGO_TOP + lg.height
+    canvas.alpha_composite(lg, ((W - lg.width) // 2, top))
+    return top + lg.height
 
 
 def build(args):
@@ -125,7 +126,7 @@ def build(args):
     stats = [(n, v) for n, v in (("bed", args.bed), ("bath", args.bath), ("car", args.car)) if v is not None]
     if stats:
         stats_pill(canvas, stats)
-    bottom = logo(canvas)
+    bottom = logo(canvas, LOGO_TOP if stats else LOGO_TOP_NO_STATS)
     if bottom > GRID_BOTTOM:
         print(f"warning: logo ends at y={bottom}, below the grid crop at {GRID_BOTTOM}", file=sys.stderr)
     return canvas
