@@ -1,0 +1,1 @@
+drawtext=fontfile=/usr/share/fonts/opentype/inter/Inter-Medium.otf:text='listed with':fontsize=46:fontcolor=0x111111:x=(w-text_w)/2:y=834-ascent+16*(1-(if(lt(t\,18.85)\,0\,if(gt(t\,19.25)\,1\,1-pow(1-(t-18.85)/0.4\,3))))):alpha=if(lt(t\,18.85)\,0\,if(gt(t\,19.25)\,1\,1-pow(1-(t-18.85)/0.4\,3)))

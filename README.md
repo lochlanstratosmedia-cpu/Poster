@@ -18,6 +18,8 @@ AI-writing patterns instead of its own instincts.
 | `scripts/cover_shot.py` | Photo analysis, prompt builder, caption overlay and compare sheet for cover shots |
 | `tools/cover-editor.html` | Listing Cover Studio: edit cover text and layout by hand in the browser |
 | `assets/fonts/` | Inter and Cormorant Garamond (OFL) for captions |
+| `reels/make_cover.py` | Instagram reel cover in the Love card style: exterior card, stats pill, logo |
+| `reels/<property>/` | Per-listing reel files: cover, sound effects, end card |
 
 ## How it works
 
