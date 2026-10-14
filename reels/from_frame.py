@@ -21,24 +21,30 @@ except ImportError:
     sys.exit("from_frame.py needs numpy and Pillow: pip install numpy pillow")
 
 
-def destripe(rgb, period_max=8):
+def destripe(rgb):
     lum = rgb.mean(2) + 1.0
     # each pixel against the mean of its row neighbourhood, then the median down
     # each column: photo detail averages out, the stripe gain does not
     k = 9
     pad = np.pad(lum, ((0, 0), (k // 2, k // 2)), mode="edge")
     local = np.lib.stride_tricks.sliding_window_view(pad, k, axis=1).mean(2)
-    gain = np.median(lum / local, axis=0)
-    # the stripes are periodic; fold the gain onto the best period to drop noise
-    best, best_var = None, 0
-    for p in range(3, period_max + 1):
-        folded = np.array([gain[i::p].mean() for i in range(p)])
-        if folded.var() > best_var:
-            best, best_var = p, folded.var()
-    folded = np.array([np.median(gain[i::best]) for i in range(best)])
-    g = np.resize(folded, rgb.shape[1])
+    gain = np.median(lum / local, axis=0) - 1.0
+    # A screenshot may be scaled, so the period need not be a whole number of
+    # pixels. Find the stripe frequency, keep it and its harmonics, and divide
+    # out only that periodic part.
+    n = len(gain)
+    spec = np.fft.rfft(gain)
+    freqs = np.fft.rfftfreq(n)
+    band = freqs > 1 / 12  # stripes repeat every 12 px or less
+    peak = np.argmax(np.abs(spec) * band)
+    keep = np.zeros_like(spec)
+    for h in (1, 2, 3):
+        b = peak * h
+        if b < len(spec):
+            keep[max(b - 2, 0):b + 3] = spec[max(b - 2, 0):b + 3]
+    g = 1.0 + np.fft.irfft(keep, n)
     out = rgb / g[None, :, None]
-    return np.clip(out, 0, 255), best
+    return np.clip(out, 0, 255), 1 / freqs[peak]
 
 
 def main():
@@ -51,7 +57,7 @@ def main():
     rgb = np.asarray(Image.open(args.frame).convert("RGB").crop(tuple(args.box))).astype(float)
     clean, period = destripe(rgb)
     Image.fromarray(clean.round().astype(np.uint8)).save(args.out, optimize=True)
-    print(f"{args.out} (stripe period {period} px)")
+    print(f"{args.out} (stripe period {period:.2f} px)")
 
 
 if __name__ == "__main__":

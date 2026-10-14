@@ -42,7 +42,8 @@ python3 reels/make_cover.py reels/<property>/exterior-from-reel.png --focus 0 0.
 The address is already in the frame, so leave out `--address`. `--focus 0`
 keeps the left edge, where the reel puts the text.
 
-Without stats, the logo moves up to sit closer to the card.
+Without stats, the logo moves up to sit closer to the card. The stripe
+remover finds the stripe spacing itself, so a scaled-down screenshot works too.
 
 ## Assets
 
@@ -66,9 +67,16 @@ Each listing gets a folder. `295-main-road/` has:
 | `sfx.py` | Builds `sfx-track.wav`. Cue times are set by hand for this reel |
 | `endcard.filter` | ffmpeg drawtext filter that adds "listed with" at 18.85s |
 
-`112-janet-street/`, `23-hansen-place/` and `608-main-road/` each have
-`cover.png` and `exterior-from-reel.png`, made from reel screenshots. They
-have no stats pill yet.
+`112-janet-street/`, `23-hansen-place/`, `608-main-road/` and
+`14-burke-place/` each have `cover.png` and `exterior-from-reel.png`, made
+from reel screenshots, with stats read off each reel's stats card:
+
+| Property | Bed | Bath | Car |
+|---|---|---|---|
+| 2/112 Janet Street, North Lambton | 2 | 1 | 1 |
+| 23 Hansen Place, Shortland | 3 | 2 | 2 |
+| 608 Main Road, Edgeworth | 3 | 1 | none shown |
+| 14 Burke Place, Birmingham Gardens | 4 | 2 | 2 |
 
 The sound cues in `sfx.py` follow this reel's motion, so a new reel needs its
 own cue times.
