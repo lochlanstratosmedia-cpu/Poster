@@ -459,7 +459,7 @@ def _blockers(r, eligible, match, usable, name_issue=False):
     if r["do_not_contact"]:
         why.append("Do not contact")
     if match == "none":
-        why.append("Owner not in our database")
+        why.append("Owner not in your CRM")
     elif match == "check":
         why.append("Name doesn't match the owner on title" if name_issue else "Owner match needs checking")
     elif not any(c["phone"] or c["phone2"] or c["email"] for c in usable):
@@ -536,7 +536,8 @@ def summary(conn):
         "ready_to_assign": sum(1 for l in ready if not l["blockers"]),
         "needs_check": sum(1 for l in ready if l["match"] == "check" and not l["do_not_contact"]),
         "no_owner": sum(1 for l in ready if l["match"] == "none"),
-        "just_hit": sum(1 for l in active if l["just_hit"] and l["status"] == "new"),
+        # Callable owners that crossed the line in the last week.
+        "just_hit": sum(1 for l in ready if not l["blockers"] and l["days"] < int(s["threshold_days"]) + 7),
         "hitting_soon": sum(1 for l in active if not l["eligible"] and l["days_to_go"] <= int(s["soon_days"])),
         "watching": sum(1 for l in active if not l["eligible"]),
         "follow_ups_due": sum(1 for l in rows if l["follow_up_due"]),

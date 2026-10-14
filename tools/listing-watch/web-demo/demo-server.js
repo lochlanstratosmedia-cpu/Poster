@@ -541,7 +541,7 @@ function blockersFor(r, eligible, match, usable, nameIssue = false) {
   if (!r.active) why.push("No longer for sale");
   if (!eligible) why.push("Hasn't reached the day threshold");
   if (r.do_not_contact) why.push("Do not contact");
-  if (match === "none") why.push("Owner not in our database");
+  if (match === "none") why.push("Owner not in your CRM");
   else if (match === "check") why.push(nameIssue ? "Name doesn't match the owner on title" : "Owner match needs checking");
   else if (!usable.some((c) => c.phone || c.phone2 || c.email)) why.push("No phone or email on file");
   if (r.status !== "new") why.push(`Already ${STATUSES[r.status].toLowerCase()}` + (r.agent_name ? ` (${r.agent_name})` : ""));
@@ -617,7 +617,7 @@ function summary() {
       ready_to_assign: ready.filter((l) => !l.blockers.length).length,
       needs_check: ready.filter((l) => l.match === "check" && !l.do_not_contact).length,
       no_owner: ready.filter((l) => l.match === "none").length,
-      just_hit: active.filter((l) => l.just_hit && l.status === "new").length,
+      just_hit: ready.filter((l) => !l.blockers.length && l.days < Number(S.settings.threshold_days) + 7).length,
       hitting_soon: active.filter((l) => !l.eligible && l.days_to_go <= Number(S.settings.soon_days)).length,
       watching: active.filter((l) => !l.eligible).length,
       follow_ups_due: rows.filter((l) => l.follow_up_due).length,

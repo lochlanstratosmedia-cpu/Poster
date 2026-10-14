@@ -213,12 +213,16 @@ async function openNotifications() {
   $("#drawer-panel").querySelectorAll("[data-lead]").forEach((a) => a.addEventListener("click", (e) => { e.preventDefault(); openLead(+a.dataset.lead); }));
 }
 
-function noteItem(n) {
+function noteItem(n, maxLines = 0) {
   const ids = JSON.parse(n.lead_ids || "[]");
-  const kinds = { crossed: "Ready to assign", off_market: "Tracker", follow_up: "Tracker", stale: "Import data" };
+  const kinds = { crossed: "Ready", off_market: "Tracker", follow_up: "Tracker", stale: "Import" };
   const link = { crossed: "#/ready", off_market: "#/tracker/stop", follow_up: "#/tracker/due", stale: "#/import" }[n.kind];
   return `<li class="${n.read_at ? "" : "unread"}"><div class="t">${esc(n.title)}</div>
-    <div class="b">${esc(n.body)}</div>
+    <div class="b">${(() => {
+      const lines = String(n.body || "").split("\n");
+      if (!maxLines || lines.length <= maxLines) return esc(n.body);
+      return esc(lines.slice(0, maxLines).join("\n")) + `\n<span class="more">and ${lines.length - maxLines} more</span>`;
+    })()}</div>
     <div class="row small"><span class="when">${esc(fmtWhen(n.created_at))}</span>
     ${link ? `<a href="${link}" data-close>Go to ${kinds[n.kind]}</a>` : ""}
     ${ids.length === 1 ? `<a href="#" data-lead="${ids[0]}">Open property</a>` : ""}</div></li>`;
@@ -271,29 +275,31 @@ async function viewToday() {
   ];
   const setupDone = setup.every(([d]) => d);
   $("#view").innerHTML = `
-    <h1>Today, ${esc(fmtDate(s.today))}</h1>
-    <p class="lede">Properties listed with other agencies for ${threshold()} days or more, matched to owners in our database.</p>
+    <h1>Today</h1>
+    <p class="lede">${esc(fmtDate(s.today))}</p>
     ${setupDone ? "" : `<div class="card" style="margin-bottom:18px"><h2>Getting set up</h2><ol class="steps">${setup.map(([d, t]) => `<li class="${d ? "done" : ""}"><span>${t}</span></li>`).join("")}</ol></div>`}
-    <div class="stats">
-      <a class="stat go" href="#/ready"><div class="num">${c.ready_to_assign}</div><div class="lbl">Ready to assign</div><div class="sub">${c.just_hit ? `<b>${c.just_hit} just hit ${threshold()} days.</b> ` : ""}Owner known, nobody calling yet</div></a>
-      <a class="stat ${c.follow_ups_due ? "hot" : ""}" href="#/tracker/due"><div class="num">${c.follow_ups_due}</div><div class="lbl">Follow-ups due</div><div class="sub">Call-backs and appraisals for today or overdue</div></a>
-      <a class="stat ${c.stop_calling ? "hot" : ""}" href="#/tracker/stop" ${c.stop_calling ? "" : "hidden"}><div class="num">${c.stop_calling}</div><div class="lbl">Stop calling</div><div class="sub">Sold or withdrawn while being worked</div></a>
-      <a class="stat soon" href="#/watch"><div class="num">${c.hitting_soon}</div><div class="lbl">Hitting ${threshold()} days soon</div><div class="sub">In the next ${s.settings.soon_days} days (${c.watching} on the watchlist)</div></a>
-      <a class="stat" href="#/ready/check"><div class="num">${c.needs_check}</div><div class="lbl">Owner match to check</div><div class="sub">Address looks close but not exact</div></a>
-      <a class="stat" href="#/tracker"><div class="num">${c.in_progress}</div><div class="lbl">Being worked</div><div class="sub">Assigned and not finished</div></a>
-      <a class="stat" href="#/tracker/won"><div class="num">${c.won}</div><div class="lbl">Listed with us</div><div class="sub">Switched to our agency</div></a>
+    <div class="stats three">
+      <a class="stat go" href="#/ready"><div class="num">${c.ready_to_assign}</div><div class="lbl">Ready to call</div><div class="sub">${c.just_hit ? `<b>${c.just_hit} new this week.</b> ` : ""}Past ${threshold()} days, owner in your CRM</div></a>
+      <a class="stat ${c.follow_ups_due ? "hot" : ""}" href="#/tracker/due"><div class="num">${c.follow_ups_due}</div><div class="lbl">Follow-ups due</div><div class="sub">Call-backs and appraisals, today or overdue</div></a>
+      <a class="stat soon" href="#/watch"><div class="num">${c.hitting_soon}</div><div class="lbl">Reaching ${threshold()} days soon</div><div class="sub">Next ${s.settings.soon_days} days, all agencies</div></a>
+    </div>
+    ${c.stop_calling ? `<a class="banner danger" href="#/tracker/stop" style="text-decoration:none"><b>Stop calling:</b> ${plural(c.stop_calling, "property", "properties")} sold or withdrawn while being worked.</a>` : ""}
+    <div class="strip">
+      <a href="#/ready/check"><b>${c.needs_check}</b> owner match${c.needs_check === 1 ? "" : "es"} to check</a>
+      <a href="#/tracker"><b>${c.in_progress}</b> being worked</a>
+      <a href="#/tracker/won"><b>${c.won}</b> listed with us</a>
+      <a href="#/ready/none"><b>${c.no_owner}</b> past ${threshold()} days, owner not in CRM</a>
     </div>
     <div class="grid cols-2">
       <div class="card"><div class="row"><h2>Notifications</h2><span class="spacer"></span>${notes.some((n) => !n.read_at) ? `<button class="btn small ghost" id="read-all">Mark all as read</button>` : ""}</div>
-        ${notes.length ? `<ul class="notes">${notes.slice(0, 8).map(noteItem).join("")}</ul>` : `<p class="muted">Nothing yet. You'll be told here the day a watchlist property hits ${threshold()} days.</p>`}</div>
+        ${notes.length ? `<ul class="notes">${notes.slice(0, 5).map((n) => noteItem(n, 3)).join("")}</ul>` : `<p class="muted">Nothing yet. You'll be told here the day a watchlist property hits ${threshold()} days.</p>`}</div>
       <div class="card"><h2>Data</h2>
         <dl class="kv">
           <dt>For sale</dt><dd>${c.listings ? `${c.listings} properties, ${c.ours} with us` : "Not imported yet"}<div class="sub">${s.last_import.listings ? `Imported ${esc(fmtWhen(s.last_import.listings.imported_at))}` : ""}</div></dd>
           <dt>Our database</dt><dd>${c.contacts ? `${c.contacts} contacts` : "Not imported yet"}<div class="sub">${s.last_import.contacts ? `Imported ${esc(fmtWhen(s.last_import.contacts.imported_at))}` : ""}</div></dd>
-          <dt>Not in our database</dt><dd>${c.no_owner} propert${c.no_owner === 1 ? "y" : "ies"} over ${threshold()} days <a href="#/ready/none">see list</a></dd>
         </dl>
-        <p class="sub" style="margin-top:12px">Import a fresh for-sale export every few days. Anything missing from it is marked sold or withdrawn and taken off contact sheets.</p>
-        <a class="btn ghost small" href="#/import">Import data</a></div>
+        <p class="sub" style="margin-top:12px">Import a fresh for-sale export every few days so sold properties drop off.</p>
+        <a class="btn ghost small" href="#/import">Import</a></div>
     </div>`;
   $("#read-all")?.addEventListener("click", async () => { await api("/api/notifications/read", { json: {} }); viewToday(); });
   $("#view").querySelectorAll("[data-lead]").forEach((a) => a.addEventListener("click", (e) => { e.preventDefault(); openLead(+a.dataset.lead); }));
@@ -303,7 +309,10 @@ async function viewToday() {
 
 function ownerCell(l) {
   const usable = l.contacts.filter((c) => c.quality === "exact" || c.quality === "confirmed");
-  if (!l.contacts.length) return `<span class="pill none">Not in our database</span>`;
+  if (!l.contacts.length) {
+    const t = ["owner_1", "owner_2", "owner_3"].map((k) => l.extra?.[k]).filter(Boolean);
+    return t.length ? `<div>${esc(t.join(", "))}</div><div class="sub">On title. Not in your CRM</div>` : `<span class="sub">Not in your CRM</span>`;
+  }
   if (!usable.length) return `<span class="pill check">Check owner match</span><div class="sub">${esc(l.contacts.map((c) => c.name).join(", "))}</div>`;
   return usable.map((c) => `<div><b>${esc(c.name)}</b>${c.do_not_contact ? ` <span class="pill dnc">Do not contact</span>` : ""}</div>
     <div class="phone">${esc(c.phone || c.phone2 || "")}</div>${!c.phone && !c.phone2 ? `<div class="sub">${c.email ? esc(c.email) : "No phone on file"}</div>` : ""}`).join("");
@@ -338,9 +347,9 @@ async function viewReady(arg) {
   await refreshSummary();
   const all = await api("/api/leads?view=ready");
   const groups = {
-    ready: { label: "Ready to assign", test: (l) => !l.blockers.length },
+    ready: { label: "Ready to call", test: (l) => !l.blockers.length },
     check: { label: "Owner match to check", test: (l) => l.match === "check" && !l.do_not_contact },
-    none: { label: "Not in our database", test: (l) => l.match === "none" },
+    none: { label: "Not in CRM", test: (l) => l.match === "none" },
     dnc: { label: "Do not contact", test: (l) => l.do_not_contact },
   };
   const counts = Object.fromEntries(Object.entries(groups).map(([k, g]) => [k, all.filter(g.test).length]));
@@ -353,14 +362,14 @@ async function viewReady(arg) {
   st.selected = new Set([...st.selected].filter((id) => allowed.has(id)));
 
   const help = {
-    ready: `Listed ${threshold()}+ days with another agency, still for sale, and the owner is in our database. Tick the ones to hand out, choose the agent, then make the contact sheet. Each property can only be on one agent's sheet at a time.`,
-    check: "The address in our database is close to the listing but not identical (for example the suburb is missing). Open each one and confirm whether it's the same owner. Confirmed ones move to Ready.",
-    none: "These have been on the market long enough but the owner isn't in our database, so there's nobody to call. Door-knock or letterbox if worth it.",
-    dnc: "The owner is flagged do-not-contact in our database or asked us not to call. These never go on a contact sheet.",
+    ready: `Past ${threshold()} days with another agency and the owner is in your CRM. Tick properties, pick an agent, make the sheet.`,
+    check: "Close to a listing but not certain: a missing suburb, a different street type, or a name that isn't the owner on title. Open each and confirm or reject.",
+    none: "Past the line, but the owner isn't in your CRM. The owner on title is shown where RP Data has it.",
+    dnc: "Flagged do-not-contact. These never go on a sheet.",
   }[st.filter];
 
   $("#view").innerHTML = `
-    <h1>Ready to assign</h1>
+    <h1>Ready</h1>
     <p class="lede">${help}</p>
     <div class="chips">${Object.entries(groups).map(([k, g]) => `<button class="chip" data-filter="${k}" aria-pressed="${st.filter === k}">${g.label}<span class="n">${counts[k]}</span></button>`).join("")}</div>
     <div class="toolbar">
@@ -474,9 +483,9 @@ async function viewWatch(arg) {
   const T = threshold();
   $("#view").innerHTML = `
     <h1>Watchlist</h1>
-    <p class="lede">Listed with other agencies for under ${T} days. Each one moves to <a href="#/ready">Ready to assign</a> on the day it hits ${T}, and you get a notification. Nothing here needs calling yet.</p>
+    <p class="lede">Under ${T} days with another agency. Each moves to <a href="#/ready">Ready</a> the day it reaches ${T}.</p>
     <div class="chips">
-      <button class="chip" data-filter="owner" aria-pressed="${st.filter === "owner"}">Owner in our database<span class="n">${all.filter(owned).length}</span></button>
+      <button class="chip" data-filter="owner" aria-pressed="${st.filter === "owner"}">Owner in CRM<span class="n">${all.filter(owned).length}</span></button>
       <button class="chip" data-filter="all" aria-pressed="${st.filter === "all"}">Everything for sale<span class="n">${all.length}</span></button>
     </div>
     <div class="toolbar"><input class="search" type="search" placeholder="Search address, owner or agency" value="${esc(st.q)}" id="q">
@@ -523,10 +532,10 @@ async function viewTracker(arg) {
   let list = filterText(base.filter((filters[st.filter] || filters.open)[1]), st.q);
   $("#view").innerHTML = `
     <h1>Tracker</h1>
-    <p class="lede">Every property that has been handed to an agent, and where it's up to. Click a row to log a call.</p>
+    <p class="lede">Everything handed to an agent. Open a row to log a call.</p>
     <div class="chips">${Object.entries(filters).map(([k, [label, test]]) => {
       const n = base.filter(test).length;
-      if ((k === "stop" || k === "due") && !n) return "";
+      if (!n && k !== st.filter && k !== "open" && k !== "all") return "";
       return `<button class="chip" data-filter="${k}" aria-pressed="${st.filter === k}">${label}<span class="n">${n}</span></button>`;
     }).join("")}</div>
     <div class="toolbar">
@@ -545,7 +554,7 @@ async function viewTracker(arg) {
         <td>${esc(l.agent_name || "")}${l.sheet_id ? `<div class="sub">Sheet #${l.sheet_id}</div>` : ""}</td>
         <td class="nowrap">${l.follow_up_on ? `<span class="pill ${l.follow_up_due ? "due" : "call_back"}">${esc(fmtDate(l.follow_up_on))}</span><div class="sub">${esc(relDays(l.follow_up_on))}</div>` : l.status === "assigned" ? `<span class="sub">First call</span>` : ""}</td>
         <td class="mono">${l.attempts}${l.last_contact_on ? `<div class="sub">last ${esc(relDays(l.last_contact_on))}</div>` : ""}</td></tr>`;
-      }).join("")}</tbody></table>` : `<div class="empty"><b>Nothing here</b>${all.length ? "Try another filter." : "Make a contact sheet from Ready to assign to start."}</div>`}</div>`;
+      }).join("")}</tbody></table>` : `<div class="empty"><b>Nothing here</b>${all.length ? "Try another filter." : "Make a sheet from Ready to start."}</div>`}</div>`;
   $("#view").querySelectorAll("[data-filter]").forEach((b) => b.addEventListener("click", () => { location.hash = `#/tracker/${b.dataset.filter}`; }));
   $("#q").addEventListener("input", debounce((e) => { st.q = e.target.value; viewTracker().then(() => { const q = $("#q"); q.focus(); q.setSelectionRange(q.value.length, q.value.length); }); }, 250));
   $("#agent-filter").addEventListener("change", (e) => { st.agent = e.target.value; viewTracker(); });
@@ -566,9 +575,7 @@ async function openLead(id) {
   if (!l.for_sale) alerts.push(`<div class="alertbox danger">No longer for sale (gone from the import on ${esc(fmtDate(l.off_market_on))}). Sold or withdrawn. ${open ? "Do not call." : ""}</div>`);
   if (l.do_not_contact) alerts.push(`<div class="alertbox danger">Do not contact this owner.</div>`);
   if (l.ours) alerts.push(`<div class="alertbox info">This is our own listing.</div>`);
-  if (l.match === "check") alerts.push(`<div class="alertbox warn">The owner match needs checking before anyone calls. See "Who owns it" below.</div>`);
-  if (l.owners_on_title?.length) alerts.push(`<div class="alertbox info">Owner on title (RP Data): <b>${esc(l.owners_on_title.join(", "))}</b></div>`);
-  if (l.match === "none") alerts.push(`<div class="alertbox warn">The owner isn't in our database.</div>`);
+  if (l.match === "check") alerts.push(`<div class="alertbox warn">Check the owner match below before anyone calls.</div>`);
   if (!l.eligible && l.for_sale) alerts.push(`<div class="alertbox info">On the watchlist. Hits ${T} days on ${esc(fmtDate(l.hits_on))} (${esc(relDays(l.hits_on))}).</div>`);
   if (l.follow_up_due) alerts.push(`<div class="alertbox warn">${esc(l.status_label)} was due ${esc(fmtDate(l.follow_up_on))}.</div>`);
 
@@ -586,6 +593,7 @@ async function openLead(id) {
     <div class="drawer-body">
       ${alerts.join("")}
       <section class="card"><h3>Who owns it</h3>
+        ${l.owners_on_title?.length ? `<p class="title-owner"><span class="sub">On title (RP Data)</span><br><b>${esc(l.owners_on_title.join(", "))}</b></p>` : ""}
         ${usable.length ? usable.map((c) => `<div class="contact">
           <div class="name">${esc(c.name)} ${c.do_not_contact ? `<span class="pill dnc">Do not contact</span>` : ""} ${c.quality === "confirmed" ? `<span class="pill appraisal">Match confirmed</span>` : ""}</div>
           ${c.phone ? `<a class="phone" href="${telHref(c.phone)}">${esc(c.phone)}</a>${c.extra?.phone_labels?.[0] ? ` <span class="sub">${esc(c.extra.phone_labels[0])}</span>` : ""}` : `<div class="sub">No phone on file</div>`}
@@ -596,7 +604,7 @@ async function openLead(id) {
           ${c.extra?.last_note ? `<div class="lastnote-app"><div class="ln-head"><span>Read before calling</span><span>${esc([String(c.extra.last_note_at || "").slice(0, 10), c.extra.last_note_by].filter(Boolean).join(", "))}</span></div><div class="ln-text">"${esc(c.extra.last_note)}"</div></div>` : ""}
           <div class="sub">In our database as: ${esc(c.address_raw)}</div>
           ${c.notes ? `<div class="sub">Notes: ${esc(c.notes)}</div>` : ""}
-        </div>`).join("") : `<p class="muted">No confirmed owner.</p>`}
+        </div>`).join("") : `<p class="muted">${l.match === "none" ? "Not in your CRM, so there's nobody to call." : "No confirmed owner yet."}</p>`}
         ${l.candidates.filter((c) => c.quality === "check" || c.quality === "name" || c.decision).length ? `
           <h3 style="margin-top:14px">Possible owners to check</h3>
           <p class="sub">Only confirm if this person owns this property. Matches land here when the suburb is missing, the street type differs (Street or Road), or the name doesn't match the owner on title.</p>
@@ -622,7 +630,7 @@ async function openLead(id) {
         <label class="field" style="margin-top:12px"><span>Notes</span><textarea class="input" id="note" placeholder="What did they say? Who is their agent contract with, when does it end, price expectations..."></textarea></label>
         <div class="row" style="margin-top:12px"><button class="btn big" id="save-log" disabled>Choose what happened</button>
           <span class="sub">Saved as ${state.person ? `<b>${esc(state.person)}</b>` : `<b class="badline">nobody: choose your name at the top</b>`}</span></div>
-      </section>` : l.for_sale && l.eligible && !l.blockers.length ? `<div class="alertbox info">Not on anyone's contact sheet yet. Assign it from <a href="#/ready" data-close>Ready to assign</a> before calling, so two agents don't ring the same owner.</div>` : ""}
+      </section>` : l.for_sale && l.eligible && !l.blockers.length ? `<div class="alertbox info">Not on anyone's contact sheet yet. Assign it from <a href="#/ready" data-close>Ready</a> before calling, so two agents don't ring the same owner.</div>` : ""}
 
       <section class="card"><h3>Listing</h3><dl class="kv">
         <dt>Agency</dt><dd>${esc(l.agency)}${l.listing_agent ? `, ${esc(l.listing_agent)}` : ""}</dd>
@@ -634,7 +642,6 @@ async function openLead(id) {
         ${l.extra?.owner_type ? `<dt>Owner type</dt><dd>${esc(l.extra.owner_type)}</dd>` : ""}
         ${l.extra?.first_price && l.extra.first_price !== l.price ? `<dt>First listed at</dt><dd>${esc(l.extra.first_price)}</dd>` : ""}
         ${l.url ? `<dt>Listing</dt><dd><a href="${esc(l.url)}" target="_blank" rel="noopener">Open listing</a></dd>` : ""}
-        <dt>As imported</dt><dd>${esc(l.address_raw)}</dd>
       </dl></section>
 
       <section class="card"><div class="row"><h3>History</h3><span class="spacer"></span>${undoOk ? `<button class="btn small ghost" id="undo">Undo last entry</button>` : ""}</div>
@@ -649,7 +656,7 @@ async function openLead(id) {
         <div class="row"><select class="input" id="re-agent" style="width:auto"><option value="">Move to another agent</option>${state.agents.filter((a) => a.active && a.id !== l.agent_id).map((a) => `<option value="${a.id}">${esc(a.name)}</option>`).join("")}</select>
         <button class="btn small ghost" id="re-go">Move</button>
         <span class="spacer"></span>${l.do_not_contact ? "" : `<button class="btn small ghost" id="release">Return to pool</button>`}</div>
-        <p class="sub">Return to pool takes it off ${esc(l.agent_name || "the agent")} and puts it back in Ready to assign. The history stays.</p></section>` : ""}
+        <p class="sub">Return to pool takes it off ${esc(l.agent_name || "the agent")} and puts it back in Ready. The history stays.</p></section>` : ""}
     </div>`;
   openDrawer();
   bindLead(l);
@@ -717,7 +724,7 @@ function bindLead(l) {
       if (await act(() => api(`/api/leads/${l.id}/reassign`, { json: { agent_id: a.id } }), `Moved to ${a.name}.`)) reopen();
   });
   $("#release")?.addEventListener("click", async () => {
-    if (await confirmBox({ title: "Return to the pool?", body: `<p>${esc(l.agent_name || "The agent")} stops working it and it goes back to Ready to assign. The history is kept.</p>`, ok: "Return to pool" }))
+    if (await confirmBox({ title: "Return to the pool?", body: `<p>${esc(l.agent_name || "The agent")} stops working it and it goes back to Ready. The history is kept.</p>`, ok: "Return to pool" }))
       if (await act(() => api(`/api/leads/${l.id}/release`, { json: {} }), "Returned to the pool.")) reopen();
   });
 }
@@ -737,14 +744,14 @@ async function viewSheets(arg) {
   await refreshSummary();
   const sheets = await api("/api/sheets");
   $("#view").innerHTML = `
-    <h1>Contact sheets</h1>
-    <p class="lede">Each sheet is a set of properties given to one agent. Print it or download it, and log every call in the app so the tracker stays right. To make a new one, go to <a href="#/ready">Ready to assign</a>.</p>
+    <h1>Sheets</h1>
+    <p class="lede">Each sheet is one agent's set of properties. Make new ones from <a href="#/ready">Ready</a>.</p>
     <div class="table-wrap">${sheets.length ? `<table class="list"><thead><tr><th>Sheet</th><th>Agent</th><th>Made</th><th>Progress</th><th></th></tr></thead><tbody>
     ${sheets.map((s) => `<tr data-sheet="${s.id}"><td><b>#${s.id}</b></td><td><b>${esc(s.agent)}</b></td><td>${esc(fmtWhen(s.created_at))}<div class="sub">by ${esc(s.created_by)}</div></td>
       <td><div class="bar" style="max-width:220px"><span style="width:${s.total ? ((s.done + s.working) / s.total) * 100 : 0}%"></span></div>
       <div class="sub">${s.not_called} not called, ${s.working} in progress, ${s.done} finished${s.total - s.not_called - s.working - s.done ? `, ${s.total - s.not_called - s.working - s.done} moved off` : ""}</div></td>
       <td class="nowrap"><a class="btn small ghost" href="/sheet/${s.id}/print" target="_blank">Print</a> <a class="btn small ghost" href="/sheet/${s.id}.csv">Spreadsheet</a></td></tr>`).join("")}
-    </tbody></table>` : `<div class="empty"><b>No sheets yet</b>Tick properties in Ready to assign and choose an agent.</div>`}</div>`;
+    </tbody></table>` : `<div class="empty"><b>No sheets yet</b>Tick properties in Ready and choose an agent.</div>`}</div>`;
   $("#view").querySelectorAll("tr[data-sheet]").forEach((tr) => tr.addEventListener("click", (e) => { if (!e.target.closest("a")) location.hash = `#/sheets/${tr.dataset.sheet}`; }));
 }
 
@@ -784,8 +791,8 @@ async function viewImport() {
       <p class="sub" style="margin-top:8px">${full}</p></div>`;
   };
   $("#view").innerHTML = `
-    <h1>Import data</h1>
-    <p class="lede">Bring in the two lists. Columns are matched for you and you can change any of them before anything is saved. Nothing is imported until you press the final button.</p>
+    <h1>Import</h1>
+    <p class="lede">Columns are matched for you. Nothing is saved until the last step.</p>
     <div id="wizard"></div>
     <div class="grid cols-2" id="cards" ${ip.preview ? "hidden" : ""}>
       ${card("contacts", "1. Our database", "Owners and their contact details: name, phone, email and the property address.", "Usually a full export from the CRM, which replaces the previous one. Your match decisions and call history are kept.")}
@@ -904,7 +911,7 @@ async function commitImport() {
   await refreshSummary();
   showModal(`<h2>Imported</h2><p>${r.used} rows saved${r.skipped ? `, ${r.skipped} skipped (see Past imports for why)` : ""}.</p>
     ${r.crossed ? `<p><b>${plural(r.crossed, "property", "properties")} just hit ${threshold()} days.</b></p>` : ""}
-    <div class="row end"><button class="btn ghost" data-close>Stay here</button><a class="btn" href="#/ready" data-close>Go to Ready to assign</a></div>`);
+    <div class="row end"><button class="btn ghost" data-close>Stay here</button><a class="btn" href="#/ready" data-close>Go to Ready</a></div>`);
   viewImport();
 }
 
@@ -1151,7 +1158,7 @@ async function viewSettings() {
           <label class="field"><span>Our agency (one name per line)</span><textarea class="input" id="our_agencies" placeholder="Type your agency name as it appears in the for-sale data">${esc(st.our_agencies.join("\n"))}</textarea>
             <span class="hint">Any listing whose agency contains one of these is ours and never goes on a contact sheet. Add every brand or office name you trade under.</span></label>
           <label class="field"><span>Day threshold</span><input class="input" id="threshold_days" type="number" min="1" max="365" value="${st.threshold_days}" style="max-width:120px">
-            <span class="hint">Listings this many days old or more go to Ready to assign.</span></label>
+            <span class="hint">Listings this many days old or more move to Ready.</span></label>
           <label class="field"><span>"Hitting soon" window, in days</span><input class="input" id="soon_days" type="number" min="1" max="60" value="${st.soon_days}" style="max-width:120px"></label>
           <label class="field"><span>Dates in your files are written</span><select class="input" id="date_order" style="max-width:320px">
             <option value="DMY" ${st.date_order === "DMY" ? "selected" : ""}>Day first: 03/04/2026 is 3 April</option>

@@ -168,7 +168,7 @@ class FlowTests(unittest.TestCase):
         self.assertEqual(ready["3/5 Hill Road"], [])
         self.assertEqual(ready["8 Bay Street"], ["Owner match needs checking"])
         self.assertEqual(ready["20 Park Avenue"], ["Do not contact"])
-        self.assertEqual(ready["99 Nobody Street"], ["Owner not in our database"])
+        self.assertEqual(ready["99 Nobody Street"], ["Owner not in your CRM"])
         self.assertNotIn("1 Main Street", ready, "our own listing must never show up")
 
     def test_watchlist_crossing_raises_one_notification(self):

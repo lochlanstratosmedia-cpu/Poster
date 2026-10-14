@@ -17,13 +17,14 @@
   </div>
   <nav class="tabs" id="tabs" aria-label="Sections">
     <a href="#/today" data-tab="today">Today</a>
-    <a href="#/ready" data-tab="ready">Ready to assign <span class="count" id="c-ready"></span></a>
+    <a href="#/ready" data-tab="ready">Ready <span class="count" id="c-ready"></span></a>
     <a href="#/watch" data-tab="watch">Watchlist <span class="count" id="c-watch"></span></a>
     <a href="#/tracker" data-tab="tracker">Tracker <span class="count" id="c-tracker"></span></a>
-    <a href="#/sheets" data-tab="sheets">Contact sheets</a>
+    <a href="#/sheets" data-tab="sheets">Sheets</a>
     <a href="#/insights" data-tab="insights">Insights</a>
-    <a href="#/import" data-tab="import">Import data</a>
-    <a href="#/settings" data-tab="settings">Settings</a>
+    <span class="tab-gap" aria-hidden="true"></span>
+    <a href="#/import" data-tab="import" class="tab-quiet">Import</a>
+    <a href="#/settings" data-tab="settings" class="tab-quiet">Settings</a>
   </nav>
   <div class="who">
     <button class="bell" id="bell" title="Notifications" aria-label="Notifications"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="currentColor" d="M12 22a2.5 2.5 0 0 0 2.45-2h-4.9A2.5 2.5 0 0 0 12 22Zm7-6V11a7 7 0 0 0-5.5-6.84V3.5a1.5 1.5 0 0 0-3 0v.66A7 7 0 0 0 5 11v5l-2 2v1h18v-1l-2-2Z"/></svg><span class="badge" id="unread" hidden></span></button>

@@ -294,6 +294,20 @@ td.check input:checked::after, th.check input:checked::after { content: ""; widt
 #full:checked { background: var(--ok); }
 #full:checked::after { transform: translateX(20px); }
 
+
+/* tidy-up: header groups, Today strip, notification overflow */
+.tab-gap { width: 1px; background: var(--line); margin: 6px 4px; flex: none; }
+.tabs a.tab-quiet { color: var(--muted); }
+.tabs a.tab-quiet[aria-current="page"] { color: var(--ink); }
+.stats.three { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+.strip { display: flex; flex-wrap: wrap; gap: 6px 22px; margin: -6px 0 24px; font-size: 14px; }
+.strip a { color: var(--muted); }
+.strip a b { color: var(--ink); font-variant-numeric: tabular-nums; }
+.strip a:hover { color: var(--accent); text-decoration: none; }
+.notes .more { display: inline-block; margin-top: 2px; font-weight: 600; color: var(--muted); }
+.title-owner { margin: 0 0 10px; }
+.title-owner b { font-size: 16px; }
+
 /* the last CRM note in the property panel */
 .lastnote-app { margin: 10px 0 6px; background: var(--warn-soft); border-left: 5px solid var(--warn); border-radius: 10px; padding: 9px 12px; }
 .lastnote-app .ln-head { display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--warn-text); }
@@ -323,9 +337,20 @@ table.ins-table tbody tr { cursor: default; }
 .tip { position: fixed; z-index: 70; pointer-events: none; background: var(--ink); color: var(--bg); font-size: 12.5px; font-weight: 500; padding: 6px 10px; border-radius: 8px; max-width: 300px; box-shadow: var(--shadow-lift); }
 
 @media (max-width: 760px) {
-  .topbar { position: static; padding: 10px 16px; }
+  .topbar { position: static; padding: 10px 16px; gap: 10px; flex-wrap: wrap; }
+  .brand-sub { display: none; }
+  .brand { flex: 1; min-width: 0; }
+  .who { margin-left: 0; gap: 8px; }
+  .person select { max-width: 150px; }
+  .stats, .stats.three { grid-template-columns: 1fr 1fr; gap: 10px; }
+  .stats .stat:first-child { grid-column: 1 / -1; }
+  .stat { padding: 14px; }
+  .stat .num { font-size: 32px; }
+  .stat .sub { display: none; }
+  .stats .stat:first-child .sub { display: block; }
+  .strip { gap: 6px 16px; font-size: 13px; }
+  .tab-gap { display: none; }
   .tabs { order: 3; width: 100%; flex-basis: 100%; margin: 0; }
-  .who { margin-left: auto; }
   .person > span { display: none; }
   main { padding: 20px 16px 140px; }
   h1 { font-size: 28px; }
