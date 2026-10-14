@@ -308,6 +308,21 @@ td.check input:checked::after, th.check input:checked::after { content: ""; widt
 .title-owner { margin: 0 0 10px; }
 .title-owner b { font-size: 16px; }
 
+
+/* neater: header lines up with the page, quieter tiles, one-line data summary */
+.topbar { padding-inline: max(20px, calc((100% - 1160px) / 2)); }
+#banners { padding-inline: max(20px, calc((100% - 1160px) / 2)); max-width: none; }
+.stat::after { display: none; }
+.card-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 4px; }
+.card-head h2 { margin: 0; }
+.dataline { display: flex; flex-wrap: wrap; gap: 6px 22px; margin: 14px 2px 0; font-size: 13px; color: var(--muted); }
+.dataline b { color: var(--ink); font-variant-numeric: tabular-nums; }
+.banner .btn { padding: 6px 14px; min-height: 30px; font-size: 13px; }
+.banner.warn .btn { background: transparent; color: var(--warn-text); box-shadow: inset 0 0 0 1.5px currentColor; }
+.lede { margin-bottom: 20px; }
+.days small { white-space: nowrap; }
+h1 { margin-bottom: 4px; }
+
 /* the last CRM note in the property panel */
 .lastnote-app { margin: 10px 0 6px; background: var(--warn-soft); border-left: 5px solid var(--warn); border-radius: 10px; padding: 9px 12px; }
 .lastnote-app .ln-head { display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--warn-text); }
@@ -350,6 +365,7 @@ table.ins-table tbody tr { cursor: default; }
   .stats .stat:first-child .sub { display: block; }
   .strip { gap: 6px 16px; font-size: 13px; }
   .tab-gap { display: none; }
+  #banners { padding-inline: 16px; }
   .tabs { order: 3; width: 100%; flex-basis: 100%; margin: 0; }
   .person > span { display: none; }
   main { padding: 20px 16px 140px; }

@@ -13,7 +13,8 @@ const state = {
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
+const fmtN = (n) => (typeof n === "number" ? n.toLocaleString("en-AU") : n);
+const plural = (n, one, many) => `${fmtN(n)} ${n === 1 ? one : many}`;
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
@@ -163,9 +164,9 @@ async function refreshSummary() {
   state.summary = s;
   const c = s.counts;
   $("#office").textContent = s.settings.office_name || `Listings over ${s.settings.threshold_days} days`;
-  $("#c-ready").textContent = c.ready_to_assign || "";
+  $("#c-ready").textContent = c.ready_to_assign ? fmtN(c.ready_to_assign) : "";
   $("#c-ready").classList.toggle("hot", c.just_hit > 0);
-  $("#c-watch").textContent = c.watching || "";
+  $("#c-watch").textContent = c.watching ? fmtN(c.watching) : "";
   const trackerHot = c.follow_ups_due + c.stop_calling;
   $("#c-tracker").textContent = trackerHot || c.in_progress || "";
   $("#c-tracker").classList.toggle("hot", trackerHot > 0);
@@ -281,26 +282,24 @@ async function viewToday() {
     <div class="stats three">
       <a class="stat go" href="#/ready"><div class="num">${c.ready_to_assign}</div><div class="lbl">Ready to call</div><div class="sub">${c.just_hit ? `<b>${c.just_hit} new this week.</b> ` : ""}Past ${threshold()} days, owner in your CRM</div></a>
       <a class="stat ${c.follow_ups_due ? "hot" : ""}" href="#/tracker/due"><div class="num">${c.follow_ups_due}</div><div class="lbl">Follow-ups due</div><div class="sub">Call-backs and appraisals, today or overdue</div></a>
-      <a class="stat soon" href="#/watch"><div class="num">${c.hitting_soon}</div><div class="lbl">Reaching ${threshold()} days soon</div><div class="sub">Next ${s.settings.soon_days} days, all agencies</div></a>
+      <a class="stat soon" href="#/watch"><div class="num">${fmtN(c.hitting_soon)}</div><div class="lbl">Reaching ${threshold()} days soon</div><div class="sub">Next ${s.settings.soon_days} days, all agencies</div></a>
     </div>
     ${c.stop_calling ? `<a class="banner danger" href="#/tracker/stop" style="text-decoration:none"><b>Stop calling:</b> ${plural(c.stop_calling, "property", "properties")} sold or withdrawn while being worked.</a>` : ""}
     <div class="strip">
       <a href="#/ready/check"><b>${c.needs_check}</b> owner match${c.needs_check === 1 ? "" : "es"} to check</a>
       <a href="#/tracker"><b>${c.in_progress}</b> being worked</a>
       <a href="#/tracker/won"><b>${c.won}</b> listed with us</a>
-      <a href="#/ready/none"><b>${c.no_owner}</b> past ${threshold()} days, owner not in CRM</a>
+      <a href="#/ready/none"><b>${fmtN(c.no_owner)}</b> past ${threshold()} days, owner not in CRM</a>
     </div>
-    <div class="grid cols-2">
-      <div class="card"><div class="row"><h2>Notifications</h2><span class="spacer"></span>${notes.some((n) => !n.read_at) ? `<button class="btn small ghost" id="read-all">Mark all as read</button>` : ""}</div>
-        ${notes.length ? `<ul class="notes">${notes.slice(0, 5).map((n) => noteItem(n, 3)).join("")}</ul>` : `<p class="muted">Nothing yet. You'll be told here the day a watchlist property hits ${threshold()} days.</p>`}</div>
-      <div class="card"><h2>Data</h2>
-        <dl class="kv">
-          <dt>For sale</dt><dd>${c.listings ? `${c.listings} properties, ${c.ours} with us` : "Not imported yet"}<div class="sub">${s.last_import.listings ? `Imported ${esc(fmtWhen(s.last_import.listings.imported_at))}` : ""}</div></dd>
-          <dt>Our database</dt><dd>${c.contacts ? `${c.contacts} contacts` : "Not imported yet"}<div class="sub">${s.last_import.contacts ? `Imported ${esc(fmtWhen(s.last_import.contacts.imported_at))}` : ""}</div></dd>
-        </dl>
-        <p class="sub" style="margin-top:12px">Import a fresh for-sale export every few days so sold properties drop off.</p>
-        <a class="btn ghost small" href="#/import">Import</a></div>
-    </div>`;
+    <div class="card">
+      <div class="card-head"><h2>Notifications</h2>${notes.some((n) => !n.read_at) ? `<button class="btn small ghost" id="read-all">Mark all as read</button>` : ""}</div>
+      ${notes.length ? `<ul class="notes">${notes.slice(0, 5).map((n) => noteItem(n, 3)).join("")}</ul>` : `<p class="muted">Nothing yet. You'll be told here the day a watchlist property hits ${threshold()} days.</p>`}
+    </div>
+    <p class="dataline">
+      <span><b>${fmtN(c.listings)}</b> for sale${s.last_import.listings ? `, imported ${esc(fmtWhen(s.last_import.listings.imported_at))}` : ", not imported yet"}</span>
+      <span><b>${fmtN(c.contacts)}</b> CRM contacts${s.last_import.contacts ? `, imported ${esc(fmtWhen(s.last_import.contacts.imported_at))}` : ", not imported yet"}</span>
+      <a href="#/import">Import</a>
+    </p>`;
   $("#read-all")?.addEventListener("click", async () => { await api("/api/notifications/read", { json: {} }); viewToday(); });
   $("#view").querySelectorAll("[data-lead]").forEach((a) => a.addEventListener("click", (e) => { e.preventDefault(); openLead(+a.dataset.lead); }));
 }
@@ -364,14 +363,14 @@ async function viewReady(arg) {
   const help = {
     ready: `Past ${threshold()} days with another agency and the owner is in your CRM. Tick properties, pick an agent, make the sheet.`,
     check: "Close to a listing but not certain: a missing suburb, a different street type, or a name that isn't the owner on title. Open each and confirm or reject.",
-    none: "Past the line, but the owner isn't in your CRM. The owner on title is shown where RP Data has it.",
+    none: "Past the line, but the owner isn't in your CRM. Owner on title shown where RP Data has it.",
     dnc: "Flagged do-not-contact. These never go on a sheet.",
   }[st.filter];
 
   $("#view").innerHTML = `
     <h1>Ready</h1>
     <p class="lede">${help}</p>
-    <div class="chips">${Object.entries(groups).map(([k, g]) => `<button class="chip" data-filter="${k}" aria-pressed="${st.filter === k}">${g.label}<span class="n">${counts[k]}</span></button>`).join("")}</div>
+    <div class="chips">${Object.entries(groups).map(([k, g]) => `<button class="chip" data-filter="${k}" aria-pressed="${st.filter === k}">${g.label}<span class="n">${fmtN(counts[k])}</span></button>`).join("")}</div>
     <div class="toolbar">
       <input class="search" type="search" placeholder="Search address, owner, phone or agency" value="${esc(st.q)}" id="q">
       <select class="input" id="suburb" style="width:auto"><option value="">All suburbs</option>${suburbs.map((s) => `<option ${s === st.suburb ? "selected" : ""}>${esc(s)}</option>`).join("")}</select>
@@ -381,15 +380,15 @@ async function viewReady(arg) {
     <div class="table-wrap">${list.length ? `
       <table class="list"><thead><tr>
         ${st.filter === "ready" ? `<th class="check"><input type="checkbox" id="all" aria-label="Select all shown"></th>` : ""}
-        <th>Days listed</th><th>Property</th><th>Owner</th><th>Current agency</th>${st.filter === "ready" ? "" : "<th>Why it can't go on a sheet</th>"}
+        <th>Days listed</th><th>Property</th><th>Owner</th><th>Current agency</th>${st.filter === "check" ? "<th>Why it needs checking</th>" : ""}
       </tr></thead><tbody>
-      ${list.map((l) => `<tr data-id="${l.id}" class="${st.selected.has(l.id) ? "selected" : ""} ${l.blockers.length ? "blocked" : ""}">
+      ${list.map((l) => `<tr data-id="${l.id}" class="${st.selected.has(l.id) ? "selected" : ""}">
         ${st.filter === "ready" ? `<td class="check"><input type="checkbox" data-pick="${l.id}" ${st.selected.has(l.id) ? "checked" : ""} aria-label="Select ${esc(l.address)}"></td>` : ""}
         <td><div class="days">${l.days}<small>since ${esc(fmtDate(l.listed_date, false))}</small></div>${l.just_hit ? `<span class="pill hit">Just hit ${threshold()}</span>` : ""}</td>
         <td>${propertyCell(l)}</td>
         <td>${ownerCell(l)}</td>
         <td>${esc(l.agency)}<div class="sub">${esc(l.listing_agent || "")}</div></td>
-        ${st.filter === "ready" ? "" : `<td><ul class="reasons">${l.blockers.map((b) => `<li>${esc(b)}</li>`).join("")}</ul>${l.match === "check" ? `<button class="btn small" data-open="${l.id}">Check match</button>` : ""}</td>`}
+        ${st.filter === "check" ? `<td><ul class="reasons">${l.blockers.filter((b) => !/^Already|threshold/.test(b)).map((b) => `<li>${esc(b)}</li>`).join("")}</ul><button class="btn small" data-open="${l.id}">Check match</button></td>` : ""}
       </tr>`).join("")}
       </tbody></table>` : `<div class="empty"><b>${st.filter === "ready" ? "Nothing waiting" : "None"}</b>${st.filter === "ready" ? `Everything over ${threshold()} days is already assigned, or nothing has reached ${threshold()} days. The watchlist shows what's coming.` : ""}</div>`}
     </div>`;
@@ -586,7 +585,7 @@ async function openLead(id) {
   $("#drawer-panel").innerHTML = `
     <div class="drawer-head">
       <div><div class="row" style="gap:6px"><span class="pill ${l.do_not_contact ? "dnc" : l.status}">${esc(l.status_label)}</span>${l.agent_name ? `<span class="sub">${esc(l.agent_name)}${l.sheet_id ? `, sheet #${l.sheet_id}` : ""}</span>` : ""}</div>
-      <h2>${esc(l.address)}</h2><div class="sub">Lead #${l.id}</div></div>
+      <h2>${esc(l.address)}</h2></div>
       <div style="text-align:right"><div class="days">${l.days}<small>days listed</small></div></div>
       <button class="close" data-close aria-label="Close">&times;</button>
     </div>

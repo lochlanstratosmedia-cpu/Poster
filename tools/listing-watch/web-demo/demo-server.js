@@ -495,7 +495,7 @@ function rebuild() {
   }
   if (crossed.length) {
     const withOwner = crossed.filter((c) => c[3]).length;
-    const lines = crossed.map(([, p, agency, has]) => `${displayAddr(p)} (${agency})${has ? "" : " - owner not in our database"}`);
+    const lines = crossed.map(([, p, agency, has]) => `${displayAddr(p)} (${agency})${has ? "" : " - owner not in CRM"}`);
     addNotification("crossed", `${crossed.length} propert${crossed.length === 1 ? "y" : "ies"} hit ${threshold} days` +
       (withOwner !== crossed.length ? ` (${withOwner} with owner details)` : ""), lines.join("\n"), crossed.map((c) => c[0]));
   }

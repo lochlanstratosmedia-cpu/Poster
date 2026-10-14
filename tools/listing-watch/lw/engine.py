@@ -320,7 +320,7 @@ def rebuild(conn):
 
     if crossed:
         with_owner = sum(1 for c in crossed if c[3])
-        lines = [f"{address.display(p)} ({agency}){'' if has else ' - owner not in our database'}"
+        lines = [f"{address.display(p)} ({agency}){'' if has else ' - owner not in CRM'}"
                  for _, p, agency, has in crossed]
         add_notification(
             conn, "crossed",
