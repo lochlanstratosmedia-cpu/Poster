@@ -305,7 +305,9 @@ function buildRecords(kind, headers, rows, mapping, today, order) {
       const [[phone, l1], [phone2, l2]] = numbers;
       if (l1 || l2) extra.phone_labels = [l1, l2];
       if (notes.length) extra.phone_notes = notes;
-      const tagDnc = /do not (contact|call)|\bdnc\b/.test(get(row, "tags").toLowerCase()) || notes.some((n) => PHONE_DNC.test(n));
+      const noteDnc = PHONE_DNC.test(extra.last_note || "");
+      if (noteDnc) extra.dnc_reason = "The last CRM note says not to contact them";
+      const tagDnc = /do not (contact|call)|\bdnc\b/.test(get(row, "tags").toLowerCase()) || notes.some((n) => PHONE_DNC.test(n)) || noteDnc;
       Object.assign(rec, { name, phone, phone2, email: get(row, "email"), do_not_contact: truthy(get(row, "do_not_contact")) || tagDnc, notes: get(row, "notes"), extra });
     }
     records.push(rec);
@@ -827,15 +829,15 @@ function approachPages(leads, label, sheetId) {
     }).join("");
     const right = [lastImport ? `For-sale data to ${Number(lastImport.slice(8, 10))} ${MON[Number(lastImport.slice(5, 7)) - 1]} ${lastImport.slice(0, 4)}` : "", sheetId ? `Sheet #${sheetId}` : "", `${i + 1} of ${leads.length}`].filter(Boolean).join(" · ");
     const [street, ...rest] = l.address.split(", ");
-    return `<section class="sheet"><div class="top"><span>${esc(office ? office.toUpperCase() + " · " : "")}Approach sheet</span><span>${esc(right)}</span></div>
+    return `<section class="sheet"><div class="top"><span>${T} days on market · Approach sheet</span><span>${esc(right)}</span></div>
 <h1>${esc(street)}</h1><div class="suburb">${esc(rest.join(", "))}</div>${status}
 <h2>The listing</h2><dl>${rows.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join("")}</dl>
 <h2>The owner</h2>${owners || "<p>No confirmed owner.</p>"}
-<h2>Before you make contact</h2><div class="checks"><div>${box}Checked against the Do Not Call Register</div><div>${box}Confirmed it is still on the market</div><div>${box}Checked the agreement has lapsed</div><div>${box}Read the "Read before calling" note</div></div>
+<h2>Before you make contact</h2><div class="checks"><div>${box}Checked against the Do Not Call Register</div><div>${box}Confirmed it is still on the market</div></div>
 <div class="given"><div>Agent: ${esc(label || "")}</div><div>Date given:</div></div>
 <h2>The call</h2><table class="log"><tr><th style="width:24%">Date and time</th><th style="width:26%">Number called</th><th>What happened</th></tr>${"<tr><td></td><td></td><td></td></tr>".repeat(3)}</table>
+<h2>Agent notes</h2><div class="notes-area"></div>
 <div class="outcomes">${["No answer", "Left message", "Call back on ________", "Appraisal booked ________", "Not interested", "Wrong number", "Asked not to be contacted"].map((o) => `<span>${box}${o}</span>`).join("")}</div>
-<div class="lines"><div></div><div></div></div>
 <div class="foot">Owner matched on the exact property address in our CRM. Log every call in Listing Watch the same day, including no answers. Lead #${l.id}.</div></section>`;
   }).join("");
 }

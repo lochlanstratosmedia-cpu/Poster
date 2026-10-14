@@ -103,6 +103,14 @@ class ImporterTests(unittest.TestCase):
         self.assertEqual(recs[0]["extra"]["phone_labels"], ["Pat", ""])
         self.assertTrue(recs[0]["do_not_contact"], "a phone field saying do not call marks the owner")
 
+    def test_note_saying_do_not_contact_marks_the_owner(self):
+        headers = ["Name", "Address", "Mobile", "Last Note Content"]
+        m = importer.guess_mapping("contacts", headers)
+        recs, _ = importer.build_records("contacts", headers, [["A", "1 A St, X", "0491 570 001", "DO NOT CONTACT THIS IS LISTED"],
+                                                             ["B", "2 A St, X", "0491 570 002", "Call back after Easter"]], m, TODAY)
+        self.assertTrue(recs[0]["do_not_contact"])
+        self.assertFalse(recs[1]["do_not_contact"])
+
     def test_phone_format(self):
         self.assertEqual(importer.clean_phone("+61412345678"), "0412 345 678")
         self.assertEqual(importer.clean_phone("0298765432"), "(02) 9876 5432")

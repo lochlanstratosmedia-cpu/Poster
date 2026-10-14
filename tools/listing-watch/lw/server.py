@@ -278,9 +278,13 @@ table.log { width: 100%; border-collapse: collapse; margin-top: 4px; }
 .outcomes { font-size: 9pt; margin: 6px 0 0; line-height: 1.75; }
 .outcomes span { white-space: nowrap; margin-right: 12px; }
 .lines div { border-bottom: 1px solid #c7c7cc; height: 21px; }
+/* Ruled lines that fill whatever room is left on the page. */
+.notes-area { flex: 1 1 auto; min-height: 44px; background: repeating-linear-gradient(to bottom, transparent 0 21px, #c7c7cc 21px 22px);
+  -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+.outcomes { border-top: 1px solid #1d1d1f; padding-top: 6px; }
 .foot { margin-top: 8px; font-size: 7.5pt; color: #6e6e73; }
 .link { word-break: break-all; font-size: 7.5pt; color: #6e6e73; font-weight: 400; }
-@media print { body { padding: 0; } .toolbar { display: none; } .sheet { margin: 0; max-width: none; } }
+@media print { body { padding: 0; } .toolbar { display: none; } .sheet { margin: 0; max-width: none; height: 273mm; display: flex; flex-direction: column; overflow: hidden; } }
 """
 
 
@@ -391,19 +395,19 @@ def approach_pages(leads, settings, data_date, label="", sheet_id=None):
                                              f"Sheet #{sheet_id}" if sheet_id else "", f"{n} of {len(leads)}"] if v)
         p = l["address"].split(", ", 1)
         out.append(f"""<section class="sheet">
-<div class="top"><span>{e(office.upper() + " · " if office else "")}Approach sheet</span><span>{e(head_right)}</span></div>
+<div class="top"><span>{T} days on market · Approach sheet</span><span>{e(head_right)}</span></div>
 <h1>{e(p[0])}</h1><div class="suburb">{e(p[1] if len(p) > 1 else "")}</div>
 {status}
 <h2>The listing</h2><dl>{listing}</dl>
 <h2>The owner</h2>{"".join(owners) or '<p>No confirmed owner.</p>'}
 <h2>Before you make contact</h2>
-<div class="checks"><div><span class="box"></span>Checked against the Do Not Call Register</div><div><span class="box"></span>Confirmed it is still on the market</div>
-<div><span class="box"></span>Checked the agreement has lapsed</div><div><span class="box"></span>Read the "Read before calling" note</div></div>
+<div class="checks"><div><span class="box"></span>Checked against the Do Not Call Register</div><div><span class="box"></span>Confirmed it is still on the market</div></div>
 <div class="given"><div>Agent: {e(label)}</div><div>Date given:</div></div>
 <h2>The call</h2>
 <table class="log"><tr><th style="width:24%">Date and time</th><th style="width:26%">Number called</th><th>What happened</th></tr>{"<tr><td></td><td></td><td></td></tr>" * 3}</table>
+<h2>Agent notes</h2>
+<div class="notes-area"></div>
 <div class="outcomes"><span><span class="box"></span>No answer</span><span><span class="box"></span>Left message</span><span><span class="box"></span>Call back on ________</span><span><span class="box"></span>Appraisal booked ________</span><span><span class="box"></span>Not interested</span><span><span class="box"></span>Wrong number</span><span><span class="box"></span>Asked not to be contacted</span></div>
-<div class="lines"><div></div><div></div></div>
 <div class="foot">Owner matched on the exact property address in our CRM. Log every call in Listing Watch the same day, including no answers. Lead #{l["id"]}.</div>
 </section>""")
     return "".join(out)

@@ -451,7 +451,10 @@ def build_records(kind, headers, rows, mapping, today, date_order="DMY"):
                 extra["phone_notes"] = phone_notes
             email = get(row, "email")
             tags = get(row, "tags").lower()
-            tag_dnc = bool(re.search(r"do not (contact|call)|\bdnc\b", tags)) or any(PHONE_DNC.search(n) for n in phone_notes)
+            note_dnc = bool(PHONE_DNC.search(extra.get("last_note", "")))
+            if note_dnc:
+                extra["dnc_reason"] = "The last CRM note says not to contact them"
+            tag_dnc = bool(re.search(r"do not (contact|call)|\bdnc\b", tags)) or any(PHONE_DNC.search(n) for n in phone_notes) or note_dnc
             rec.update(name=name, phone=phone, phone2=phone2, email=email,
                        do_not_contact=truthy(get(row, "do_not_contact")) or tag_dnc, notes=get(row, "notes"),
                        extra=extra)
