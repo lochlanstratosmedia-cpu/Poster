@@ -608,7 +608,9 @@ const FONTS = {
   gloock: { label: "Gloock", stack: "Gloock, serif", load: "Gloock" },
   cormorant: { label: "Cormorant", stack: '"Cormorant Garamond", serif', load: "Cormorant Garamond" },
 };
-const STYLE_NAMES = { classic: "Classic", glass: "Glass", liquid: "Liquid", beacon: "Beacon", editorial: "Editorial", bold: "Bold", tag: "Tag" };
+const STYLE_NAMES = { classic: "Classic", glass: "Glass", liquid: "Liquid", beacon: "Beacon", editorial: "Editorial", bold: "Bold", tag: "Tag", marker: "Marker", halo: "Halo", block: "Block" };
+// Styles with no label box: the name or logo floats over the photo.
+const BARE = st => st === "editorial" || st === "marker" || st === "halo";
 const BRAND_DEFAULTS = { style: "classic", accent: "#007aff", labelBg: "#ffffff", text: "#1d1d1f", font: "system", weight: 600, upper: false, distance: true, icons: true, catColors: true, size: 1, stem: 1, radius: 0.6, shadow: 1, outlineW: 1, outlineFill: 0.18, heroOn: true, logo: null, logoOnly: false };
 const BUILTIN_BRANDS = [
   { id: "classic", name: "Classic", style: "classic" },
@@ -618,6 +620,10 @@ const BUILTIN_BRANDS = [
   { id: "editorial", name: "Editorial", style: "editorial", text: "#ffffff", font: "montserrat", upper: true, icons: false, accent: "#ffffff" },
   { id: "bold", name: "Bold", style: "bold", accent: "#1f4d3a", text: "#ffffff", labelBg: "#ffffff", font: "montserrat", weight: 800, upper: true, icons: false, radius: 0.15 },
   { id: "tag", name: "Tag", style: "tag", accent: "#111111", labelBg: "#ffffff", text: "#111111", font: "dmsans", weight: 700, radius: 1, catColors: false },
+  { id: "marker", name: "Marker", style: "marker", text: "#ffffff", accent: "#ffffff", weight: 700, icons: false, stem: 2.4, shadow: 1.2 },
+  { id: "halo", name: "Halo", style: "halo", text: "#ffffff", accent: "#ffffff", weight: 700, icons: false, stem: 2.4, shadow: 1.2 },
+  { id: "block", name: "Block orange", style: "block", labelBg: "#dc6b3b", text: "#3a2f2b", accent: "#dc6b3b", font: "montserrat", weight: 500, upper: true, icons: false, catColors: false, radius: 0, stem: 3, shadow: 0.5 },
+  { id: "block-lavender", name: "Block lavender", style: "block", labelBg: "#a596cc", text: "#35303f", accent: "#a596cc", font: "montserrat", weight: 500, upper: true, icons: false, catColors: false, radius: 0, stem: 3, shadow: 0.5 },
 ].map(b => ({ ...BRAND_DEFAULTS, ...b }));
 
 /* ------------------------------------------------------------------ state */
@@ -781,13 +787,16 @@ async function getJSON(url, opts = {}, ms = 25000) {
     return await r.json();
   } finally { clearTimeout(t); }
 }
+// Address search looks in Australia first, then anywhere if nothing matches there.
+const HOME_BBOX = "112.5,-44.5,154.5,-9.0", HOME_CC = "au";
 async function searchAddress(q, bias) {
   const coord = /^\s*(-?\d+(?:\.\d+)?)\s*[, ]\s*(-?\d+(?:\.\d+)?)\s*$/.exec(q);
   if (coord) return [{ title: q.trim(), sub: "Coordinates", lat: +coord[1], lon: +coord[2] }];
   try {
     let u = "https://photon.komoot.io/api/?limit=6&q=" + encodeURIComponent(q);
     if (bias) u += `&lat=${bias.lat.toFixed(4)}&lon=${bias.lon.toFixed(4)}`;
-    const j = await getJSON(u, {}, 8000);
+    let j = await getJSON(u + "&bbox=" + HOME_BBOX, {}, 8000);
+    if (!(j.features || []).length) j = await getJSON(u, {}, 8000);
     const out = (j.features || []).map(f => {
       const p = f.properties || {};
       const street = [p.housenumber, p.street].filter(Boolean).join(" ");
@@ -797,7 +806,9 @@ async function searchAddress(q, bias) {
     }).filter(r => r.title);
     if (out.length) return out;
   } catch (e) { console.warn("Photon failed", e); }
-  const j = await getJSON("https://nominatim.openstreetmap.org/search?format=jsonv2&addressdetails=1&limit=6&q=" + encodeURIComponent(q), { headers: { "Accept-Language": "en" } }, 12000);
+  const nu = "https://nominatim.openstreetmap.org/search?format=jsonv2&addressdetails=1&limit=6&q=" + encodeURIComponent(q), nh = { headers: { "Accept-Language": "en" } };
+  let j = await getJSON(nu + "&countrycodes=" + HOME_CC, nh, 12000);
+  if (!j.length) j = await getJSON(nu, nh, 12000);
   return j.map(r => {
     const a = r.address || {};
     const street = [a.house_number, a.road].filter(Boolean).join(" ");
@@ -1319,7 +1330,7 @@ function iconColor(b, pin) { return pin.kind === "hero" ? b.accent : b.catColors
 function measurePin(ctx, pin, b, u) {
   const hero = pin.kind === "hero", k = hero ? 1.16 : 1, st = b.style;
   const fs1 = 15 * u * k, fs2 = 11.5 * u * k;
-  const track = b.upper ? 0.07 : st === "editorial" ? 0.02 : 0;
+  const track = b.upper ? (st === "block" ? 0.12 : 0.07) : st === "editorial" ? 0.02 : 0;
   const name = b.upper ? pin.name.toUpperCase() : pin.name;
   const sub = b.distance && pin.sub ? (b.upper ? pin.sub.toUpperCase() : pin.sub) : "";
   setFont(ctx, b.weight, fs1, b, track); const w1 = ctx.measureText(name).width;
@@ -1327,16 +1338,16 @@ function measurePin(ctx, pin, b, u) {
   const lh1 = fs1 * 1.2, lh2 = sub ? fs2 * 1.3 : 0;
   const textW = Math.max(w1, w2), textH = lh1 + lh2;
   const logo = hero ? logoImg(b.logo) : null;
-  const padX = (b.style === "liquid" ? 15 : 12) * u * k, padY = (b.style === "liquid" ? 9 : 8) * u * k, gap = 8 * u * k;
+  const padX = (st === "block" ? 22 : st === "liquid" ? 15 : 12) * u * k, padY = (st === "block" ? 8.5 : st === "liquid" ? 9 : 8) * u * k, gap = 8 * u * k;
   const m = { hero, k, fs1, fs2, track, name, sub, lh1, lh2, textW, textH, logo, padX, padY, gap };
   if (logo && b.logoOnly) {
     // Logo-only property pin: the logo, larger, in the style's label (bare for Editorial).
     m.logoOnly = true; m.logoH = textH * 1.45; m.logoW = Math.min(m.logoH * 6, m.logoH * logo.width / logo.height);
-    if (st === "editorial") { m.w = m.logoW; m.h = m.logoH; }
+    if (BARE(st)) { m.w = m.logoW; m.h = m.logoH; }
     else { m.w = m.logoW + padX * 1.6; m.h = m.logoH + padY * 1.6; }
     return m;
   }
-  if (st === "editorial") {
+  if (BARE(st)) {
     m.logoH = logo ? textH * 1.4 : 0; m.logoW = logo ? m.logoH * logo.width / logo.height : 0;
     m.w = Math.max(textW, m.logoW); m.h = textH + (logo ? m.logoH + 6 * u : 0);
   } else if (st === "beacon") {
@@ -1413,12 +1424,14 @@ function drawPin(ctx, L, b, src, W, H, selected) {
     ctx.shadowBlur = blur * u * (0.5 + 0.5 * sk); ctx.shadowOffsetY = dy * u * Math.min(sk, 2);
   };
   const r = (st === "tag" || st === "liquid" ? m.h / 2 : 14 * u * m.k * b.radius);
-  const stemTop = box.up ? box.y + box.h : box.y;
+  // Marker and Halo leave a small gap between the name and the line, capped by a dot.
+  const gapT = st === "marker" || st === "halo" ? 7 * u * m.k : 0;
+  const stemTop = box.up ? box.y + box.h + gapT : box.y - gapT;
   const stemColor = st === "beacon" || st === "bold" ? b.accent : st === "editorial" ? b.text : "#ffffff";
   // stem
   ctx.save();
   shade(0.35, 4, 0);
-  ctx.strokeStyle = st === "liquid" ? "rgba(255,255,255,0.9)" : stemColor; ctx.lineWidth = (st === "editorial" || st === "liquid" ? 1.5 : 2) * u * m.k; ctx.lineCap = "round";
+  ctx.strokeStyle = st === "liquid" ? "rgba(255,255,255,0.9)" : stemColor; ctx.lineWidth = (st === "editorial" || st === "liquid" || st === "marker" || st === "halo" || st === "block" ? 1.5 : 2) * u * m.k; ctx.lineCap = "round";
   ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(px, stemTop); ctx.stroke();
   // dot
   const dr = 5 * u * m.k;
@@ -1427,6 +1440,20 @@ function drawPin(ctx, L, b, src, W, H, selected) {
     ctx.lineWidth = 1.6 * u; ctx.strokeStyle = "rgba(255,255,255,0.95)";
     ctx.fillStyle = "rgba(255,255,255,0.28)"; ctx.beginPath(); ctx.arc(px, py, dr * 1.15, 0, 7); ctx.fill(); ctx.stroke();
     ctx.shadowBlur = 0; ctx.fillStyle = hero ? b.accent : "#ffffff"; ctx.beginPath(); ctx.arc(px, py, dr * 0.42, 0, 7); ctx.fill();
+  } else if (st === "block") {
+    // Just the line: it ends on the spot.
+  } else if (st === "marker" || st === "halo") {
+    // A dot caps the line; the base sits on the ground as a dot in a flat ring, seen in perspective.
+    ctx.fillStyle = "#ffffff";
+    ctx.beginPath(); ctx.arc(px, stemTop, 2.6 * u * m.k, 0, 7); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(px, py, dr * 0.85, dr * 0.45, 0, 0, 7); ctx.fill();
+    ctx.lineWidth = 1.1 * u; ctx.strokeStyle = "rgba(255,255,255,0.9)";
+    ctx.beginPath(); ctx.ellipse(px, py, dr * 1.9, dr * 0.85, 0, 0, 7); ctx.stroke();
+    if (st === "halo") {
+      const s = hero ? 1 : 0.55;
+      ctx.lineWidth = 1.2 * u; ctx.strokeStyle = "rgba(255,255,255,0.6)";
+      ctx.beginPath(); ctx.ellipse(px, py, dr * 7.5 * s, dr * 3 * s, 0, 0, 7); ctx.stroke();
+    }
   } else if (st === "editorial") {
     ctx.lineWidth = 1.6 * u; ctx.beginPath(); ctx.arc(px, py, dr, 0, 7); ctx.stroke();
     ctx.shadowBlur = 0; ctx.fillStyle = stemColor; ctx.beginPath(); ctx.arc(px, py, dr * 0.35, 0, 7); ctx.fill();
@@ -1440,7 +1467,7 @@ function drawPin(ctx, L, b, src, W, H, selected) {
   // label
   const { x, y, w, h } = box;
   ctx.save();
-  if (st !== "editorial") shade(0.28, 16, 4);
+  if (!BARE(st)) shade(0.28, 16, 4);
   let ink = b.text, sub = withAlpha(b.text, 0.62), fill = b.labelBg;
   if (st === "classic" || st === "tag") {
     if (hero && !m.logoOnly) { fill = b.accent; ink = onColor(b.accent); sub = withAlpha(ink, 0.75); }
@@ -1503,22 +1530,24 @@ function drawPin(ctx, L, b, src, W, H, selected) {
     if (box.up) { ctx.moveTo(tx - t, y + h - 0.5); ctx.lineTo(tx, y + h + t); ctx.lineTo(tx + t, y + h - 0.5); }
     else { ctx.moveTo(tx - t, y + 0.5); ctx.lineTo(tx, y - t); ctx.lineTo(tx + t, y + 0.5); }
     ctx.fill();
-  } else if (st === "editorial") {
+  } else if (st === "block") {
+    rrect(ctx, x, y, w, h, 14 * u * m.k * b.radius); ctx.fillStyle = fill; ctx.fill();
+  } else if (BARE(st)) {
     shade(0.55, 10, 1);
   }
-  if (st !== "editorial") { ctx.shadowColor = "transparent"; ctx.shadowBlur = 0; ctx.shadowOffsetY = 0; }
+  if (!BARE(st)) { ctx.shadowColor = "transparent"; ctx.shadowBlur = 0; ctx.shadowOffsetY = 0; }
   // Clear glass needs a soft shadow under the text to read over any photo.
   if (st === "liquid") shade(0.45, 6, 1);
 
   // contents
   if (m.logoOnly) {
-    if (st !== "editorial") { ctx.shadowColor = "transparent"; ctx.shadowBlur = 0; ctx.shadowOffsetY = 0; }
+    if (!BARE(st)) { ctx.shadowColor = "transparent"; ctx.shadowBlur = 0; ctx.shadowOffsetY = 0; }
     ctx.drawImage(m.logo, x + (w - m.logoW) / 2, y + (h - m.logoH) / 2, m.logoW, m.logoH);
-  } else if (st === "editorial") {
+  } else if (BARE(st)) {
     let ty = y;
     if (m.logo) { ctx.drawImage(m.logo, x + (w - m.logoW) / 2, y, m.logoW, m.logoH); ty += m.logoH + 6 * u; }
     drawText(ctx, m, b, x + w / 2, ty, b.text, withAlpha(b.text, 0.85), "center");
-    if (hero) { ctx.fillStyle = b.accent; ctx.fillRect(x + w / 2 - 12 * u, y + h + 3 * u, 24 * u, 2 * u); }
+    if (hero && st === "editorial") { ctx.fillStyle = b.accent; ctx.fillRect(x + w / 2 - 12 * u, y + h + 3 * u, 24 * u, 2 * u); }
   } else if (st === "beacon") {
     if (m.logo) {
       const lh = m.d - 6 * u, lw = m.slotW - 6 * u;
@@ -1530,6 +1559,8 @@ function drawPin(ctx, L, b, src, W, H, selected) {
       drawIcon(ctx, pin.icon, x + m.d / 2, y + m.d / 2, m.d * 0.5, "#ffffff", 2.3);
     }
     drawText(ctx, m, b, x + m.slotW + m.gap, y + m.padY, ink, sub, "left");
+  } else if (st === "block" && !m.logo && !m.iconW) {
+    drawText(ctx, m, b, x + w / 2, y + m.padY, ink, withAlpha(ink, 0.8), "center");
   } else {
     let tx = x + m.padX + (st === "tag" ? 10 * u * m.k : 0);
     if (st === "tag") { ctx.fillStyle = hero ? onColor(b.accent) : b.accent; ctx.beginPath(); ctx.arc(x + m.padX + 2 * u, y + h / 2, 3.5 * u * m.k, 0, 7); ctx.fill(); }
@@ -1879,7 +1910,7 @@ $("#styleTiles").addEventListener("click", e => {
   const preset = BUILTIN_BRANDS.find(z => z.style === s);
   // Switching style keeps the brand's colours unless the style needs dark text on light or the reverse.
   const patch = { style: s };
-  if (s === "glass" || s === "editorial" || s === "liquid") { patch.text = "#ffffff"; if (s === "glass") patch.labelBg = "#1c1c1e"; if (s === "liquid") patch.labelBg = "#ffffff"; }
+  if (s === "glass" || BARE(s) || s === "liquid") { patch.text = "#ffffff"; if (s === "glass") patch.labelBg = "#1c1c1e"; if (s === "liquid") patch.labelBg = "#ffffff"; }
   else if (styleTarget().text === "#ffffff" && s !== "bold") { patch.text = preset.text; patch.labelBg = preset.labelBg; }
   editBrand(patch);
 });

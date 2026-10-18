@@ -85,7 +85,8 @@ That link always serves the latest version on this branch. You can also open
 `tools/drone-pins.html` from a download or clone. No install or build step.
 
 1. Drop one or more drone photos on the window.
-2. Type the property address in the search field and pick the match.
+2. Type the property address in the search field and pick the match. Search
+   looks in Australia first and only goes worldwide when nothing matches there.
 3. Pinpoint switches on the key places for the address: the nearest public
    primary and high school (catchments go by government schools), the
    nearest childcare, the nearest train station, the closest shops and the
@@ -126,13 +127,14 @@ to move it, and click a place to show or hide it. The Camera tab has sliders for
 Photos with no location data start from the address with a guessed camera;
 place the drone on the map first.
 
-Brand styles live in the Style tab: seven pin designs (Classic, Glass,
-Liquid, Beacon, Editorial, Bold, Tag), colours, font, size, line length, capitals,
+Brand styles live in the Style tab: ten pin designs (Classic, Glass,
+Liquid, Beacon, Editorial, Bold, Tag, Marker, Halo, Block), colours, font, size, line length, capitals,
 distances, icons, a Shadow slider (off to heavy, for bright or busy photos)
 and a logo for the property pin. Customise all changes the brand; Customise
 clicked changes only the pin you click (Reset this pin undoes it). Turn on Logo only to show
 just the logo on the property pin; it sits on the brand's Label colour, so
-pick a light Label for a dark logo and a dark one for a white logo. Brands save in the browser.
+pick a light Label for a dark logo and a dark one for a white logo. Editorial,
+Marker and Halo have no label box, so the logo floats on the photo. Brands save in the browser.
 Use the ... menu to export a brand as a `.pinpoint.json` file and import it
 on another machine.
 
