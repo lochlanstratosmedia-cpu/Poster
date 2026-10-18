@@ -195,7 +195,9 @@ def commit_import(token, mapping, full_snapshot, by, conn):
 
     if kind == "contacts":
         if full_snapshot:
-            conn.execute("DELETE FROM contacts")
+            # Replace the previous full CRM export only. Owners added by hand or
+            # from a lookup file (ID4ME and the like) are kept.
+            conn.execute("DELETE FROM contacts WHERE import_id IN (SELECT id FROM imports WHERE kind = 'contacts' AND full_snapshot = 1 AND id != ?)", (import_id,))
         for r in records:
             p = r["parts"]
             conn.execute(
@@ -535,7 +537,9 @@ def summary(conn):
     counts = {
         "ready_to_assign": sum(1 for l in ready if not l["blockers"]),
         "needs_check": sum(1 for l in ready if l["match"] == "check" and not l["do_not_contact"]),
-        "no_owner": sum(1 for l in ready if l["match"] == "none"),
+        # Owners to look up: not in the CRM, or the CRM name isn't the owner on title.
+        "no_owner": sum(1 for l in ready if not l["do_not_contact"] and
+                        (l["match"] == "none" or any(c["quality"] == "name" for c in l["contacts"]))),
         # Callable owners that crossed the line in the last week.
         "just_hit": sum(1 for l in ready if not l["blockers"] and l["days"] < int(s["threshold_days"]) + 7),
         "hitting_soon": sum(1 for l in active if not l["eligible"] and l["days_to_go"] <= int(s["soon_days"])),
@@ -733,6 +737,65 @@ def sheets_list(conn):
 
 
 # ---------- agents ----------
+
+def add_owner(conn, lead_id, data, by):
+    """Add owner details found outside the CRM (for example an ID4ME lookup)
+    against this property, so it can go on a contact sheet."""
+    by = _require_person(by)
+    row = conn.execute("SELECT listings.parts FROM leads JOIN listings ON listings.id = leads.listing_id WHERE leads.id = ?",
+                       (lead_id,)).fetchone()
+    if not row:
+        raise Problem("That property no longer exists.")
+    name = (data.get("name") or "").strip()
+    if not name:
+        raise Problem("Type the owner's name.")
+    numbers = []
+    for field in ("phone", "phone2"):
+        num, label, note = importer.split_phone(data.get(field, ""))
+        if note:
+            raise Problem(f"'{data.get(field)}' doesn't look like a phone number.")
+        if num and num not in [n for n, _ in numbers]:
+            numbers.append((num, label))
+    email = (data.get("email") or "").strip()
+    if not numbers and not email:
+        raise Problem("Add at least a phone number or an email.")
+    if email and not re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+", email):
+        raise Problem(f"'{email}' doesn't look like an email address.")
+    numbers += [("", "")] * (2 - len(numbers))
+    source = (data.get("source") or "Lookup").strip()[:40]
+    parts = json.loads(row["parts"])
+    extra = {"manual": True, "source": source, "added_by": by, "added_at": now_iso()}
+    if numbers[0][1] or numbers[1][1]:
+        extra["phone_labels"] = [numbers[0][1], numbers[1][1]]
+    note = (data.get("notes") or "").strip()
+    if note:
+        extra.update(last_note=note, last_note_at=now_iso(), last_note_by=by)
+    conn.execute(
+        "INSERT INTO contacts(import_id, name, phone, phone2, email, address_raw, parts, block, do_not_contact, notes, extra) "
+        "VALUES (NULL,?,?,?,?,?,?,?,0,'',?)",
+        (name, numbers[0][0], numbers[1][0], email, address.display(parts), json.dumps(parts),
+         json.dumps(address.block_key(parts)), json.dumps(extra)))
+    _log(conn, lead_id, by, "note", note=f"Owner details added from {source}: {name}")
+    rebuild(conn)
+
+
+def lookup_list(conn, include_soon_days=0):
+    """Properties past the threshold (or reaching it within include_soon_days)
+    whose owner we can't reach yet: not in the CRM, or a name that doesn't
+    match the owner on title."""
+    rows = []
+    for l in leads_view(conn, "all"):
+        if not l["for_sale"] or l["ours"] or l["status"] != "new" or l["do_not_contact"]:
+            continue
+        if not (l["eligible"] or l["days_to_go"] <= include_soon_days):
+            continue
+        name_issue = any(c["quality"] == "name" for c in l["contacts"])
+        if l["match"] == "none" or name_issue:
+            l["lookup_reason"] = "Name doesn't match owner on title" if name_issue else "Owner not in CRM"
+            rows.append(l)
+    rows.sort(key=lambda l: (-l["days"], l["street_sort"]))
+    return rows
+
 
 def save_agent(conn, name, phone="", agent_id=None, active=True):
     name = (name or "").strip()

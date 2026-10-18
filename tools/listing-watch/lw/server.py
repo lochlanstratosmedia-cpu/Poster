@@ -104,12 +104,15 @@ class Handler(BaseHTTPRequestHandler):
         m = re.fullmatch(r"/sheet/(\d+)\.csv", path)
         if m:
             return self._run(lambda c: sheet_csv(c, int(m.group(1))))
+        if path == "/export/lookup.csv":
+            return self._run(lambda c: lookup_csv(c, int(qs.get("soon", ["0"])[0] or 0)))
         if path == "/export/leads.csv":
             return self._run(lambda c: leads_csv(c, qs.get("view", ["all"])[0]))
         routes = {
             "/api/summary": lambda c: engine.summary(c),
             "/api/meta": lambda c: {"statuses": engine.STATUSES, "outcomes": engine.OUTCOMES, "methods": engine.METHODS},
             "/api/leads": lambda c: engine.leads_view(c, qs.get("view", ["ready"])[0]),
+            "/api/lookup": lambda c: engine.lookup_list(c, int(qs.get("soon", ["0"])[0] or 0)),
             "/api/agents": lambda c: [dict(r) for r in c.execute("SELECT * FROM agents ORDER BY active DESC, name")],
             "/api/sheets": lambda c: engine.sheets_list(c),
             "/api/notifications": lambda c: [dict(r) for r in c.execute("SELECT * FROM notifications ORDER BY id DESC LIMIT 100")],
@@ -165,6 +168,7 @@ class Handler(BaseHTTPRequestHandler):
                 "release": lambda c: engine.release(c, lid, by, body.get("reason", "")),
                 "reassign": lambda c: engine.reassign(c, lid, body.get("agent_id"), by),
                 "match": lambda c: engine.review_match(c, lid, body.get("contact_id"), body.get("decision"), by),
+                "owner": lambda c: engine.add_owner(c, lid, body, by),
             }
             if action in actions:
                 return self._run(actions[action], write=True)
@@ -301,6 +305,9 @@ def _how_we_know(c):
     x = c.get("extra") or {}
     tags = [t.strip() for t in re.split(r"[,;|]", x.get("tags", "")) if t.strip()]
     tags = [t for t in tags if not re.search(r"do not (contact|call)|\bdnc\b", t, re.I)]
+    if x.get("manual"):
+        when = (x.get("added_at") or "")[:10]
+        return f"Looked up via {x.get('source') or 'lookup'}, added by {x.get('added_by') or 'staff'}" + (f" on {_fmt_date(when, '%-d %b %Y')}" if when else "")
     parts = ["In our database"] + tags[:6]
     if x.get("source"):
         parts.append(f"source: {x['source']}")
@@ -458,6 +465,24 @@ def sheet_csv(conn, sheet_id):
     s = engine.sheet(conn, sheet_id)
     status, body, ctype = _csv_response(_lead_csv_rows(s["leads"]), "")
     return (200, body, ctype, {"Content-Disposition": f'attachment; filename="contact-sheet-{sheet_id}-{re.sub(r"[^A-Za-z0-9]+", "-", s["agent"])}.csv"'})
+
+
+def lookup_csv(conn, soon=0):
+    """The owner lookup list, one row per property, for searching in ID4ME or similar."""
+    header = ["Lead #", "Street address", "Suburb", "State", "Postcode", "Owner on title 1", "Owner on title 2", "Owner on title 3",
+              "Why", "Days listed", "Reaches threshold", "Agency", "Listing agent", "Asking", "Owner type", "Listing link"]
+    rows = [header]
+    for l in engine.lookup_list(conn, soon):
+        p = address.parse(l["address"])
+        street, _, rest = l["address"].partition(", ")
+        x = l.get("extra") or {}
+        rows.append([l["id"], street, p["suburb"].title(), p["state"].upper(), p["postcode"], x.get("owner_1", ""), x.get("owner_2", ""),
+                     x.get("owner_3", ""), l["lookup_reason"], l["days"], l["hits_on"], l["agency"], l["listing_agent"] or "",
+                     l["price"] or "", x.get("owner_type", ""), l["url"] or ""])
+    # One line per property: RP Data sometimes has line breaks inside names.
+    rows = [[" ".join(c.split()) if isinstance(c, str) else c for c in r] for r in rows]
+    status, body, ctype = _csv_response(rows, "")
+    return (200, body, ctype, {"Content-Disposition": f'attachment; filename="owner-lookup-{engine.today(conn)}.csv"'})
 
 
 def leads_csv(conn, view):

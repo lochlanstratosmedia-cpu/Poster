@@ -5,6 +5,7 @@ const state = {
   summary: null, meta: null, agents: [], person: "",
   ready: { filter: "ready", q: "", suburb: "", selected: new Set(), agent: "" },
   watch: { filter: "owner", q: "" },
+  lookup: { q: "", soon: false },
   tracker: { filter: "open", q: "", agent: "" },
   lastUnread: null,
 };
@@ -167,6 +168,7 @@ async function refreshSummary() {
   $("#c-ready").textContent = c.ready_to_assign ? fmtN(c.ready_to_assign) : "";
   $("#c-ready").classList.toggle("hot", c.just_hit > 0);
   $("#c-watch").textContent = c.watching ? fmtN(c.watching) : "";
+  $("#c-lookup").textContent = c.no_owner ? fmtN(c.no_owner) : "";
   const trackerHot = c.follow_ups_due + c.stop_calling;
   $("#c-tracker").textContent = trackerHot || c.in_progress || "";
   $("#c-tracker").classList.toggle("hot", trackerHot > 0);
@@ -244,7 +246,7 @@ document.addEventListener("keydown", (e) => {
 
 // ---------- router ----------
 
-const views = { today: viewToday, ready: viewReady, watch: viewWatch, tracker: viewTracker, sheets: viewSheets, insights: viewInsights, import: viewImport, settings: viewSettings };
+const views = { today: viewToday, ready: viewReady, lookup: viewLookup, watch: viewWatch, tracker: viewTracker, sheets: viewSheets, insights: viewInsights, import: viewImport, settings: viewSettings };
 
 async function render() {
   const [, name = "today", arg] = (location.hash || "#/today").split("/");
@@ -289,7 +291,7 @@ async function viewToday() {
       <a href="#/ready/check"><b>${c.needs_check}</b> owner match${c.needs_check === 1 ? "" : "es"} to check</a>
       <a href="#/tracker"><b>${c.in_progress}</b> being worked</a>
       <a href="#/tracker/won"><b>${c.won}</b> listed with us</a>
-      <a href="#/ready/none"><b>${fmtN(c.no_owner)}</b> past ${threshold()} days, owner not in CRM</a>
+      <a href="#/lookup"><b>${fmtN(c.no_owner)}</b> owners to look up</a>
     </div>
     <div class="card">
       <div class="card-head"><h2>Notifications</h2>${notes.some((n) => !n.read_at) ? `<button class="btn small ghost" id="read-all">Mark all as read</button>` : ""}</div>
@@ -342,13 +344,13 @@ function bindRowClicks(root) {
 
 async function viewReady(arg) {
   const st = state.ready;
+  if (arg === "none") { location.hash = "#/lookup"; return; }
   if (arg) st.filter = arg;
   await refreshSummary();
   const all = await api("/api/leads?view=ready");
   const groups = {
     ready: { label: "Ready to call", test: (l) => !l.blockers.length },
     check: { label: "Owner match to check", test: (l) => l.match === "check" && !l.do_not_contact },
-    none: { label: "Not in CRM", test: (l) => l.match === "none" },
     dnc: { label: "Do not contact", test: (l) => l.do_not_contact },
   };
   const counts = Object.fromEntries(Object.entries(groups).map(([k, g]) => [k, all.filter(g.test).length]));
@@ -461,6 +463,73 @@ async function makeSheet() {
 function debounce(fn, ms) {
   let t;
   return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); };
+}
+
+// ---------- Owner lookup ----------
+// Past the line, but nobody to call yet: the owner isn't in the CRM, or the
+// CRM name doesn't match the owner on title. Look them up (ID4ME or similar),
+// then add the details here.
+
+const titleCase = (s) => String(s || "").toLowerCase().replace(/\b[a-z]/g, (c) => c.toUpperCase());
+const onTitle = (l) => ["owner_1", "owner_2", "owner_3"].map((k) => l.extra?.[k]).filter(Boolean);
+
+async function viewLookup() {
+  const st = state.lookup;
+  await refreshSummary();
+  const all = await api(`/api/lookup?soon=${st.soon ? state.summary.settings.soon_days : 0}`);
+  const list = filterText(all, st.q);
+  const T = threshold();
+  $("#view").innerHTML = `
+    <h1>Owner lookup</h1>
+    <p class="lede">Past ${T} days, but we can't reach the owner yet. Look them up in ID, then add their details.</p>
+    <div class="toolbar">
+      <input class="search" type="search" placeholder="Search address, owner on title or agency" value="${esc(st.q)}" id="q">
+      <label class="row small" style="gap:8px"><input type="checkbox" id="soon" ${st.soon ? "checked" : ""} style="width:18px;height:18px"> Include the next ${state.summary.settings.soon_days} days</label>
+      <span class="spacer"></span>
+      <a class="btn small" href="/export/lookup.csv?soon=${st.soon ? state.summary.settings.soon_days : 0}">Download lookup list</a>
+    </div>
+    <p class="sub" style="margin:-4px 0 14px">${plural(all.length, "property", "properties")}. The download has the address and owner on title for each, ready to search. Got a spreadsheet back from ID? Bring it in under <a href="#/import">Import</a> as "Our database" with "replace" unticked.</p>
+    <div class="table-wrap">${list.length ? `<table class="list"><thead><tr><th>Days listed</th><th>Property</th><th>Owner on title</th><th>Current agency</th><th></th></tr></thead><tbody>
+      ${list.map((l) => `<tr data-id="${l.id}">
+        <td><div class="days">${l.days}<small>${l.eligible ? `since ${esc(fmtDate(l.listed_date, false))}` : `reaches ${T} ${esc(relDays(l.hits_on))}`}</small></div></td>
+        <td>${propertyCell(l)}</td>
+        <td>${onTitle(l).length ? esc(onTitle(l).join(", ")) : `<span class="sub">Not in RP Data export</span>`}<div class="sub">${esc(l.lookup_reason)}${l.lookup_reason.startsWith("Name") ? `: CRM has ${esc(l.contacts.map((c) => c.name).join(", "))}` : ""}</div></td>
+        <td>${esc(l.agency)}<div class="sub">${esc(l.listing_agent || "")}</div></td>
+        <td class="nowrap"><button class="btn small" data-add="${l.id}">Add owner</button></td></tr>`).join("")}
+      </tbody></table>` : `<div class="empty"><b>Nothing to look up</b>Every property past ${T} days has an owner you can reach.</div>`}</div>`;
+  $("#q").addEventListener("input", debounce((e) => { st.q = e.target.value; viewLookup().then(() => { const q = $("#q"); q.focus(); q.setSelectionRange(q.value.length, q.value.length); }); }, 250));
+  $("#soon").addEventListener("change", (e) => { st.soon = e.target.checked; viewLookup(); });
+  $("#view").querySelectorAll("[data-add]").forEach((b) => b.addEventListener("click", () => addOwnerForm(all.find((l) => l.id === +b.dataset.add))));
+  bindRowClicks($("#view"));
+}
+
+function addOwnerForm(l) {
+  const guess = onTitle(l).filter((n) => !/\b(pty|ltd|trust)\b/i.test(n)).map(titleCase).join(" & ");
+  showModal(`<h2>Add owner details</h2>
+    <p class="sub">${esc(l.address)}${onTitle(l).length ? `<br>On title: <b>${esc(onTitle(l).join(", "))}</b>` : ""}</p>
+    <form id="owner-form" class="grid" style="gap:10px">
+      <label class="field"><span>Owner name</span><input class="input" id="o-name" value="${esc(guess)}" required></label>
+      <div class="grid cols-2" style="gap:10px"><label class="field"><span>Mobile</span><input class="input" id="o-phone" inputmode="tel" placeholder="04xx xxx xxx"></label>
+        <label class="field"><span>Other phone</span><input class="input" id="o-phone2" inputmode="tel"></label></div>
+      <label class="field"><span>Email</span><input class="input" id="o-email" type="email"></label>
+      <label class="field"><span>Where the details came from</span><select class="input" id="o-source"><option>ID4ME</option><option>Phone call</option><option>Door knock</option><option>Other</option></select></label>
+      <label class="field"><span>Note for the agent (optional)</span><textarea class="input" id="o-notes" style="min-height:60px"></textarea></label>
+      <p class="sub" style="margin:0">Numbers from a lookup must be checked against the Do Not Call Register before calling. The sheet has a box for it.</p>
+      <div class="row end"><button type="button" class="btn ghost" data-close>Cancel</button><button class="btn" type="submit">Save owner</button></div>
+    </form>`);
+  $("#o-phone").focus();
+  $("#owner-form").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const body = { name: $("#o-name").value, phone: $("#o-phone").value, phone2: $("#o-phone2").value, email: $("#o-email").value,
+      source: $("#o-source").value, notes: $("#o-notes").value };
+    const ok = await act(() => api(`/api/leads/${l.id}/owner`, { json: body }), "Owner saved.");
+    if (!ok) return;
+    closeModal();
+    const fresh = await api(`/api/leads/${l.id}`);
+    toast(fresh.blockers.length ? `Saved. Still needs: ${fresh.blockers[0].toLowerCase()}.` : "Saved. It's now in Ready to call.");
+    rerenderBehind();
+    refreshSummary();
+  });
 }
 
 // ---------- Watchlist ----------
@@ -603,7 +672,7 @@ async function openLead(id) {
           ${c.extra?.last_note ? `<div class="lastnote-app"><div class="ln-head"><span>Read before calling</span><span>${esc([String(c.extra.last_note_at || "").slice(0, 10), c.extra.last_note_by].filter(Boolean).join(", "))}</span></div><div class="ln-text">"${esc(c.extra.last_note)}"</div></div>` : ""}
           <div class="sub">In our database as: ${esc(c.address_raw)}</div>
           ${c.notes ? `<div class="sub">Notes: ${esc(c.notes)}</div>` : ""}
-        </div>`).join("") : `<p class="muted">${l.match === "none" ? "Not in your CRM, so there's nobody to call." : "No confirmed owner yet."}</p>`}
+        </div>`).join("") : `<p class="muted">${l.match === "none" ? "Not in your CRM yet." : "No confirmed owner yet."}</p>${l.for_sale && !l.ours && l.status === "new" ? `<button class="btn small" id="add-owner">Add owner details</button>` : ""}`}
         ${l.candidates.filter((c) => c.quality === "check" || c.quality === "name" || c.decision).length ? `
           <h3 style="margin-top:14px">Possible owners to check</h3>
           <p class="sub">Only confirm if this person owns this property. Matches land here when the suburb is missing, the street type differs (Street or Road), or the name doesn't match the owner on title.</p>
@@ -663,6 +732,7 @@ async function openLead(id) {
 
 function bindLead(l) {
   const panel = $("#drawer-panel");
+  $("#add-owner")?.addEventListener("click", () => addOwnerForm({ ...l, extra: l.extra || {} }));
   const reopen = () => { openLead(l.id); refreshSummary(); rerenderBehind(); };
   panel.querySelectorAll("[data-match]").forEach((b) => b.addEventListener("click", async () => {
     const decision = b.dataset.match;

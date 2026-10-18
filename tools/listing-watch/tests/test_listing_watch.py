@@ -332,6 +332,32 @@ class FlowTests(unittest.TestCase):
         self.assertIn("doesn't mention Smith", smith)
         self.assertNotIn("doesn't mention", hill)
 
+    def test_owner_lookup_flow(self):
+        rows = [["Address", "Suburb", "Agency", "Date Listed", "Owner 1 Name"],
+                ["99 Nobody St", "Northvale", "Other Realty", (TODAY - timedelta(days=80)).strftime("%d/%m/%Y"), "SMITH"],
+                ["3/5 Hill Rd", "Northvale", "Other Realty", (TODAY - timedelta(days=80)).strftime("%d/%m/%Y"), "KOURIL"],
+                ["12 Smith St", "Northvale", "Other Realty", (TODAY - timedelta(days=80)).strftime("%d/%m/%Y"), "OWNER"]]
+        self.o.load("listings", rows)
+        reasons = {l["address"].split(",")[0]: l["lookup_reason"] for l in engine.lookup_list(self.o.conn)}
+        self.assertEqual(reasons, {"99 Nobody Street": "Owner not in CRM", "3/5 Hill Road": "Name doesn't match owner on title"})
+        self.assertEqual(engine.summary(self.o.conn)["counts"]["no_owner"], 2)
+        lid = self.o.lead("99 Nobody")["id"]
+        with self.assertRaises(engine.Problem):
+            engine.add_owner(self.o.conn, lid, {"name": "Jo Smith"}, "Boss")  # no number or email
+        with self.assertRaises(engine.Problem):
+            engine.add_owner(self.o.conn, lid, {"name": "Jo Smith", "phone": "call later"}, "Boss")
+        with self.o.conn:
+            engine.add_owner(self.o.conn, lid, {"name": "Jo Smith", "phone": "0491 570 009", "source": "ID4ME"}, "Boss")
+        l = self.o.lead("99 Nobody")
+        self.assertEqual(l["blockers"], [], "found owner goes straight to Ready")
+        self.assertEqual(l["contacts"][0]["extra"]["source"], "ID4ME")
+        self.assertNotIn("99 Nobody Street", [x["address"].split(",")[0] for x in engine.lookup_list(self.o.conn)])
+        with self.o.conn:  # a wrong name from a lookup still has to be checked
+            engine.add_owner(self.o.conn, self.o.lead("3/5 Hill")["id"], {"name": "Someone Else", "phone": "0491 570 010"}, "Boss")
+        self.assertIn("Name doesn't match the owner on title", self.o.lead("3/5 Hill")["blockers"])
+        self.o.load("contacts", CONTACTS)  # a fresh full CRM export keeps looked-up owners
+        self.assertEqual(self.o.lead("99 Nobody")["contacts"][0]["name"], "Jo Smith")
+
     def test_release_and_reassign(self):
         self.o.load("listings", listings(TODAY, smith=80))
         lid = self.o.lead("12 Smith")["id"]

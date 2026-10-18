@@ -423,7 +423,8 @@ function commitImport(token, mapping, full, by) {
   S.imports.push(imp);
   let used = 0;
   if (p.kind === "contacts") {
-    if (full) S.contacts = [];
+    // Replace the previous full CRM export only; owners added by hand or from a lookup file stay.
+    if (full) { const fullIds = new Set(S.imports.filter((i) => i.kind === "contacts" && i.full_snapshot && i.id !== imp.id).map((i) => i.id)); S.contacts = S.contacts.filter((c) => !fullIds.has(c.import_id)); }
     for (const r of records) S.contacts.push({ id: nextId("contacts"), import_id: imp.id, name: r.name, phone: r.phone, phone2: r.phone2,
       email: r.email, address_raw: r.address_raw, parts: r.parts, block: blockKey(r.parts), do_not_contact: r.do_not_contact ? 1 : 0, notes: r.notes, extra: r.extra || {} });
     used = records.length;
@@ -618,7 +619,7 @@ function summary() {
     counts: {
       ready_to_assign: ready.filter((l) => !l.blockers.length).length,
       needs_check: ready.filter((l) => l.match === "check" && !l.do_not_contact).length,
-      no_owner: ready.filter((l) => l.match === "none").length,
+      no_owner: ready.filter((l) => !l.do_not_contact && (l.match === "none" || l.contacts.some((c) => c.quality === "name"))).length,
       just_hit: ready.filter((l) => !l.blockers.length && l.days < Number(S.settings.threshold_days) + 7).length,
       hitting_soon: active.filter((l) => !l.eligible && l.days_to_go <= Number(S.settings.soon_days)).length,
       watching: active.filter((l) => !l.eligible).length,
@@ -734,6 +735,40 @@ function sheetsList() {
       done: on.filter((l) => ["won", "not_interested", "wrong_number", "dnc"].includes(l.status)).length };
   });
 }
+function addOwner(leadId, data, by) {
+  by = requirePerson(by);
+  const lead = S.leads.find((l) => l.id === leadId);
+  if (!lead) throw new Problem("That property no longer exists.");
+  const name = String(data.name || "").trim();
+  if (!name) throw new Problem("Type the owner's name.");
+  const numbers = [];
+  for (const f of ["phone", "phone2"]) {
+    const [num, label, note] = splitPhone(data[f]);
+    if (note) throw new Problem(`'${data[f]}' doesn't look like a phone number.`);
+    if (num && !numbers.some(([n]) => n === num)) numbers.push([num, label]);
+  }
+  const email = String(data.email || "").trim();
+  if (!numbers.length && !email) throw new Problem("Add at least a phone number or an email.");
+  if (email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) throw new Problem(`'${email}' doesn't look like an email address.`);
+  while (numbers.length < 2) numbers.push(["", ""]);
+  const source = String(data.source || "Lookup").trim().slice(0, 40);
+  const parts = listingOf(lead).parts;
+  const extra = { manual: true, source, added_by: by, added_at: nowIso() };
+  if (numbers[0][1] || numbers[1][1]) extra.phone_labels = [numbers[0][1], numbers[1][1]];
+  const note = String(data.notes || "").trim();
+  if (note) Object.assign(extra, { last_note: note, last_note_at: nowIso(), last_note_by: by });
+  S.contacts.push({ id: nextId("contacts"), import_id: null, name, phone: numbers[0][0], phone2: numbers[1][0], email,
+    address_raw: displayAddr(parts), parts, block: blockKey(parts), do_not_contact: 0, notes: "", extra });
+  log(leadId, by, "note", { note: `Owner details added from ${source}: ${name}` });
+  rebuild();
+}
+function lookupList(soon = 0) {
+  return serialize(S.leads).filter((l) => l.for_sale && !l.ours && l.status === "new" && !l.do_not_contact && (l.eligible || l.days_to_go <= soon))
+    .map((l) => ({ ...l, nameIssue: l.contacts.some((c) => c.quality === "name") }))
+    .filter((l) => l.match === "none" || l.nameIssue)
+    .map((l) => ({ ...l, lookup_reason: l.nameIssue ? "Name doesn't match owner on title" : "Owner not in CRM" }))
+    .sort((a, b) => cmp([-a.days, a.street_sort], [-b.days, b.street_sort]));
+}
 function saveAgent(name, phone = "", id = null, active = true) {
   name = String(name || "").trim();
   if (!name) throw new Problem("Type the agent's name.");
@@ -770,6 +805,7 @@ function propertyLine(l) {
 }
 function howWeKnow(c) {
   const x = c.extra || {};
+  if (x.manual) return `Looked up via ${x.source || "lookup"}, added by ${x.added_by || "staff"}${x.added_at ? " on " + longDate(x.added_at.slice(0, 10)).replace(/^\w+ /, "") : ""}`;
   const tags = String(x.tags || "").split(/[,;|]/).map((t) => t.trim()).filter((t) => t && !/do not (contact|call)|\bdnc\b/i.test(t));
   return ["In our database", ...tags.slice(0, 6), x.source ? `source: ${x.source}` : ""].filter(Boolean).join(" · ");
 }
@@ -914,6 +950,7 @@ function route(method, path, qs, body, person) {
     if (path === "/api/summary") return summary();
     if (path === "/api/meta") return { statuses: STATUSES, outcomes: OUTCOMES, methods: METHODS };
     if (path === "/api/leads") return leadsView(qs.get("view") || "ready");
+    if (path === "/api/lookup") return lookupList(Number(qs.get("soon") || 0));
     if (path === "/api/agents") return [...S.agents].sort((a, b) => cmp([-a.active, a.name.toLowerCase()], [-b.active, b.name.toLowerCase()]));
     if (path === "/api/sheets") return sheetsList();
     if (path === "/api/notifications") return [...S.notifications].sort((a, b) => b.id - a.id).slice(0, 100);
@@ -937,6 +974,7 @@ function route(method, path, qs, body, person) {
       log: () => logOutcome(id, b.outcome, person, b.method || "call", b.note || "", b.follow_up_on),
       undo: () => undoLast(id, person), release: () => release(id, person, b.reason || ""),
       reassign: () => reassign(id, b.agent_id, person), match: () => reviewMatch(id, b.contact_id, b.decision, person),
+      owner: () => addOwner(id, b, person),
     };
     if (actions[m[2]]) { actions[m[2]](); return null; }
   }
