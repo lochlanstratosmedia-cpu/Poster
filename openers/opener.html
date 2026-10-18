@@ -101,6 +101,9 @@ body.render canvas#c { width: auto; border-radius: 0; box-shadow: none; backgrou
         <button type="button" data-v="messages">Messages</button>
         <button type="button" data-v="saved">Saved listing</button>
         <button type="button" data-v="reminder">Open home</button>
+        <button type="button" data-v="call">Incoming call</button>
+        <button type="button" data-v="lock">Lock screen</button>
+        <button type="button" data-v="email">Email</button>
       </div>
     </fieldset>
 
@@ -120,9 +123,9 @@ body.render canvas#c { width: auto; border-radius: 0; box-shadow: none; backgrou
       <div class="clipopts" id="clipOpts" hidden>
         <label class="check"><input type="checkbox" id="fullClip" checked> Play the whole clip after the opener</label>
         <label class="check"><input type="checkbox" id="clipSound" checked> Keep the clip's own sound</label>
-        <p class="note">In Notification, Messages and Saved listing the clip waits on its first frame with a play badge, then starts from the beginning as it grows to full screen.</p>
+        <p class="note">In the phone styles the clip waits on its first frame (with a play badge where it shows as a picture), then starts from the beginning as it opens to full screen.</p>
       </div>
-      <label class="check" data-for="notify messages saved reminder"><input type="checkbox" id="blur" checked> Blur the photo until the reveal</label>
+      <label class="check" data-for="notify messages saved reminder call lock"><input type="checkbox" id="blur" checked> Blur the photo until the reveal</label>
     </fieldset>
 
     <fieldset data-for="search">
@@ -138,7 +141,7 @@ body.render canvas#c { width: auto; border-radius: 0; box-shadow: none; backgrou
       </label>
     </fieldset>
 
-    <fieldset data-for="notify">
+    <fieldset data-for="notify lock">
       <legend>Notification</legend>
       <label>App name
         <input type="text" id="nApp" data-key="nApp" maxlength="30">
@@ -165,11 +168,49 @@ body.render canvas#c { width: auto; border-radius: 0; box-shadow: none; backgrou
         <button type="button" data-v="screen" aria-pressed="true">Chat screen</button>
         <button type="button" data-v="photo">Blurred photo</button>
       </div>
-      <div class="seg" id="mTheme" role="group" aria-label="Chat screen colour">
+      <p class="note">The chat screen hides your photo until it is sent. With Green screen or Transparent, only the bubbles show.</p>
+    </fieldset>
+
+    <fieldset data-for="call">
+      <legend>Incoming call</legend>
+      <label>Caller
+        <input type="text" id="kName" data-key="kName" maxlength="30">
+      </label>
+      <label>Second line
+        <input type="text" id="kSub" data-key="kSub" maxlength="40">
+      </label>
+      <p class="note">The photo is the caller's picture. Accept is pressed and the picture grows to full screen.</p>
+    </fieldset>
+
+    <fieldset data-for="lock">
+      <legend>Lock screen</legend>
+      <div class="row">
+        <label>Time <input type="text" id="lTime" data-key="lTime" maxlength="8" placeholder="Now"></label>
+        <label>Date <input type="text" id="lDate" data-key="lDate" maxlength="30" placeholder="Today"></label>
+      </div>
+      <p class="note">Leave the time and date blank to use the time on your device. The blurred photo is the wallpaper. Fade up swipes the lock screen away; Zoom through grows the photo from the notification.</p>
+    </fieldset>
+
+    <fieldset data-for="email">
+      <legend>Email</legend>
+      <label>From
+        <input type="text" id="eFrom" data-key="eFrom" maxlength="40">
+      </label>
+      <label>Subject
+        <input type="text" id="eSubject" data-key="eSubject" maxlength="70">
+      </label>
+      <label>Preview
+        <input type="text" id="eBody" data-key="eBody" maxlength="90">
+      </label>
+      <p class="note">The older emails are grey placeholder lines, so no made-up mail shows. With Green screen or Transparent, only the new email shows, as a card.</p>
+    </fieldset>
+
+    <fieldset data-for="messages email">
+      <legend>Screen colour</legend>
+      <div class="seg" id="mTheme" role="group" aria-label="Screen colour">
         <button type="button" data-v="light" aria-pressed="true">Light</button>
         <button type="button" data-v="dark">Dark</button>
       </div>
-      <p class="note">The chat screen hides your photo until it is sent. With Green screen or Transparent, only the bubbles show.</p>
     </fieldset>
 
     <fieldset data-for="saved">
@@ -214,7 +255,7 @@ body.render canvas#c { width: auto; border-radius: 0; box-shadow: none; backgrou
       <label><span class="lab">Hold before it leaves <output id="holdOut"></output></span>
         <input type="range" id="hold" min="0.3" max="3" step="0.1">
       </label>
-      <label class="check" data-for="search notify messages saved"><input type="checkbox" id="tap" checked> Press in before it leaves</label>
+      <label class="check" data-for="search notify messages saved call email"><input type="checkbox" id="tap" checked> Press in before it leaves</label>
     </fieldset>
 
     <fieldset>
@@ -280,6 +321,9 @@ const DEFAULTS = {
   text: "Homes for Sale in Nords Wharf, NSW", pos: 0.3, width: 0.86,
   nApp: "Listings", nTitle: "New listing in Nords Wharf, NSW", nBody: "Tap to take a look inside",
   mLines: "Have you seen this one in Nords Wharf?\nme: No! Send it through", mBack: "screen", mTheme: "light", mName: "",
+  kName: "Your next home", kSub: "Nords Wharf, NSW",
+  lTime: "", lDate: "",
+  eFrom: "Listing alerts", eSubject: "New listing in Nords Wharf, NSW", eBody: "Tap to take a look inside",
   cTitle: "Nords Wharf, NSW", cSub: "For sale", beds: "", baths: "", cars: "",
   rDay: "SAT", rDate: "18", rTitle: "Open home", rWhen: "10:00 to 10:30am", rWhere: "Nords Wharf, NSW",
 };
@@ -466,9 +510,58 @@ function featureIcon(kind, x, y, s, u) {
   ctx.restore();
 }
 const CHAT = {
-  light: { screen: "#ffffff", bar: "rgba(246,246,248,0.97)", line: "#d8d8dc", them: "#e9e9eb", themInk: "#111111", ink: "#111111", soft: "#8e8e93", field: "#c7c7cc", plus: "#e9e9eb" },
-  dark: { screen: "#000000", bar: "rgba(28,28,30,0.97)", line: "#38383a", them: "#262628", themInk: "#ffffff", ink: "#ffffff", soft: "#8e8e93", field: "#3a3a3c", plus: "#2c2c2e" },
+  light: { screen: "#ffffff", bar: "rgba(246,246,248,0.97)", line: "#d8d8dc", them: "#e9e9eb", themInk: "#111111", ink: "#111111", soft: "#8e8e93", field: "#c7c7cc", plus: "#e9e9eb", skel: "#e5e5ea", press: "rgba(0,0,0,0.07)" },
+  dark: { screen: "#000000", bar: "rgba(28,28,30,0.97)", line: "#38383a", them: "#262628", themInk: "#ffffff", ink: "#ffffff", soft: "#8e8e93", field: "#3a3a3c", plus: "#2c2c2e", skel: "#2c2c2e", press: "rgba(255,255,255,0.1)" },
 };
+// Notification banner: app icon, app name, title, message and photo thumbnail.
+// Returns the thumbnail rect so the photo can grow out of it.
+function bannerCard(bx, by, bw, bh, u, o, showThumb, t, P) {
+  const ts = 108 * u, tx = bx + bw - 28 * u - ts, ty = by + bh - 28 * u - ts;
+  shadow(40 * u, 10 * u, 0.25);
+  ctx.fillStyle = "rgba(248,248,250,0.96)"; rr(bx, by, bw, bh, 44 * u); ctx.fill(); noShadow();
+  const is = 92 * u, ix = bx + 28 * u, iy = by + 28 * u;
+  ctx.fillStyle = "#1f4d3a"; rr(ix, iy, is, is, 22 * u); ctx.fill();
+  houseGlyph(ix + is / 2, iy + is / 2 + 2 * u, is * 0.52, "#ffffff", "#1f4d3a");
+  const txL = ix + is + 24 * u, txR = tx - 24 * u;
+  ctx.textBaseline = "alphabetic"; ctx.textAlign = "left";
+  ctx.font = font(500, 27 * u); ctx.fillStyle = "#6e6e73";
+  ctx.fillText(fitText(o.nApp.toUpperCase(), txR - txL), txL, by + 60 * u);
+  ctx.textAlign = "right"; ctx.font = font(400, 26 * u); ctx.fillStyle = "#8e8e93";
+  ctx.fillText("now", bx + bw - 28 * u, by + 60 * u);
+  ctx.textAlign = "left";
+  ctx.font = font(700, 34 * u); ctx.fillStyle = "#111111"; ctx.fillText(fitText(o.nTitle, txR - txL), txL, by + 114 * u);
+  ctx.font = font(400, 32 * u); ctx.fillStyle = "#3a3a3c"; ctx.fillText(fitText(o.nBody, txR - txL), txL, by + 160 * u);
+  if (showThumb) { drawPhoto(tx, ty, ts, ts, 18 * u); playBadge(tx, ty, ts, ts, t, P); }
+  return { x: tx, y: ty, w: ts, h: ts, r: 18 * u };
+}
+// Phone handset icons: the "call" and "call_end" shapes from Google's
+// Material Icons (Apache License 2.0), drawn on a 24-unit grid.
+const ICON_CALL = new Path2D("M20.01 15.38c-1.23 0-2.42-.2-3.53-.56-.35-.12-.74-.03-1.01.24l-1.57 1.97c-2.83-1.35-5.48-3.9-6.89-6.83l1.95-1.66c.27-.28.35-.67.24-1.02-.37-1.11-.56-2.3-.56-3.53 0-.54-.45-.99-.99-.99H4.19C3.65 3 3 3.24 3 3.99 3 13.28 10.73 21 20.01 21c.71 0 .99-.63.99-1.18v-3.45c0-.54-.45-.99-.99-.99z");
+const ICON_END = new Path2D("M12 9c-1.6 0-3.15.25-4.6.72v3.1c0 .39-.23.74-.56.9-.98.49-1.87 1.12-2.66 1.85-.18.18-.43.28-.7.28-.28 0-.53-.11-.71-.29L.29 13.08c-.18-.17-.29-.42-.29-.7 0-.28.11-.53.29-.71C3.34 8.78 7.46 7 12 7s8.66 1.78 11.71 4.67c.18.18.29.43.29.71 0 .28-.11.53-.29.71l-2.48 2.48c-.18.18-.43.29-.71.29-.27 0-.52-.11-.7-.28-.79-.74-1.69-1.36-2.67-1.85-.33-.16-.56-.5-.56-.9v-3.1C15.15 9.25 13.6 9 12 9z");
+function handset(cx, cy, s, end, rot, color) {
+  ctx.save(); ctx.translate(cx, cy); ctx.rotate(rot); ctx.scale(s / 24, s / 24); ctx.translate(-12, -12);
+  ctx.fillStyle = color; ctx.fill(end ? ICON_END : ICON_CALL);
+  ctx.restore();
+}
+function padlock(cx, cy, s, open, color) {
+  ctx.save(); ctx.strokeStyle = color; ctx.fillStyle = color; ctx.lineWidth = s * 0.13; ctx.lineCap = "round";
+  const bw = s, bh = s * 0.78;
+  rr(cx - bw / 2, cy - bh * 0.15, bw, bh, s * 0.14); ctx.fill();
+  // The shackle lifts and swings to the right as it opens.
+  const lift = s * 0.28 * open, sw = s * 0.3 * open;
+  ctx.beginPath();
+  ctx.moveTo(cx - s * 0.28 + sw, cy - bh * 0.15 - lift + (open > 0 ? s * 0.02 : 0));
+  ctx.lineTo(cx - s * 0.28 + sw, cy - s * 0.42 - lift);
+  ctx.arc(cx + sw, cy - s * 0.42 - lift, s * 0.28, Math.PI, 0);
+  ctx.lineTo(cx + s * 0.28 + sw, cy - bh * 0.15 - lift * (1 - open) - (open > 0 ? s * 0.12 * open : 0));
+  ctx.stroke();
+  ctx.restore();
+}
+function nowText(kind) {
+  const d = new Date();
+  if (kind === "time") { const h = d.getHours() % 12 || 12; return `${h}:${String(d.getMinutes()).padStart(2, "0")}`; }
+  return d.toLocaleDateString("en-AU", { weekday: "long", day: "numeric", month: "long" }).replace(",", "");
+}
 // The little hook at the bottom corner of a text bubble.
 function bubbleTail(edge, bot, me, u) {
   const d = me ? 1 : -1;
@@ -630,21 +723,7 @@ const STYLES = {
         if (o.tap && t >= P.tTap) press = 1 - 0.03 * Math.sin(Math.PI * clamp((t - P.tTap) / 0.3));
         ctx.save(); ctx.globalAlpha = L.alpha;
         ctx.translate(W / 2, by + bh / 2); ctx.scale(press, press); ctx.translate(-W / 2, -(by + bh / 2));
-        shadow(40 * u, 10 * u, 0.25);
-        ctx.fillStyle = "rgba(248,248,250,0.96)"; rr(bx, by, bw, bh, 44 * u); ctx.fill(); noShadow();
-        const is = 92 * u, ix = bx + 28 * u, iy = by + 28 * u;
-        ctx.fillStyle = "#1f4d3a"; rr(ix, iy, is, is, 22 * u); ctx.fill();
-        houseGlyph(ix + is / 2, iy + is / 2 + 2 * u, is * 0.52, "#ffffff", "#1f4d3a");
-        const txL = ix + is + 24 * u, txR = tx - 24 * u;
-        ctx.textBaseline = "alphabetic"; ctx.textAlign = "left";
-        ctx.font = font(500, 27 * u); ctx.fillStyle = "#6e6e73";
-        ctx.fillText(fitText(o.nApp.toUpperCase(), txR - txL), txL, by + 60 * u);
-        ctx.textAlign = "right"; ctx.font = font(400, 26 * u); ctx.fillStyle = "#8e8e93";
-        ctx.fillText("now", bx + bw - 28 * u, by + 60 * u);
-        ctx.textAlign = "left";
-        ctx.font = font(700, 34 * u); ctx.fillStyle = "#111111"; ctx.fillText(fitText(o.nTitle, txR - txL), txL, by + 114 * u);
-        ctx.font = font(400, 32 * u); ctx.fillStyle = "#3a3a3c"; ctx.fillText(fitText(o.nBody, txR - txL), txL, by + 160 * u);
-        if (!zooming) { drawPhoto(tx, ty, ts, ts, 18 * u); playBadge(tx, ty, ts, ts, t, P); }
+        bannerCard(bx, by, bw, bh, u, o, !zooming, t, P);
         ctx.restore();
       }
       if (zooming) drawExpand({ x: tx, y: ty, w: ts, h: ts, r: 18 * u }, t, P, W, H);
@@ -874,6 +953,199 @@ const STYLES = {
       }
     },
   },
+
+  call: {
+    blur: true,
+    label: o => o.kName,
+    plan(o) {
+      const tIn = 0.2, tTap = tIn + 2.2 + o.hold;
+      const rings = [];
+      for (let r = tIn + 0.2; r < tTap - 0.3; r += 1.3) rings.push(r);
+      const tRev = tTap + 0.25, revDur = revDurFor(o);
+      const sounds = rings.map(r => ({ t: r, kind: "ring" }));
+      sounds.push({ t: tTap, kind: o.tap ? "tap" : "answer" }, { t: tTap + 0.06, kind: "answer" });
+      if (revDur) sounds.push({ t: tRev, kind: "whoosh", dur: revDur, out: true });
+      return { tIn, rings, tTap, tRev, revDur, end: tRev + revDur + o.tail, sounds };
+    },
+    draw(t, o, P, W, H) {
+      const u = W / 1080 * o.size, tall = S.fmt !== "4x5";
+      const L = leave(t, o, P, u), zooming = o.ending === "zoom" && L.r > 0;
+      const a0 = easeOutCubic(clamp((t - P.tIn) / 0.45)), alpha = a0 * L.alpha;
+      const ar = 170 * u, ax = W / 2, ay = H * (tall ? 0.4 : 0.43) + L.dy;
+      if (alpha > 0) {
+        ctx.save(); ctx.globalAlpha = alpha;
+        ctx.textAlign = "center"; ctx.textBaseline = "alphabetic"; ctx.fillStyle = "#ffffff";
+        const ny = H * (tall ? 0.14 : 0.1) - (1 - a0) * 30 * u + L.dy;
+        shadow(20 * u, 2 * u, 0.25);
+        ctx.font = font(400, 78 * u); ctx.fillText(fitText(o.kName, W * 0.88), W / 2, ny);
+        ctx.font = font(400, 36 * u); ctx.fillStyle = "rgba(255,255,255,0.82)"; ctx.fillText(fitText(o.kSub, W * 0.8), W / 2, ny + 64 * u);
+        noShadow();
+        // Rings pulse out of the caller's picture on each ring.
+        for (const r of P.rings) {
+          const k = (t - r) / 1.2;
+          if (k <= 0 || k >= 1 || t >= P.tTap) continue;
+          ctx.strokeStyle = `rgba(255,255,255,${0.5 * (1 - k)})`; ctx.lineWidth = 4 * u;
+          ctx.beginPath(); ctx.arc(ax, ay, ar * (1 + 0.55 * easeOutCubic(k)), 0, Math.PI * 2); ctx.stroke();
+        }
+        if (!zooming) {
+          ctx.fillStyle = "rgba(255,255,255,0.3)"; ctx.beginPath(); ctx.arc(ax, ay, ar + 8 * u, 0, Math.PI * 2); ctx.fill();
+          drawPhoto(ax - ar, ay - ar, ar * 2, ar * 2, ar); playBadge(ax - ar, ay - ar, ar * 2, ar * 2, t, P);
+        }
+        // Decline and Accept.
+        const by = H * (tall ? 0.82 : 0.8) + L.dy, br = 80 * u;
+        const last = P.rings.filter(r => r <= t).pop();
+        const wig = last != null && t < P.tTap ? Math.sin((t - last) * 28) * Math.exp(-(t - last) * 4) * 0.35 : 0;
+        const press = t >= P.tTap ? 1 - 0.09 * Math.sin(Math.PI * clamp((t - P.tTap) / 0.25)) : 1;
+        const decA = 1 - clamp((t - P.tTap) / 0.2);
+        for (const [x, col, end, rot, label, a, sc] of [[W * 0.26, "#ff3b30", true, 0, "Decline", decA, 1], [W * 0.74, "#34c759", false, wig, "Accept", 1, press]]) {
+          if (a <= 0) continue;
+          ctx.save(); ctx.globalAlpha = alpha * a;
+          ctx.translate(x, by); ctx.scale(sc, sc);
+          ctx.fillStyle = col; ctx.beginPath(); ctx.arc(0, 0, br, 0, Math.PI * 2); ctx.fill();
+          handset(0, 0, br * 1.05, end, rot, "#ffffff");
+          ctx.font = font(400, 30 * u); ctx.fillStyle = "#ffffff"; ctx.textAlign = "center";
+          ctx.fillText(label, 0, br + 52 * u);
+          ctx.restore();
+        }
+        ctx.restore();
+      }
+      if (zooming) drawExpand({ x: ax - ar, y: ay - ar, w: ar * 2, h: ar * 2, r: ar }, t, P, W, H);
+    },
+  },
+
+  lock: {
+    blur: true,
+    ownScreen: () => S.bg === "clip",
+    label: o => o.nTitle,
+    plan(o) {
+      const tNote = 0.8, tUnlock = tNote + 1.4 + o.hold;
+      const tRev = tUnlock + 0.35, revDur = o.ending === "zoom" ? 0.7 : o.ending === "fade" ? 0.6 : 0;
+      const sounds = [{ t: tNote + 0.05, kind: "ding" }, { t: tUnlock, kind: "unlock" }];
+      if (revDur) sounds.push({ t: tRev, kind: "whoosh", dur: revDur, out: true });
+      return { tNote, tUnlock, tRev, revDur, end: tRev + revDur + o.tail, sounds };
+    },
+    draw(t, o, P, W, H) {
+      const u = W / 1080 * o.size, r = revealK(t, P), after = t - (P.tRev + P.revDur);
+      // Fade up swipes the whole lock screen off the top; Zoom through grows
+      // the photo out of the notification.
+      const sy = o.ending === "fade" ? -H * easeInCubic(r) : 0;
+      const zooming = o.ending === "zoom" && r > 0;
+      const uiA = o.ending === "zoom" ? 1 - clamp(r * 3) : 1;
+      if (S.bg === "clip" && !(o.ending === "zoom" && after > 0)) {
+        ctx.save(); ctx.translate(0, sy);
+        if (o.blur) ctx.filter = `blur(${Math.round(28 * W / 1080)}px)`;
+        drawPhoto(0, 0, W, H, 0, o.blur ? 1.12 : 1);
+        ctx.filter = "none";
+        ctx.fillStyle = "rgba(0,0,0,0.3)"; ctx.fillRect(0, 0, W, H);
+        ctx.restore();
+      }
+      const a0 = easeOutCubic(clamp(t / 0.5));
+      ctx.save(); ctx.translate(0, sy); ctx.globalAlpha = a0 * uiA;
+      ctx.textAlign = "center"; ctx.textBaseline = "alphabetic"; ctx.fillStyle = "#ffffff";
+      padlock(W / 2, 118 * u, 44 * u, easeOutBack(clamp((t - P.tUnlock) / 0.3)), "#ffffff");
+      shadow(24 * u, 2 * u, 0.2);
+      ctx.font = font(500, 42 * u); ctx.fillText(o.lDate.trim() || nowText("date"), W / 2, 250 * u);
+      ctx.font = font(500, 210 * u); ctx.fillText(o.lTime.trim() || nowText("time"), W / 2, 450 * u);
+      noShadow();
+      // Torch and camera buttons, and the home bar.
+      for (const [x, kind] of [[140 * u, "torch"], [W - 140 * u, "camera"]]) {
+        const y = H - 210 * u;
+        ctx.fillStyle = "rgba(30,30,30,0.45)"; ctx.beginPath(); ctx.arc(x, y, 64 * u, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = "#ffffff"; ctx.strokeStyle = "#ffffff"; ctx.lineWidth = 4 * u;
+        if (kind === "torch") {
+          rr(x - 12 * u, y - 4 * u, 24 * u, 36 * u, 5 * u); ctx.fill();
+          ctx.beginPath(); ctx.moveTo(x - 20 * u, y - 30 * u); ctx.lineTo(x + 20 * u, y - 30 * u); ctx.lineTo(x + 12 * u, y - 8 * u); ctx.lineTo(x - 12 * u, y - 8 * u); ctx.closePath(); ctx.fill();
+        } else {
+          rr(x - 30 * u, y - 20 * u, 60 * u, 42 * u, 9 * u); ctx.stroke();
+          ctx.beginPath(); ctx.arc(x, y + u, 11 * u, 0, Math.PI * 2); ctx.stroke();
+        }
+      }
+      ctx.fillStyle = "rgba(255,255,255,0.92)"; rr(W / 2 - 140 * u, H - 44 * u, 280 * u, 11 * u, 6 * u); ctx.fill();
+      ctx.restore();
+      // The notification rises into place under the clock.
+      if (t >= P.tNote) {
+        const k = easeOutBack(clamp((t - P.tNote) / 0.55));
+        const bw = Math.min(W * 0.94, 1000 * u), bh = 212 * u, bx = (W - bw) / 2;
+        const by = H * (S.fmt === "4x5" ? 0.52 : 0.58) + (1 - k) * 120 * u + sy;
+        ctx.save(); ctx.globalAlpha = clamp((t - P.tNote) / 0.25) * uiA;
+        const thumb = bannerCard(bx, by, bw, bh, u, o, !zooming, t, P);
+        ctx.restore();
+        if (zooming) drawExpand(thumb, t, P, W, H);
+      }
+    },
+  },
+
+  email: {
+    blur: true,
+    ownScreen: () => S.bg === "clip",
+    label: o => o.eSubject,
+    plan(o) {
+      const tIn = 0.6, tTap = tIn + 1.5 + o.hold;
+      const tRev = tTap + (o.tap ? 0.25 : 0), revDur = revDurFor(o);
+      const sounds = [{ t: tIn, kind: "mail" }];
+      if (o.tap) sounds.push({ t: tTap, kind: "tap" });
+      if (revDur) sounds.push({ t: tRev, kind: "whoosh", dur: revDur, out: true });
+      return { tIn, tTap, tRev, revDur, end: tRev + revDur + o.tail, sounds };
+    },
+    draw(t, o, P, W, H) {
+      const u = W / 1080 * o.size, pal = CHAT[o.mTheme] || CHAT.light, screen = this.ownScreen(o);
+      const L = leave(t, o, P, u), after = t - (P.tRev + P.revDur), zooming = o.ending === "zoom" && L.r > 0;
+      const screenA = !screen ? 0 : o.ending === "fade" ? 1 - easeInCubic(L.r) : zooming && after > 0 ? 0 : 1;
+      const rowH = 200 * u, pad = 44 * u, k = easeOutCubic(clamp((t - P.tIn) / 0.45));
+      const ts = 124 * u;
+      const pressed = o.tap && t >= P.tTap && t < P.tRev + 0.3;
+      // One inbox row: unread dot, sender, time, subject, preview and photo.
+      const newRow = (y, a, card) => {
+        ctx.save(); ctx.globalAlpha *= a;
+        if (card) { shadow(40 * u, 10 * u, 0.25); ctx.fillStyle = pal.screen; rr(pad / 2, y, W - pad, rowH, 36 * u); ctx.fill(); noShadow(); }
+        if (pressed) { ctx.fillStyle = pal.press; card ? rr(pad / 2, y, W - pad, rowH, 36 * u) : (ctx.beginPath(), ctx.rect(0, y, W, rowH)); ctx.fill(); }
+        const x0 = card ? 104 * u : 80 * u, right = card ? W - pad * 1.6 : W - pad, tx = right - ts, ty = y + (rowH - ts) / 2;
+        ctx.fillStyle = "#0a84ff"; ctx.beginPath(); ctx.arc(x0 - 38 * u, y + 52 * u, 11 * u, 0, Math.PI * 2); ctx.fill();
+        ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
+        ctx.font = font(400, 30 * u); const nowW = ctx.measureText("now").width;
+        ctx.fillStyle = pal.soft; ctx.textAlign = "right"; ctx.fillText("now", tx - 24 * u, y + 62 * u); ctx.textAlign = "left";
+        const textW = tx - 24 * u - x0;
+        ctx.font = font(700, 36 * u); ctx.fillStyle = pal.ink; ctx.fillText(fitText(o.eFrom, textW - nowW - 20 * u), x0, y + 62 * u);
+        ctx.font = font(500, 34 * u); ctx.fillText(fitText(o.eSubject, textW), x0, y + 112 * u);
+        ctx.font = font(400, 32 * u); ctx.fillStyle = pal.soft; ctx.fillText(fitText(o.eBody, textW), x0, y + 158 * u);
+        if (!zooming) { drawPhoto(tx, ty, ts, ts, 16 * u); playBadge(tx, ty, ts, ts, t, P); }
+        ctx.restore();
+        return { x: tx, y: ty, w: ts, h: ts, r: 16 * u };
+      };
+      let thumb = null;
+      if (screen) {
+        if (screenA <= 0) return;
+        ctx.save(); ctx.globalAlpha = screenA;
+        ctx.fillStyle = pal.screen; ctx.fillRect(0, 0, W, H);
+        ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
+        ctx.font = font(400, 36 * u); ctx.fillStyle = "#0a84ff"; ctx.fillText("‹ Mailboxes", 30 * u, 120 * u);
+        ctx.font = font(700, 76 * u); ctx.fillStyle = pal.ink; ctx.fillText("Inbox", pad, 236 * u);
+        const y0 = 290 * u;
+        // Older mail as grey placeholder lines, pushed down by the new one.
+        for (let i = 0; y0 + rowH * (i + k) < H; i++) {
+          const y = y0 + rowH * (i + k);
+          ctx.fillStyle = pal.line; ctx.fillRect(80 * u, y, W - 80 * u, 2 * u);
+          ctx.fillStyle = pal.skel;
+          rr(80 * u, y + 40 * u, (220 + 160 * hash(i + 1)) * u, 28 * u, 14 * u); ctx.fill();
+          rr(80 * u, y + 90 * u, (480 + 240 * hash(i + 7)) * u, 24 * u, 12 * u); ctx.fill();
+          rr(80 * u, y + 136 * u, (560 + 300 * hash(i + 13)) * u, 22 * u, 11 * u); ctx.fill();
+        }
+        if (t >= P.tIn) {
+          ctx.save(); ctx.beginPath(); ctx.rect(0, y0, W, rowH * k); ctx.clip();
+          ctx.fillStyle = pal.screen; ctx.fillRect(0, y0, W, rowH);
+          thumb = newRow(y0 + rowH * (k - 1), k, false);
+          ctx.restore();
+        }
+        ctx.restore();
+      } else if (t >= P.tIn && L.alpha > 0) {
+        ctx.save(); ctx.globalAlpha = L.alpha;
+        const y = H * 0.3 + (1 - easeOutBack(clamp((t - P.tIn) / 0.5))) * -H * 0.4 + L.dy;
+        thumb = newRow(y, 1, true);
+        ctx.restore();
+      }
+      if (zooming && thumb) drawExpand(thumb, t, P, W, H);
+    },
+  },
 };
 
 function drawMagnifier(x, y, sz, p) {
@@ -966,6 +1238,10 @@ async function buildAudio() {
       case "heart": tone(t, 660, 1320, 0.35, 0.004, 0.16); tone(t + 0.06, 1320, 1980, 0.18, 0.004, 0.25); noiseHit(t, 7000, 1, 0.08, 0.002, 0.12); break;
       case "tick": tone(t, 1046, 1046, 0.26, 0.004, 0.35); tone(t + 0.12, 1568, 1568, 0.2, 0.004, 0.6); break;
       case "thud": tone(t, 150, 60, 0.6, 0.004, 0.22); noiseHit(t, 400, 0.7, 0.25, 0.002, 0.08); break;
+      case "ring": [659, 988, 1319, 988].forEach((f, i) => tone(t + i * 0.11, f, f, 0.22, 0.004, 0.32, "sine", (i % 2 ? 0.15 : -0.15))); break;
+      case "answer": tone(t, 880, 1320, 0.2, 0.004, 0.12); break;
+      case "unlock": noiseHit(t, 3600, 2, 0.35, 0.001, 0.02); tone(t, 1900, 1300, 0.14, 0.002, 0.03); noiseHit(t + 0.05, 2600, 2, 0.2, 0.001, 0.02); break;
+      case "mail": whoosh(t - 0.15, 0.35, false, true); tone(t + 0.1, 988, 988, 0.16, 0.004, 0.35); tone(t + 0.2, 1319, 1319, 0.12, 0.004, 0.4); break;
     }
   }
   const buf = await ac.startRendering();

@@ -6,7 +6,7 @@
 //   node openers/render.mjs --green --text "..."               # green screen
 //
 // Any setting from the page can be passed as --name value:
-//   --style search|notify|messages|saved|reminder
+//   --style search|notify|messages|saved|reminder|call|lock|email
 //   --fmt 4x5  --size 1  --cps 14  --hold 1.2  --ending fade|zoom|stay
 //   --tail 0.6  --tap 0  --push 0  --blur 0  --sound 0
 //   search:   --text  --pos 0.3  --width 0.86
@@ -15,6 +15,9 @@
 //             --mName "Sam Lee"  --mBack screen|photo  --mTheme light|dark
 //   saved:    --cTitle  --cSub  --beds  --baths  --cars
 //   reminder: --rDay SAT  --rDate 18  --rTitle  --rWhen  --rWhere
+//   call:     --kName "Your next home"  --kSub "Nords Wharf, NSW"
+//   lock:     --nApp  --nTitle  --nBody  --lTime 10:24  --lDate "Saturday 18 October"
+//   email:    --eFrom  --eSubject  --eBody  --mTheme light|dark
 // Also: --fps 30  --out openers/renders  --name my-opener
 //
 // Photos render in the page. Playwright's Chromium cannot decode H.264 or

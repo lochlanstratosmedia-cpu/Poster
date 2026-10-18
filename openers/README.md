@@ -12,6 +12,9 @@ Safari, add a photo or clip, type the search, and press Save video.
 | Messages | A phone chat screen with the contact at the top and a message field at the bottom. Typing dots, then bubbles pop up one at a time and push the older ones up. The last message is the photo, which presses in and grows to full screen |
 | Saved listing | A listing card slides up with the photo, title and bed, bath and car numbers. The heart fills red with a pop and sends small hearts up, then "Saved to favourites" shows |
 | Open home | A calendar card drops in and bounces with the day, date, time and place. A green tick draws on its corner and "Added to calendar" shows |
+| Incoming call | A call screen over the blurred photo, with the caller's name, a second line and the photo as the caller's picture. Rings pulse out with each ring, Accept wiggles, then presses in and the picture grows to full screen |
+| Lock screen | The blurred photo as the lock screen wallpaper, with the date, the time, a notification and torch and camera buttons. The padlock opens, then the lock screen swipes up (Fade up) or the photo grows from the notification (Zoom through) |
+| Email | An inbox where a new email slides in at the top with an unread dot and the photo as a thumbnail. Older mail shows as grey placeholder lines. The row presses in and the photo grows to full screen |
 
 New styles go in `STYLES` inside `opener.html`. Each one has a `plan()` that
 returns its timeline and sound cues, and a `draw()` that paints one frame.
@@ -28,12 +31,21 @@ avatar, or leave it blank for a plain one. Pick "Blurred photo" to use the
 photo behind the chat like the other styles. With Green screen or
 Transparent, only the bubbles show.
 
-With a video clip loaded, Notification, Messages and Saved listing show the
-clip's first frame with a play badge. When it is pressed it grows to full
+With a video clip loaded, the phone styles show the clip's first frame (with
+a play badge where it shows as a picture). When it is pressed it grows to full
 screen and plays from the start, and the saved video carries on to the end of
 the clip with the clip's own sound. Untick "Play the whole clip after the
 opener" to stop at the opener, or "Keep the clip's own sound" to keep only the
 effects. Behind the search bar the clip plays from the first second.
+
+Lock screen uses the notification's app name, title and message. Its time and
+date default to the device's own; type them in to fix a time. Email shares the
+light and dark screen colour with Messages, and with Green screen or
+Transparent it shows only the new email as a card.
+
+The call buttons use the "call" and "call_end" icons from Google's
+[Material Icons](https://github.com/google/material-design-icons), Apache
+License 2.0.
 
 The listing card hides any bed, bath or car number left blank. The open home
 day, date and time start as examples, so set them to the real open home
