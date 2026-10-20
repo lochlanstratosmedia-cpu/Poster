@@ -437,7 +437,13 @@ function commitImport(token, mapping, full, by) {
       const vals = { address_raw: r.address_raw, parts: r.parts, block: blockKey(r.parts), agency: r.agency, agent: r.agent,
         listed_date: r.listed_date, price: r.price, property_type: r.property_type, bedrooms: r.bedrooms, url: r.url, extra: r.extra || {} };
       const ex = S.listings.find((l) => l.address_key === k);
-      if (ex) Object.assign(ex, vals, { last_seen: t, active: 1, off_market_on: null });
+      if (ex) {
+        // An export without owner or link columns shouldn't wipe what an earlier one gave us.
+        const T = ["owner_1", "owner_2", "owner_3"], old = ex.extra || {};
+        if (!T.some((f) => vals.extra[f])) T.forEach((f) => { if (old[f]) vals.extra[f] = old[f]; });
+        vals.url = vals.url || ex.url;
+        Object.assign(ex, vals, { last_seen: t, active: 1, off_market_on: null });
+      }
       else S.listings.push({ id: nextId("listings"), address_key: k, ...vals, first_seen: t, last_seen: t, active: 1, off_market_on: null });
     }
     if (full) {

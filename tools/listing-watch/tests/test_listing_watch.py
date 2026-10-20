@@ -358,6 +358,17 @@ class FlowTests(unittest.TestCase):
         self.o.load("contacts", CONTACTS)  # a fresh full CRM export keeps looked-up owners
         self.assertEqual(self.o.lead("99 Nobody")["contacts"][0]["name"], "Jo Smith")
 
+    def test_reimport_without_owner_columns_keeps_owners(self):
+        listed = (TODAY - timedelta(days=80)).strftime("%d/%m/%Y")
+        self.o.load("listings", [["Address", "Suburb", "Agency", "Date Listed", "Owner 1 Name", "Listing link"],
+                                 ["99 Nobody St", "Northvale", "Other Realty", listed, "SMITH", "https://rp.example/1"]])
+        self.o.load("listings", [["Address", "Suburb", "Agency", "Date Listed", "Price"],
+                                 ["99 Nobody St", "Northvale", "Other Realty", listed, "$900,000"]])
+        l = self.o.lead("99 Nobody")
+        self.assertEqual(engine.title_owners(l["extra"]), ["SMITH"])
+        self.assertEqual(l["url"], "https://rp.example/1")
+        self.assertEqual(l["price"], "$900,000")
+
     def test_release_and_reassign(self):
         self.o.load("listings", listings(TODAY, smith=80))
         lid = self.o.lead("12 Smith")["id"]

@@ -113,6 +113,7 @@ def name_matches(contact_name, owners):
 # ---------- imports ----------
 
 _PENDING = {}
+TITLE_FIELDS = ("owner_1", "owner_2", "owner_3")
 
 
 def preview_import(kind, filename, data, conn):
@@ -218,8 +219,12 @@ def commit_import(token, mapping, full_snapshot, by, conn):
             p = r["parts"]
             vals = (r["address_raw"], json.dumps(p), json.dumps(address.block_key(p)), r["agency"], r["agent"],
                     r["listed_date"].isoformat(), r["price"], r["property_type"], r["bedrooms"], r["url"], json.dumps(r["extra"]))
-            existing = conn.execute("SELECT id FROM listings WHERE address_key = ?", (k,)).fetchone()
+            existing = conn.execute("SELECT id, url, extra FROM listings WHERE address_key = ?", (k,)).fetchone()
             if existing:
+                # An export without owner or link columns shouldn't wipe what an earlier one gave us.
+                old = json.loads(existing["extra"] or "{}")
+                keep = {f: old[f] for f in TITLE_FIELDS if old.get(f) and not any(r["extra"].get(g) for g in TITLE_FIELDS)}
+                vals = vals[:9] + (r["url"] or existing["url"], json.dumps({**r["extra"], **keep}))
                 conn.execute(
                     "UPDATE listings SET address_raw=?, parts=?, block=?, agency=?, agent=?, listed_date=?, price=?, "
                     "property_type=?, bedrooms=?, url=?, extra=?, last_seen=?, active=1, off_market_on=NULL WHERE id=?",
