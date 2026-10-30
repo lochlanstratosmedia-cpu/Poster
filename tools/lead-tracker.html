@@ -185,6 +185,31 @@ details summary { cursor: pointer; color: var(--ink-2); }
   .drawer { animation: slide 0.16s ease-out; }
   @keyframes slide { from { transform: translateX(16px); opacity: 0.7; } to { transform: none; opacity: 1; } }
 }
+
+/* map */
+:root { --sea: #e8eef1; --land: #fbfbfa; --coast: #c9d2d6; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --sea: #0f1519; --land: #191919; --coast: #2d363b; } }
+:root[data-theme="dark"] { --sea: #0f1519; --land: #191919; --coast: #2d363b; }
+.mapbar { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; margin-bottom: 12px; }
+.chip { display: inline-flex; align-items: center; gap: 7px; padding: 5px 11px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); color: var(--muted); font-weight: 500; }
+.chip[aria-pressed="true"] { color: var(--ink); border-color: var(--ink-2); }
+.chip .n { font-variant-numeric: tabular-nums; color: var(--muted); }
+.mapwrap { position: relative; border-radius: 10px; overflow: hidden; background: var(--sea); height: clamp(360px, 62vh, 600px); border: 1px solid var(--line); }
+.mapwrap svg { width: 100%; height: 100%; display: block; touch-action: none; cursor: grab; }
+.mapwrap svg:active { cursor: grabbing; }
+.mapwrap .landp { fill: var(--land); stroke: var(--coast); stroke-width: 1; vector-effect: non-scaling-stroke; }
+.mapwrap circle.pin { stroke: var(--land); stroke-width: 1.5; cursor: pointer; }
+.mapwrap circle.pin:hover { stroke: var(--ink); }
+.mapwrap circle.ring { fill: none; stroke: var(--ink); stroke-width: 1.5; pointer-events: none; }
+.mapwrap text.sub { font-size: 11.5px; fill: var(--ink-2); paint-order: stroke; stroke: var(--land); stroke-width: 3px; pointer-events: none; font-weight: 500; }
+.mapctl { position: absolute; right: 10px; top: 10px; display: grid; gap: 4px; }
+.mapctl button { width: 32px; height: 32px; border-radius: 7px; border: 1px solid var(--line); background: var(--surface); font-size: 16px; line-height: 1; }
+.mapnote { position: absolute; left: 10px; bottom: 8px; font-size: 11px; color: var(--muted); background: color-mix(in srgb, var(--land) 85%, transparent); padding: 2px 6px; border-radius: 5px; }
+.figs { display: flex; flex-wrap: wrap; gap: 10px 32px; margin: 18px 0 30px; }
+.fig .v { font-size: 22px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.fig .l { font-size: 12.5px; color: var(--muted); }
+.stack { display: flex; height: 8px; border-radius: 0 4px 4px 0; overflow: hidden; gap: 2px; }
+.stack span { background: var(--c); }
 </style>
 
 <div class="wrap">
@@ -206,6 +231,7 @@ details summary { cursor: pointer; color: var(--ink-2); }
     <button class="tab" role="tab" data-tab="pipeline" aria-selected="true" type="button">Pipeline<span class="count" id="cntAll"></span></button>
     <button class="tab" role="tab" data-tab="team" aria-selected="false" type="button">Accountability<span class="count" id="cntAttn"></span></button>
     <button class="tab" role="tab" data-tab="insights" aria-selected="false" type="button">Insights</button>
+    <button class="tab" role="tab" data-tab="map" aria-selected="false" type="button">Map</button>
   </nav>
 
   <section id="view-pipeline">
@@ -249,6 +275,20 @@ details summary { cursor: pointer; color: var(--ink-2); }
 
   <section id="view-team" hidden></section>
   <section id="view-insights" hidden></section>
+  <section id="view-map" hidden>
+    <div class="mapbar" id="mapTypes"></div>
+    <div class="mapbar">
+      <select id="mStage" aria-label="Stage on map"></select>
+      <select id="mOwner" aria-label="Owner on map"></select>
+      <span class="muted" id="mCount"></span>
+    </div>
+    <div class="mapwrap" id="mapBox">
+      <svg id="mapSvg" role="img" aria-label="Map of leads by suburb"></svg>
+      <div class="mapctl"><button type="button" id="zIn" aria-label="Zoom in">+</button><button type="button" id="zOut" aria-label="Zoom out">&minus;</button><button type="button" id="zFit" aria-label="Fit all leads" style="font-size:12px">Fit</button></div>
+      <div class="mapnote">Pins sit at the suburb centre, not the street. Coastline &copy; OpenStreetMap contributors.</div>
+    </div>
+    <div id="mapStats"></div>
+  </section>
 </div>
 
 <div class="scrim" id="scrim" hidden></div>
@@ -266,6 +306,7 @@ details summary { cursor: pointer; color: var(--ink-2); }
 <div class="tip" id="tip" hidden></div>
 <div class="toast" id="toast" hidden></div>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
 <script>
 (() => {
 "use strict";
@@ -337,12 +378,12 @@ function phoneFmt(p) {
   return String(p || "");
 }
 
-const STREET = new Set("st street rd road ave av avenue cres crs crescent cl close ct crt court cct circuit dr drive pde parade pl place ln lane blvd boulevard gr grove tce terrace way hwy highway".split(" "));
+const STREET = new Set("st street srt streey rd road ave av avenue cres crs crescent cl close ct crt court cct circuit dr drive pde parade pl place ln lane blvd boulevard gr grove tce terrace way hwy hway highway".split(" "));
 const titleCase = s => s.toLowerCase().replace(/(^|[\s-])([a-z])/g, (m, a, b) => a + b.toUpperCase());
 function suburbGuess(address) {
-  let a = String(address || "").replace(/\b(nsw|new south wales)\b/gi, " ").replace(/\b\d{4}\b/g, " ").trim();
+  let a = String(address || "").replace(/\(.*?\)/g, " ").replace(/\b(nsw|new south wales|australia)\b/gi, " ").replace(/\b\d{4}\b/g, " ").trim();
   if (!a) return "";
-  const parts = a.split(",").map(s => s.trim()).filter(s => s.replace(/[^a-z]/gi, "").length > 2);
+  const parts = a.split(/[,.]/).map(s => s.trim()).filter(s => s.replace(/[^a-z]/gi, "").length > 2);
   let cand = "";
   if (parts.length > 1) cand = parts[parts.length - 1];
   else {
@@ -516,10 +557,12 @@ function render() {
   $("#view-pipeline").hidden = S.tab !== "pipeline";
   $("#view-team").hidden = S.tab !== "team";
   $("#view-insights").hidden = S.tab !== "insights";
+  $("#view-map").hidden = S.tab !== "map";
   renderSelectOptions();
   if (S.tab === "pipeline") renderPipeline();
   if (S.tab === "team") renderTeam();
   if (S.tab === "insights") renderInsights();
+  if (S.tab === "map") renderMap();
   if (S.open) renderDrawer(false);
 }
 
@@ -868,6 +911,198 @@ function renderInsights() {
     </details></div>`;
   if (wasOpen) v.querySelector("details").open = true;
 }
+
+/* ---------- map ---------- */
+const MAPB = { w: 150.8, e: 152.6, s: -33.45, n: -31.8 };
+const NEWC = [-32.93, 151.75];
+const LOC_FIX = { "GILLSTONHEIGHTS": "GILLIESTON HEIGHTS", "MARYALND": "MARYLAND", "FLETECHER": "FLETCHER", "BINNELLS BSY": "BONNELLS BAY", "MT VINCENT": "MOUNT VINCENT", "SINGLETON HIGHTS": "SINGLETON HEIGHTS", "CHARLES": "CHARLESTOWN", "SALAMANDER": "SALAMANDER BAY", "WATTAMANDARRA COWRA": "COWRA" };
+const STATE_HINT = { PORTLAND: "VIC", TOORAK: "VIC" };
+const M = { land: null, loc: null, loading: false, failed: false, types: new Set(DEALS), stage: "", owner: "", zoom: null, proj: null, t: null, fitted: false, cache: new Map() };
+
+async function loadMapData() {
+  if (M.land || M.loading || M.failed) return;
+  M.loading = true;
+  try {
+    const get = u => fetch(u).then(r => { if (!r.ok) throw new Error(u); return r.json(); });
+    const [land, loc] = await Promise.all([get("data/land.json"), get("data/localities.json")]);
+    M.land = land; M.loc = loc;
+  } catch { M.failed = true; }
+  M.loading = false;
+  scheduleRender();
+}
+function locate(l) {
+  if (!M.loc) return null;
+  const a = l.address || "";
+  let name = suburbOf(l);
+  if (/suburb 2290/i.test(a)) name = "Gateshead";
+  if (!name && /^\s*newcastle\s*$/i.test(a)) name = "Newcastle";
+  if (!name) return null;
+  const key = name + "|" + a;
+  if (M.cache.has(key)) return M.cache.get(key);
+  let k = name.toUpperCase().replace(/\s+/g, " ").trim();
+  k = LOC_FIX[k] || k;
+  let c = M.loc[k] || null;
+  let out = null;
+  if (c) {
+    if (STATE_HINT[k]) { const f = c.filter(r => r[2] === STATE_HINT[k]); if (f.length) c = f; }
+    const pc = (a.match(/\b([2-4]\d{3})\b/) || [])[1];
+    if (pc) { const f = c.filter(r => r[3] === pc); if (f.length) c = f; }
+    const nsw = c.filter(r => r[2] === "NSW"); if (nsw.length) c = nsw;
+    let best = c[0], bd = Infinity;
+    for (const r of c) { const d = (r[0] - NEWC[0]) ** 2 + (r[1] - NEWC[1]) ** 2; if (d < bd) { bd = d; best = r; } }
+    out = { lat: best[0], lon: best[1], state: best[2], pc: best[3], lga: best[4] || "", name: titleCase(k) };
+    out.inside = out.lon >= MAPB.w && out.lon <= MAPB.e && out.lat >= MAPB.s && out.lat <= MAPB.n;
+  }
+  M.cache.set(key, out);
+  return out;
+}
+const PROGRESSED = new Set(["appraisal_booked", "appraised", "started"]);
+function mapMatches(l) {
+  if (!M.types.has(DEALS.includes(l.dealType) ? l.dealType : "Other")) return false;
+  if (M.stage === "progressed" && !PROGRESSED.has(l.stage)) return false;
+  if (M.stage === "open" && !["new", "contacting", "active", "appraisal_booked", "appraised"].includes(l.stage)) return false;
+  if (M.stage && !["progressed", "open"].includes(M.stage) && l.stage !== M.stage) return false;
+  if (M.owner === "__none" && l.owner) return false;
+  if (M.owner && M.owner !== "__none" && l.owner !== M.owner) return false;
+  return true;
+}
+
+function renderMap() {
+  const all = [...S.leads.values()];
+  if (!M.land && !M.failed) loadMapData();
+  const dealOf = l => DEALS.includes(l.dealType) ? l.dealType : "Other";
+  $("#mapTypes").innerHTML = DEALS.map(d => `<button class="chip" type="button" data-mtype="${esc(d)}" aria-pressed="${M.types.has(d)}"><i class="swatch" style="--c:${DEAL_COLOR[d]}"></i>${esc(d)} <span class="n">${all.filter(l => dealOf(l) === d).length}</span></button>`).join("");
+  optionList($("#mStage"), [["", "Any stage"], ["open", "Still open"], ["progressed", "Reached appraisal or further"], ...STAGES.map(s => [s.id, s.label])], M.stage);
+  optionList($("#mOwner"), [["", "Anyone"], ["__none", "No owner"], ...ownersAll().map(o => [o, o])], M.owner);
+  const shown = all.filter(mapMatches);
+  if (M.failed) { $("#mapStats").innerHTML = `<div class="empty"><h3>The map data didn't load</h3><p>Reload the page to try again.</p></div>`; return; }
+  if (!M.land) { $("#mCount").textContent = "Loading map…"; return; }
+  const placed = [], outside = [], unknown = [];
+  for (const l of shown) { const g = locate(l); if (!g) unknown.push(l); else if (!g.inside) outside.push([l, g]); else placed.push([l, g]); }
+  $("#mCount").textContent = `${placed.length} on the map · ${outside.length} outside this area · ${unknown.length} with no location`;
+  drawMap(placed);
+  renderMapStats(shown, placed, outside, unknown);
+}
+
+function drawMap(placed) {
+  const svgEl = $("#mapSvg");
+  const W = svgEl.clientWidth || 800, H = svgEl.clientHeight || 500;
+  const svg = d3.select(svgEl);
+  if (!M.proj || M.W !== W || M.H !== H) {
+    M.W = W; M.H = H;
+    M.proj = d3.geoMercator().fitExtent([[0, 0], [W, H]], { type: "MultiPoint", coordinates: [[MAPB.w, MAPB.s], [MAPB.e, MAPB.n]] });
+    const planar = d3.geoTransform({ point(x, y) { const q = M.proj([x, y]); this.stream.point(q[0], q[1]); } });
+    svg.selectAll("*").remove();
+    svg.append("rect").attr("width", W).attr("height", H).attr("fill", "transparent");
+    const gl = svg.append("g").attr("class", "gland");
+    gl.append("path").attr("class", "landp").attr("d", d3.geoPath(planar)(M.land));
+    svg.append("g").attr("class", "gpins");
+    svg.append("g").attr("class", "glabels");
+    const b0 = M.proj([MAPB.w, MAPB.n]), b1 = M.proj([MAPB.e, MAPB.s]);
+    M.kmin = Math.max(W / (b1[0] - b0[0]), H / (b1[1] - b0[1]));
+    M.zoom = d3.zoom().scaleExtent([M.kmin, 60]).translateExtent([b0, b1]).on("zoom", e => { M.t = e.transform; positionPins(); });
+    svg.call(M.zoom);
+    M.t = d3.zoomIdentity; M.fitted = false;
+    svg.call(M.zoom.transform, d3.zoomIdentity.translate(W / 2, H / 2).scale(M.kmin).translate(-(b0[0] + b1[0]) / 2, -(b0[1] + b1[1]) / 2));
+  }
+  // group by suburb point, spiral leads around it in screen space
+  const groups = new Map();
+  for (const [l, g] of placed) { const k = g.lat + "," + g.lon; if (!groups.has(k)) groups.set(k, { g, ls: [] }); groups.get(k).ls.push(l); }
+  M.groups = [...groups.values()].map(x => { x.ls.sort((a, b) => DEALS.indexOf(a.dealType) - DEALS.indexOf(b.dealType)); return x; });
+  const pins = [];
+  for (const grp of M.groups) grp.ls.forEach((l, i) => pins.push({ l, grp, i }));
+  const prog = l => PROGRESSED.has(l.stage);
+  const sel = d3.select(svgEl).select(".gpins").selectAll("g.pg").data(pins, d => d.l.id);
+  sel.exit().remove();
+  const ent = sel.enter().append("g").attr("class", "pg");
+  ent.append("circle").attr("class", "pin");
+  ent.append("circle").attr("class", "ring");
+  const merged = ent.merge(sel);
+  merged.select("circle.pin")
+    .attr("r", d => prog(d.l) ? 6.5 : 5)
+    .attr("fill", d => DEAL_COLOR[d.l.dealType] || "var(--s3)")
+    .attr("data-open", d => d.l.id)
+    .attr("data-tip", d => `${d.l.name || "No name"}\n${d.grp.g.name} · ${d.l.dealType || "Other"}\n${STAGE[d.l.stage].label}${d.l.owner ? " · " + d.l.owner : ""}`);
+  merged.select("circle.ring").attr("r", d => prog(d.l) ? 9 : 0);
+  const lab = d3.select(svgEl).select(".glabels").selectAll("text.sub").data(M.groups.filter(x => x.ls.length >= 2), x => x.g.name);
+  lab.exit().remove();
+  lab.enter().append("text").attr("class", "sub").merge(lab).text(x => `${x.g.name} ${x.ls.length}`);
+  if (!M.fitted && placed.length) { M.fitted = true; fitPins(false); }
+  positionPins();
+}
+function spiral(i) { if (i === 0) return [0, 0]; const a = i * 2.39996, r = 6.2 * Math.sqrt(i); return [r * Math.cos(a), r * Math.sin(a)]; }
+function positionPins() {
+  if (!M.proj) return;
+  const t = M.t || d3.zoomIdentity, svg = d3.select("#mapSvg");
+  svg.select(".gland").attr("transform", t);
+  svg.selectAll("g.pg").attr("transform", d => { const p = t.apply(M.proj([d.grp.g.lon, d.grp.g.lat])); const o = spiral(d.i); return `translate(${p[0] + o[0]},${p[1] + o[1]})`; });
+  svg.selectAll("text.sub").attr("x", x => t.apply(M.proj([x.g.lon, x.g.lat]))[0] + 8 + 3 * Math.sqrt(x.ls.length)).attr("y", x => t.apply(M.proj([x.g.lon, x.g.lat]))[1] + 4)
+    .attr("display", x => (x.ls.length >= 4 || (x.ls.length >= 3 && t.k >= M.kmin * 2) || t.k >= M.kmin * 4) ? null : "none");
+}
+function fitPins(animate) {
+  if (!M.groups || !M.groups.length) return;
+  const pts = []; for (const x of M.groups) { const p = M.proj([x.g.lon, x.g.lat]); for (let i = 0; i < x.ls.length; i++) pts.push(p); }
+  const q = (a, f) => { const v = [...a].sort((m, n) => m - n); return v[Math.min(v.length - 1, Math.max(0, Math.round(f * (v.length - 1))))]; };
+  const xs = pts.map(p => p[0]), ys = pts.map(p => p[1]);
+  const x0 = q(xs, 0.05), x1 = q(xs, 0.95), y0 = q(ys, 0.05), y1 = q(ys, 0.95);
+  const pad = 60, k = Math.max(M.kmin, Math.min(60, 1 / Math.max((x1 - x0 + pad) / M.W, (y1 - y0 + pad) / M.H)));
+  const t = d3.zoomIdentity.translate(M.W / 2, M.H / 2).scale(k).translate(-(x0 + x1) / 2, -(y0 + y1) / 2);
+  const s = d3.select("#mapSvg");
+  (animate ? s.transition().duration(400) : s).call(M.zoom.transform, t);
+}
+
+function renderMapStats(shown, placed, outside, unknown) {
+  const T = shown.length;
+  if (!T) { $("#mapStats").innerHTML = `<div class="empty"><h3>No leads match</h3><p>Turn a lead type back on or change the stage filter.</p></div>`; return; }
+  const dealOf = l => DEALS.includes(l.dealType) ? l.dealType : "Other";
+  const located = [...placed, ...outside];
+  // council areas
+  const lgas = new Map();
+  for (const [l, g] of located) { const k = g.inside ? (g.lga || "Unknown council") : "Outside the region"; if (!lgas.has(k)) lgas.set(k, []); lgas.get(k).push(l); }
+  const lgaRows = [...lgas.entries()].sort((a, b) => (a[0] === "Outside the region") - (b[0] === "Outside the region") || b[1].length - a[1].length);
+  const maxL = Math.max(...lgaRows.map(r => r[1].length));
+  const stackBar = (ls, max) => `<span class="stack" style="width:${(ls.length / max) * 100}%">${DEALS.map(d => { const n = ls.filter(l => dealOf(l) === d).length; return n ? `<span style="flex:${n};--c:${DEAL_COLOR[d]}"></span>` : ""; }).join("")}</span>`;
+  const lgaHtml = `<div class="hbars">${lgaRows.map(([k, ls]) => `<div class="hbar" data-tip="${esc(k + ": " + ls.length + " leads\n" + DEALS.map(d => d + " " + ls.filter(l => dealOf(l) === d).length).join(" · ") + "\nReached appraisal or further: " + ls.filter(l => PROGRESSED.has(l.stage)).length)}"><span class="lab">${esc(k)}</span><span class="track">${stackBar(ls, maxL)}</span><span class="val">${ls.length}<small>${pct(ls.length, T)}</small></span></div>`).join("")}</div>`;
+  // suburbs
+  const subs = new Map();
+  for (const [l, g] of placed) { if (!subs.has(g.name)) subs.set(g.name, []); subs.get(g.name).push(l); }
+  const subRows = [...subs.entries()].sort((a, b) => b[1].length - a[1].length || a[0].localeCompare(b[0])).slice(0, 15);
+  const subHtml = `<div class="table-wrap"><table><thead><tr><th>Suburb</th><th>Leads</th><th>Selling</th><th>Granny flat</th><th>Reached appraisal+</th></tr></thead><tbody>${subRows.map(([k, ls]) => `<tr><td>${esc(k)}</td><td class="num">${ls.length}</td><td class="num">${ls.filter(l => l.dealType === "Selling").length || '<span class="muted">0</span>'}</td><td class="num">${ls.filter(l => l.dealType === "Granny flat").length || '<span class="muted">0</span>'}</td><td class="num">${ls.filter(l => PROGRESSED.has(l.stage)).length || '<span class="muted">0</span>'}</td></tr>`).join("")}</tbody></table></div>`;
+  // figures
+  const core = located.filter(([, g]) => g.inside && /lake macquarie|newcastle/i.test(g.lga)).length;
+  const prog = placed.filter(([l]) => PROGRESSED.has(l.stage));
+  const progSubs = new Set(prog.map(([, g]) => g.name));
+  const topLga = t => { const c = new Map(); for (const [l, g] of placed) if (dealOf(l) === t && g.lga) c.set(g.lga, (c.get(g.lga) || 0) + 1); const e = [...c.entries()].sort((a, b) => b[1] - a[1])[0]; const n = placed.filter(([l]) => dealOf(l) === t).length; return e ? `${e[0]} (${e[1]} of ${n})` : "None"; };
+  const multi = [...subs.values()].filter(ls => ls.length >= 3).length;
+  const figs = [
+    [pct(core, located.length || 1), "of located leads are in Lake Macquarie or Newcastle councils"],
+    [subs.size, "suburbs with at least one lead"],
+    [multi, "suburbs with 3 or more leads"],
+    [outside.length, "leads from outside the region"],
+    [progSubs.size, "suburbs with a lead at appraisal or further"],
+  ];
+  const outsideHtml = outside.length ? `<div class="table-wrap"><table><tbody>${outside.sort((a, b) => a[1].name.localeCompare(b[1].name)).map(([l, g]) => `<tr data-open="${esc(l.id)}" style="cursor:pointer"><td class="name">${esc(l.name || "No name")}</td><td>${esc(g.name)}, ${esc(g.state)}</td><td class="ink2">${esc(l.campaign || l.form || "")}</td><td>${stagePill(l.stage)}</td></tr>`).join("")}</tbody></table></div>` : `<p class="note">None.</p>`;
+  const unknownHtml = unknown.length ? `<p class="note">No location for ${plural(unknown.length, "lead")}: ${unknown.map(l => esc(l.name || "No name")).join(", ")}. Set a suburb on the lead to place it.</p>` : "";
+  $("#mapStats").innerHTML = `
+    <div class="figs">${figs.map(([v, l]) => `<div class="fig"><div class="v">${esc(v)}</div><div class="l">${esc(l)}</div></div>`).join("")}</div>
+    <div class="cols2">
+      <div><h2>Council areas</h2><div class="legend">${DEALS.filter(d => M.types.has(d)).map(d => `<span><i class="swatch" style="--c:${DEAL_COLOR[d]}"></i>${esc(d)}</span>`).join("")}</div>${lgaHtml}
+        <p class="note">Most selling leads: ${esc(topLga("Selling"))}. Most granny flat leads: ${esc(topLga("Granny flat"))}.</p></div>
+      <div><h2>Top suburbs</h2>${subHtml}</div>
+    </div>
+    <div class="section"><header><h2>Outside the region</h2><span class="muted">${outside.length} leads from outside the Hunter, Lake Macquarie and Port Stephens map area</span></header>${outsideHtml}${unknownHtml}</div>`;
+}
+$("#view-map").addEventListener("click", e => {
+  const c = e.target.closest("[data-mtype]");
+  if (c) { const d = c.dataset.mtype; if (M.types.has(d) && M.types.size > 1) M.types.delete(d); else M.types.add(d); renderMap(); return; }
+  if (e.target.id === "zIn") d3.select("#mapSvg").transition().duration(250).call(M.zoom.scaleBy, 1.6);
+  if (e.target.id === "zOut") d3.select("#mapSvg").transition().duration(250).call(M.zoom.scaleBy, 1 / 1.6);
+  if (e.target.id === "zFit") fitPins(true);
+});
+$("#mStage").addEventListener("change", e => { M.stage = e.target.value; renderMap(); });
+$("#mOwner").addEventListener("change", e => { M.owner = e.target.value; renderMap(); });
+let mapRT;
+window.addEventListener("resize", () => { clearTimeout(mapRT); mapRT = setTimeout(() => { if (S.tab === "map") { M.proj = null; renderMap(); } }, 200); });
 
 /* ---------- import / export ---------- */
 function parseCSV(text, delim) {
