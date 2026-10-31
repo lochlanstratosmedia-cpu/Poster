@@ -19,6 +19,7 @@ AI-writing patterns instead of its own instincts.
 | `tools/cover-editor.html` | Listing Cover Studio: edit cover text and layout by hand in the browser |
 | `scripts/planet_shot.py` | Builds a procedural desert planet scene in Blender and renders it (`renders/planet_shot.blend`, `.png`) |
 | `dove/build_dove.py` | Builds the Dove spacecraft model in Blender from the written spec; `dove/Dove.blend` and `dove/renders/` hold the output |
+| `scripts/dove_planet_shot.py` | Puts the Dove ship into the planet shot (`renders/dove_planet_shot.blend`, `.png`) |
 | `assets/fonts/` | Inter and Cormorant Garamond (OFL) for captions |
 
 ## How it works
