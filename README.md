@@ -17,6 +17,7 @@ AI-writing patterns instead of its own instincts.
 | `.claude/skills/cover-shot/SKILL.md` | Turns a property photo into a magazine-grade social post via Higgsfield |
 | `scripts/cover_shot.py` | Photo analysis, prompt builder, caption overlay and compare sheet for cover shots |
 | `tools/cover-editor.html` | Listing Cover Studio: edit cover text and layout by hand in the browser |
+| `scripts/planet_shot.py` | Builds a procedural desert planet scene in Blender and renders it (`renders/planet_shot.blend`, `.png`) |
 | `assets/fonts/` | Inter and Cormorant Garamond (OFL) for captions |
 
 ## How it works
