@@ -138,6 +138,15 @@ Marker and Halo have no label box, so the logo floats on the photo. Brands save 
 Use the ... menu to export a brand as a `.pinpoint.json` file and import it
 on another machine.
 
+Undo and redo (Cmd+Z, Shift+Cmd+Z, or the arrows in the toolbar) cover pin
+moves, places switched on or off, your own pins, outlines, camera changes,
+distances and brand changes. Adding or removing photos is not undone.
+Pinpoint keeps the current job in this browser: reopen the page and Continue
+brings back the photos and every edit. New job, at the bottom of the photo
+list, clears the photos and the address (click it twice to confirm). Press ?
+for the keyboard shortcuts. The Search area section at the bottom of the
+Places tab holds the range and which kinds of place are looked up.
+
 Place data and address search come from OpenStreetMap through Photon
 (photon.komoot.io). The public Overpass servers are the fallback for places,
 and Nominatim for addresses, so the tool needs internet access. Results are

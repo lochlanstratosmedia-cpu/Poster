@@ -4,6 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Pinpoint</title>
+<meta name="description" content="Drop in drone photos, add the property address, and export them with branded pins on the nearby places.">
+<meta name="theme-color" content="#eceef2" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#19191b" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='15' fill='%23007aff'/%3E%3Cpath d='M32 52s-13-11.2-13-21.5a13 13 0 0 1 26 0C45 40.8 32 52 32 52Z' fill='%23fff'/%3E%3Ccircle cx='32' cy='30.5' r='5' fill='%23007aff'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Montserrat:wght@500;600;700;800&family=DM+Sans:wght@400;500;700&family=Gloock&family=Cormorant+Garamond:wght@500;600;700&display=swap">
@@ -40,7 +44,7 @@
   --accent-soft: rgba(0, 122, 255, 0.13);
   --switch-off: rgba(120, 120, 128, 0.18);
   --danger: #ff3b30;
-  --ambient: 0.6;
+  --ambient: 0.32;
   --side-w: 236px;
   --insp-w: 312px;
   --gap: 10px;
@@ -52,7 +56,7 @@
     --glass-shadow: 0 0 0 0.5px rgba(0, 0, 0, 0.6), 0 16px 48px -10px rgba(0, 0, 0, 0.65); --well: rgba(255, 255, 255, 0.055);
     --ink: #f5f5f7; --ink2: rgba(235, 235, 245, 0.6); --ink3: rgba(235, 235, 245, 0.28); --sep: rgba(255, 255, 255, 0.08);
     --fill: rgba(118, 118, 128, 0.24); --fill2: rgba(118, 118, 128, 0.36); --sel: rgba(255, 255, 255, 0.1); --seg-on: rgba(255, 255, 255, 0.24);
-    --accent: #0a84ff; --accent-soft: rgba(10, 132, 255, 0.24); --switch-off: rgba(120, 120, 128, 0.36); --danger: #ff453a; --ambient: 0.42;
+    --accent: #0a84ff; --accent-soft: rgba(10, 132, 255, 0.24); --switch-off: rgba(120, 120, 128, 0.36); --danger: #ff453a; --ambient: 0.22;
     color-scheme: dark;
   }
 }
@@ -61,7 +65,7 @@
   --glass-shadow: 0 0 0 0.5px rgba(0, 0, 0, 0.6), 0 16px 48px -10px rgba(0, 0, 0, 0.65); --well: rgba(255, 255, 255, 0.055);
   --ink: #f5f5f7; --ink2: rgba(235, 235, 245, 0.6); --ink3: rgba(235, 235, 245, 0.28); --sep: rgba(255, 255, 255, 0.08);
   --fill: rgba(118, 118, 128, 0.24); --fill2: rgba(118, 118, 128, 0.36); --sel: rgba(255, 255, 255, 0.1); --seg-on: rgba(255, 255, 255, 0.24);
-  --accent: #0a84ff; --accent-soft: rgba(10, 132, 255, 0.24); --switch-off: rgba(120, 120, 128, 0.36); --danger: #ff453a; --ambient: 0.42;
+  --accent: #0a84ff; --accent-soft: rgba(10, 132, 255, 0.24); --switch-off: rgba(120, 120, 128, 0.36); --danger: #ff453a; --ambient: 0.22;
   color-scheme: dark;
 }
 * { box-sizing: border-box; }
@@ -168,7 +172,23 @@ svg.i { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-widt
 .photos li:hover .rm { display: grid; }
 .side-empty { color: var(--ink3); padding: 4px 10px; font-size: 12px; }
 .side-foot { flex: none; padding: 10px 18px 14px; color: var(--ink2); font-size: 11px; line-height: 1.5; border-top: 0.5px solid var(--sep); }
+.side-foot { display: grid; gap: 2px; justify-items: start; }
 .side-foot b { display: block; font-weight: 500; color: var(--ink); }
+.foot-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%; }
+.linkbtn { border: 0; background: transparent; padding: 2px 0; color: var(--accent); font-size: 11px; font-weight: 500; border-radius: 4px; }
+.linkbtn:hover { text-decoration: underline; }
+.linkbtn.warn { color: var(--danger); }
+.resume { display: flex; align-items: center; gap: 10px; margin: 32px 0 0; padding: 12px 12px 12px 16px; border-radius: 16px; text-align: left; width: 460px; max-width: calc(100vw - 32px); position: relative; left: 50%; translate: -50% 0; animation: fadein .3s ease; }
+.resume-t b { white-space: nowrap; }
+.resume-t { flex: 1; min-width: 0; display: grid; }
+.resume-t b { font-weight: 600; }
+.resume-t span { color: var(--ink2); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.keys { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 0; margin: 0; }
+.keys dd { padding-left: 12px !important; }
+.keys dt, .keys dd { padding: 7px 0; border-bottom: 0.5px solid var(--sep); margin: 0; }
+.keys dt:nth-last-of-type(1), .keys dd:last-child { border-bottom: 0; }
+.keys dd { text-align: right; color: var(--ink2); font-variant-numeric: tabular-nums; }
+kbd { font: inherit; font-size: 11.5px; background: var(--fill); border-radius: 5px; padding: 1px 6px; color: var(--ink); }
 
 /* Stage */
 .stage { position: absolute; inset: 0; display: grid; place-items: center; padding: 72px calc(var(--gap) + var(--insp-w) + 22px) 26px calc(var(--gap) + var(--side-w) + 22px); min-width: 0; min-height: 0; }
@@ -224,7 +244,8 @@ svg.i { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-widt
 .group { background: var(--well); border-radius: 14px; padding: 0 12px; margin-bottom: 10px; box-shadow: inset 0 0 0 0.5px var(--glass-line); }
 .row { display: flex; align-items: center; gap: 10px; min-height: 40px; padding: 5px 0; border-bottom: 0.5px solid var(--sep); min-width: 0; }
 .row:last-child { border-bottom: 0; }
-.row > .lbl { flex: 1; min-width: 0; color: var(--ink); }
+.row > .lbl { flex: 1 1 auto; min-width: 0; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.row > .seg { flex: none; }
 .row .val { color: var(--ink2); font-variant-numeric: tabular-nums; min-width: 40px; text-align: right; font-size: 12px; }
 .row input[type="range"] { width: 124px; }
 .row select { max-width: 150px; height: 26px; border-radius: 999px; border: 0; background: var(--fill); padding: 0 10px; outline: 0; font-weight: 500; }
@@ -250,7 +271,7 @@ input[type="range"]::-moz-range-progress { height: 4px; border-radius: 2px; back
 .switch:checked::after { transform: translateX(10px); }
 
 .seg { display: flex; background: var(--fill); border-radius: 999px; padding: 2px; gap: 2px; }
-.seg button { flex: 1; border: 0; background: transparent; font-size: 12px; font-weight: 500; height: 26px; padding: 0 11px; border-radius: 999px; white-space: nowrap; }
+.seg button { flex: 1; border: 0; background: transparent; font-size: 12px; font-weight: 500; height: 26px; padding: 0 9px; border-radius: 999px; white-space: nowrap; }
 .seg button[aria-pressed="true"] { background: var(--seg-on); font-weight: 600; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12), 0 0 0 0.5px rgba(0, 0, 0, 0.04); }
 .seg button:disabled { opacity: 0.35; }
 .stepper { display: inline-flex; align-items: center; background: var(--fill); border-radius: 999px; height: 28px; padding: 0 2px; }
@@ -258,10 +279,24 @@ input[type="range"]::-moz-range-progress { height: 4px; border-radius: 2px; back
 .stepper button:hover { background: var(--fill); }
 .stepper span { min-width: 20px; text-align: center; font-variant-numeric: tabular-nums; font-weight: 600; }
 
-.chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 2px 12px; }
-.chip { display: inline-flex; align-items: center; gap: 5px; height: 28px; padding: 0 11px 0 9px; border-radius: 999px; border: 0; background: var(--fill); font-size: 12px; font-weight: 500; color: var(--ink2); transition: background .2s, color .2s; }
-.chip svg { width: 14px; height: 14px; }
-.chip[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent); }
+.catrow { display: flex; align-items: center; gap: 10px; min-height: 38px; padding: 4px 0; border-bottom: 0.5px solid var(--sep); }
+.catrow:last-child { border-bottom: 0; }
+.catrow .tile { width: 24px; height: 24px; border-radius: 7px; }
+.catrow .tile svg { width: 14px; height: 14px; }
+.catrow .lbl { flex: 1; min-width: 0; }
+.disclose { margin: 14px 0 0; }
+.disclose summary { list-style: none; display: flex; align-items: center; gap: 8px; margin: 0 6px 7px; cursor: default; border-radius: 8px; }
+.disclose summary::-webkit-details-marker { display: none; }
+.disclose .dis-t { font-size: 13px; font-weight: 650; letter-spacing: -0.01em; }
+.disclose .aside { flex: 1; text-align: right; color: var(--ink2); font-size: 11.5px; }
+.disclose .chev { width: 14px; height: 14px; color: var(--ink2); transition: transform .2s ease-out; }
+.disclose[open] .chev { transform: rotate(90deg); }
+.steps { list-style: none; counter-reset: step; margin: 0 0 12px; padding: 4px 12px; background: var(--well); border-radius: 14px; box-shadow: inset 0 0 0 0.5px var(--glass-line); }
+.steps li { counter-increment: step; display: grid; grid-template-columns: 24px minmax(0, 1fr); column-gap: 10px; padding: 10px 0; border-bottom: 0.5px solid var(--sep); }
+.steps li:last-child { border-bottom: 0; }
+.steps li::before { content: counter(step); grid-row: span 2; width: 22px; height: 22px; border-radius: 50%; background: var(--accent-soft); color: var(--accent); font-weight: 650; font-size: 12px; display: grid; place-items: center; font-variant-numeric: tabular-nums; }
+.steps b { font-weight: 600; }
+.steps span { color: var(--ink2); font-size: 12px; line-height: 1.45; }
 
 .place { display: grid; grid-template-columns: 30px minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 7px 0; border-bottom: 0.5px solid var(--sep); }
 .place:last-child { border-bottom: 0; }
@@ -339,14 +374,17 @@ dialog.sheet::backdrop { background: rgba(0, 0, 0, 0.18); }
   .app.has-photo .stage { min-height: 0; padding-top: 4px; padding-bottom: 4px; }
   .toolbar, .app.no-side .toolbar, .app.no-insp .toolbar { position: sticky; top: 0; left: auto; right: auto; height: auto; padding: 10px 16px; flex-wrap: wrap; order: 0; background: var(--glass); -webkit-backdrop-filter: blur(30px) saturate(180%); backdrop-filter: blur(30px) saturate(180%); border-bottom: 0.5px solid var(--sep); }
   .title { flex-basis: 100%; }
-  .search, .search:focus-within { flex: 1; width: auto; min-width: 0; }
+  .search, .search:focus-within { flex: 1 1 100%; order: 3; width: auto; min-width: 0; }
   .sidebar, .inspector, .app.no-side .sidebar, .app.no-insp .inspector { position: relative; inset: auto; width: auto; margin: 0 16px; transform: none; opacity: 1; pointer-events: auto; }
   .sidebar { order: 1; } .stage { order: 2; } .inspector { order: 3; }
   .side-top, .side-foot { display: none; }
   .photos { grid-auto-flow: column; grid-auto-columns: 210px; overflow-x: auto; }
   .stage, .app.no-side .stage, .app.no-insp .stage { position: relative; inset: auto; padding: 0 16px; min-height: 52vh; }
   .hud { position: fixed; }
+  .resume { flex-wrap: wrap; }
+  .resume-t { flex-basis: 100%; }
 }
+@media (max-width: 480px) { #editCap { display: none; } }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
 </style>
 </head>
@@ -369,7 +407,7 @@ dialog.sheet::backdrop { background: rgba(0, 0, 0, 0.18); }
       <ul class="photos" id="photoList"></ul>
       <div class="side-empty" id="sideEmpty">No photos yet</div>
     </div>
-    <div class="side-foot"><b id="sideCount">No photos</b>Map data © OpenStreetMap contributors</div>
+    <div class="side-foot"><div class="foot-row"><b id="sideCount">No photos</b><button class="linkbtn" id="clearAll" hidden>New job</button></div><button class="linkbtn" id="keysBtn">Keyboard shortcuts</button><span>Map data © OpenStreetMap contributors</span></div>
   </aside>
 
   <header class="toolbar" id="toolbar">
@@ -378,6 +416,10 @@ dialog.sheet::backdrop { background: rgba(0, 0, 0, 0.18); }
       <button class="cap-btn" id="toggleSidebar" title="Show or hide the sidebar" aria-label="Show or hide the sidebar">
         <svg class="i" viewBox="0 0 24 24"><rect x="3" y="4.5" width="18" height="15" rx="3.5"/><path d="M9.5 4.5v15"/></svg>
       </button>
+    </div>
+    <div class="cap glass" id="editCap">
+      <button class="cap-btn" id="undoBtn" title="Undo (⌘Z)" aria-label="Undo" disabled><svg class="i" viewBox="0 0 24 24"><path d="M9 14 4.5 9.5 9 5"/><path d="M4.5 9.5H14a5.5 5.5 0 0 1 0 11h-3"/></svg></button>
+      <button class="cap-btn" id="redoBtn" title="Redo (⇧⌘Z)" aria-label="Redo" disabled><svg class="i" viewBox="0 0 24 24"><path d="m15 14 4.5-4.5L15 5"/><path d="M19.5 9.5H10a5.5 5.5 0 0 0 0 11h3"/></svg></button>
     </div>
     <div class="cap glass viewcap">
       <div class="seg seg-tb" id="viewSeg" role="tablist" aria-label="View">
@@ -413,6 +455,10 @@ dialog.sheet::backdrop { background: rgba(0, 0, 0, 0.18); }
       <p>Pinpoint reads where the drone was and which way it faced, then pins every nearby place.</p>
       <button class="prominent sm" id="choose">Choose Photos…</button>
       <p class="fine">Original DJI JPGs work best.</p>
+      <div class="resume glass strong" id="resume" hidden>
+        <div class="resume-t"><b>Pick up where you left off</b><span id="resumeText"></span></div>
+        <button class="btn" id="resumeNo">Discard</button><button class="prominent sm" id="resumeGo">Continue</button>
+      </div>
     </div>
     <canvas id="view" hidden></canvas>
     <canvas id="map" hidden></canvas>
@@ -430,29 +476,45 @@ dialog.sheet::backdrop { background: rgba(0, 0, 0, 0.18); }
     </div>
     <div class="insp-body">
       <section class="pane" data-pane="places">
-        <div class="sec-h"><h3>In this shot</h3><span class="aside" id="placeCount"></span></div>
-        <div class="group" id="placeList"><div class="list-empty">Drop a photo to see the places in view.</div></div>
-        <div class="sec-h"><h3>Property outline</h3><span class="aside" id="olInfo"></span></div>
-        <div class="group">
-          <div class="row"><span class="lbl">Show outline</span><input class="switch" type="checkbox" id="olShow"></div>
-          <div class="row" style="justify-content:flex-start"><button class="btn small" id="olFind">Find lot</button><button class="btn small" id="olDraw">Draw</button><button class="btn small" id="olClear">Clear</button></div>
+        <div id="placesIntro">
+          <div class="sec-h"><h3>How it works</h3></div>
+          <ol class="steps">
+            <li><b>Add drone photos</b><span>Drop them anywhere in the window. Original DJI JPGs carry the drone's position and angle.</span></li>
+            <li><b>Type the property address</b><span>Pinpoint pins the house and switches on the key places nearby.</span></li>
+            <li><b>Adjust, then export</b><span>Drag pins into place, switch places on or off, choose a style, and export.</span></li>
+          </ol>
         </div>
-        <p class="hint" id="olHint">Find lot uses NSW land records for the address. Draw traces it by hand, anywhere. Drag the outline to line it up, or a corner to reshape it.</p>
-        <div class="sec-h"><h3>Show</h3></div>
-        <div class="chips" id="cats"></div>
-        <div class="group">
-          <div class="row"><span class="lbl">Range</span>
-            <div class="seg" id="rangeSeg"><button data-v="1000">1 km</button><button data-v="3000">3 km</button><button data-v="8000">8 km</button></div>
+        <div id="placesMain">
+          <div class="sec-h"><h3>In this shot</h3><span class="aside" id="placeCount"></span></div>
+          <div class="group" id="placeList"></div>
+          <div class="sec-h"><h3>Labels</h3></div>
+          <div class="group">
+            <div class="row"><span class="lbl">Distances</span>
+              <div class="seg" id="distSeg" title="Sets every label. Click a distance in the list to change just that label."><button data-v="km">km</button><button data-v="walk">Walk</button><button data-v="drive">Drive</button><button data-v="none">None</button></div>
+            </div>
+            <div class="row"><span class="lbl">Start with</span>
+              <div class="seg" id="pickSeg"><button data-v="smart">Key places</button><button data-v="all">Everything</button></div>
+            </div>
+            <div class="row"><span class="lbl">Places in shot</span>
+              <button class="btn small" id="showAll">Show all</button><button class="btn small" id="hideAll">Hide all</button>
+            </div>
           </div>
-          <div class="row"><span class="lbl">Distances</span>
-            <div class="seg" id="distSeg" title="Sets every label; click a label's distance in the list to change just that one"><button data-v="km">km</button><button data-v="walk">Walk</button><button data-v="drive">Drive</button><button data-v="none">None</button></div>
+          <div class="sec-h"><h3>Property outline</h3><span class="aside" id="olInfo"></span></div>
+          <div class="group">
+            <div class="row"><span class="lbl">Show outline</span><input class="switch" type="checkbox" id="olShow"></div>
+            <div class="row" style="justify-content:flex-start"><button class="btn small" id="olFind" title="Uses NSW land records for the address">Find lot</button><button class="btn small" id="olDraw" title="Click around the property to trace it">Draw</button><button class="btn small" id="olClear">Clear</button></div>
           </div>
-          <div class="row"><span class="lbl">Start with</span>
-            <div class="seg" id="pickSeg"><button data-v="smart">Key places</button><button data-v="all">Everything</button></div>
-          </div>
-          <div class="row"><span class="lbl">Places in shot</span>
-            <button class="btn small" id="showAll">Show all</button><button class="btn small" id="hideAll">Hide all</button>
-          </div>
+          <p class="hint" id="olHint">Find lot works for NSW addresses. Draw works anywhere. Drag the outline to line it up, or a corner to reshape it.</p>
+          <details class="disclose" id="areaBox">
+            <summary><span class="dis-t">Search area</span><span class="aside" id="areaSum"></span><svg class="i chev" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg></summary>
+            <div class="group">
+              <div class="row"><span class="lbl">Range</span>
+                <div class="seg" id="rangeSeg"><button data-v="1000">1 km</button><button data-v="3000">3 km</button><button data-v="8000">8 km</button></div>
+              </div>
+            </div>
+            <div class="group" id="cats"></div>
+            <p class="hint">Stations, beaches and shopping centres are always searched to 10 km, since they are often visible from far off.</p>
+          </details>
         </div>
       </section>
 
@@ -519,6 +581,28 @@ dialog.sheet::backdrop { background: rgba(0, 0, 0, 0.18); }
 </div>
 
 <input type="file" id="fileInput" accept="image/jpeg,image/png,image/webp" multiple hidden>
+
+<dialog class="sheet" id="keysSheet">
+  <form method="dialog" class="sheet-in">
+    <h2>Keyboard shortcuts</h2>
+    <p>On Windows, use Ctrl where these show ⌘.</p>
+    <div class="group">
+      <dl class="keys">
+        <dt>Add photos</dt><dd><kbd>⌘O</kbd></dd>
+        <dt>Find an address</dt><dd><kbd>⌘F</kbd></dd>
+        <dt>Export</dt><dd><kbd>⌘E</kbd></dd>
+        <dt>Undo, redo</dt><dd><kbd>⌘Z</kbd> <kbd>⇧⌘Z</kbd></dd>
+        <dt>Add your own pin</dt><dd><kbd>P</kbd></dd>
+        <dt>Photo or satellite view</dt><dd><kbd>M</kbd></dd>
+        <dt>Next or previous photo</dt><dd><kbd>←</kbd> <kbd>→</kbd></dd>
+        <dt>Hide the selected pin</dt><dd><kbd>Delete</kbd></dd>
+        <dt>Deselect, cancel</dt><dd><kbd>Esc</kbd></dd>
+        <dt>Show this list</dt><dd><kbd>?</kbd></dd>
+      </dl>
+    </div>
+    <div class="acts"><button class="prominent sm" value="ok">Done</button></div>
+  </form>
+</dialog>
 
 <dialog class="sheet" id="exportSheet">
   <form method="dialog" class="sheet-in">
@@ -1619,8 +1703,9 @@ function dataUrlBlob(u) {
   for (let i = 0; i < bin.length; i++) a[i] = bin.charCodeAt(i);
   return new Blob([a], { type: head.slice(5).split(";")[0] });
 }
-async function addFiles(files) {
-  const list = [...files].filter(f => /^image\/(jpeg|png|webp)$/.test(f.type) || /\.(jpe?g|png|webp)$/i.test(f.name));
+async function addFiles(files, opts = {}) {
+  const all = [...files];
+  const list = all.filter(f => /^image\/(jpeg|png|webp)$/.test(f.type) || /\.(jpe?g|png|webp)$/i.test(f.name));
   if (!list.length) { flash("Pinpoint reads JPG, PNG and WebP photos."); return; }
   for (const file of list) {
     try {
@@ -1635,7 +1720,7 @@ async function addFiles(files) {
       pv.getContext("2d").drawImage(img, 0, 0, pv.width, pv.height);
       const th = document.createElement("canvas"); const ts = 160 / w; th.width = 160; th.height = Math.round(h * ts);
       th.getContext("2d").drawImage(pv, 0, 0, th.width, th.height);
-      const ph = { id: uid(), name: file.name, img, preview: pv, thumb: th, w, h, meta, has, base0: cam, base: null, cam: null, moved: {}, overrides: {}, custom: [], manual: null, pinStyle: {}, outline: state.lot ? { mode: "lot", off: { x: 0, y: 0 }, show: true } : null };
+      const ph = { id: opts.ids?.[all.indexOf(file)] || uid(), name: file.name, file, img, preview: pv, thumb: th, w, h, meta, has, base0: cam, base: null, cam: null, moved: {}, overrides: {}, custom: [], manual: null, pinStyle: {}, outline: state.lot ? { mode: "lot", off: { x: 0, y: 0 }, show: true } : null };
       rebase(ph);
       state.photos.push(ph);
       if (!state.current) state.current = ph.id;
@@ -1644,6 +1729,7 @@ async function addFiles(files) {
   if (!cur()) state.current = state.photos[0]?.id || null;
   render();
   ensurePlaces();
+  photosChanged();
 }
 function removePhoto(id) {
   const i = state.photos.findIndex(p => p.id === id); if (i < 0) return;
@@ -1651,6 +1737,7 @@ function removePhoto(id) {
   state.photos.splice(i, 1);
   if (state.current === id) state.current = state.photos[Math.min(i, state.photos.length - 1)]?.id || null;
   render();
+  photosChanged();
 }
 
 /* ------------------------------------------------------------------ view */
@@ -1721,11 +1808,16 @@ $("#photoList").addEventListener("click", e => {
 });
 
 function renderCats() {
-  $("#cats").innerHTML = Object.entries(CATS).map(([k, c]) => `<button class="chip" data-cat="${k}" aria-pressed="${!!state.settings.cats[k]}">${svgIcon(c.icon)}${c.label}</button>`).join("");
+  $("#cats").innerHTML = Object.entries(CATS).map(([k, c]) => `<label class="catrow"><span class="tile" style="background:${c.color}">${svgIcon(c.icon)}</span><span class="lbl">${c.label}</span><input class="switch" type="checkbox" data-cat="${k}"${state.settings.cats[k] ? " checked" : ""}></label>`).join("");
+  renderAreaSum();
 }
-$("#cats").addEventListener("click", e => {
+function renderAreaSum() {
+  const all = Object.keys(CATS).length, on = Object.keys(CATS).filter(k => state.settings.cats[k]).length;
+  $("#areaSum").textContent = `${state.settings.range / 1000} km · ${on === all ? "all places" : `${on} of ${all} kinds`}`;
+}
+$("#cats").addEventListener("change", e => {
   const b = e.target.closest("[data-cat]"); if (!b) return;
-  state.settings.cats[b.dataset.cat] = !state.settings.cats[b.dataset.cat]; saveSettings(); renderCats(); render();
+  state.settings.cats[b.dataset.cat] = b.checked; saveSettings(); renderAreaSum(); render();
 });
 
 function placeRow(o) {
@@ -1738,7 +1830,8 @@ function placeRow(o) {
 }
 function renderPlaces() {
   const ph = cur(), el = $("#placeList");
-  if (!ph) { el.innerHTML = `<div class="list-empty">Drop a photo to see the places in view.</div>`; $("#placeCount").textContent = ""; return; }
+  $("#placesIntro").hidden = !!ph; $("#placesMain").hidden = !ph;
+  if (!ph) { el.innerHTML = ""; $("#placeCount").textContent = ""; return; }
   if (!ph.base) { el.innerHTML = `<div class="list-empty">This photo has no GPS. Add the property address and Pinpoint will start from there.</div>`; $("#placeCount").textContent = ""; return; }
   const res = computePins(ph);
   const rows = [];
@@ -1807,6 +1900,7 @@ $("#placeList").addEventListener("click", e => {
 });
 
 function renderSettings() {
+  renderAreaSum();
   document.querySelectorAll("#rangeSeg button").forEach(b => b.setAttribute("aria-pressed", String(+b.dataset.v === state.settings.range)));
   document.querySelectorAll("#pickSeg button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.v === state.settings.pick)));
   document.querySelectorAll("#distSeg button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.v === state.settings.dist)));
@@ -2132,6 +2226,8 @@ document.addEventListener("keydown", e => {
   if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "o") { e.preventDefault(); $("#fileInput").click(); return; }
   if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "f") { e.preventDefault(); $("#addr").focus(); $("#addr").select(); return; }
   if (typing) return;
+  if ((e.metaKey || e.ctrlKey) && (e.key.toLowerCase() === "z" || e.key.toLowerCase() === "y")) { e.preventDefault(); stepHistory(e.key.toLowerCase() === "z" && !e.shiftKey); return; }
+  if (e.key === "?") { $("#keysSheet").showModal(); return; }
   const ph = cur();
   if (state.drawing && e.key === "Enter") { finishDrawing(true); return; }
   if (state.drawing && (e.key === "Backspace" || e.key === "Delete")) { e.preventDefault(); state.drawing.pts.pop(); drawView(); return; }
@@ -2603,6 +2699,117 @@ function showVeil(on) {
 }
 document.addEventListener("paste", e => { const fs = [...(e.clipboardData?.files || [])]; if (fs.length) addFiles(fs); });
 
+/* ------------------------------------------------------------------ undo and saved jobs
+   Edits are kept as snapshots of what the person changed: pin moves, places
+   switched on or off, custom pins, outlines, camera changes, names, distances,
+   settings and brands. A snapshot is taken once things settle, so one drag or
+   one slider move is one undo step. The photos and the latest snapshot are also
+   kept in this browser (IndexedDB), so a reload can pick the job up again. */
+const hist = { undo: [], redo: [], cur: null, timer: 0 };
+const skipTemp = (k, v) => k.startsWith("_") ? undefined : v;
+const editState = () => ({
+  photos: state.photos.map(p => ({ id: p.id, moved: p.moved, overrides: p.overrides, custom: p.custom, pinStyle: p.pinStyle, outline: p.outline, manual: p.manual })),
+  names: state.names, distFor: state.distFor, settings: state.settings, brands: state.brands, brandId: state.brandId,
+});
+const snapshot = () => JSON.stringify(editState(), skipTemp);
+function applyEdits(o) {
+  for (const sp of o.photos) {
+    const ph = state.photos.find(p => p.id === sp.id); if (!ph) continue;
+    Object.assign(ph, { moved: sp.moved, overrides: sp.overrides, custom: sp.custom, pinStyle: sp.pinStyle || {}, outline: sp.outline, manual: sp.manual });
+    rebase(ph);
+  }
+  const rangeWas = state.settings.range;
+  state.names = o.names; state.distFor = o.distFor;
+  Object.assign(state.settings, o.settings);
+  state.brands = o.brands; state.brandId = o.brandId;
+  const ph = cur();
+  if (state.selected && state.selected !== "outline" && state.selected !== "hero" && ph && !ph.custom.some(c => c.id === state.selected) && !state.places.some(p => p.id === state.selected)) state.selected = null;
+  saveSettings(); saveBrands(); renderCats(); renderSettings(); renderBrand(); loadFont(); render();
+  if (state.settings.range !== rangeWas) ensurePlaces();
+}
+function scheduleCommit() { clearTimeout(hist.timer); hist.timer = setTimeout(commit, 450); }
+function commit() {
+  clearTimeout(hist.timer);
+  if (drag || mapState.drag || state.drawing) { scheduleCommit(); return; }
+  const s = snapshot();
+  if (s === hist.cur) return;
+  if (hist.cur !== null) { hist.undo.push(hist.cur); if (hist.undo.length > 80) hist.undo.shift(); hist.redo = []; }
+  hist.cur = s; saveEdits(); renderUndo();
+}
+// Adding or removing photos is not an undo step: fold it into the current snapshot.
+function absorb() { clearTimeout(hist.timer); hist.cur = snapshot(); saveEdits(); renderUndo(); }
+function stepHistory(back) {
+  commit();
+  const from = back ? hist.undo : hist.redo, to = back ? hist.redo : hist.undo;
+  if (!from.length) return;
+  to.push(hist.cur); hist.cur = from.pop();
+  applyEdits(JSON.parse(hist.cur));
+  clearTimeout(hist.timer); saveEdits(); renderUndo();
+}
+function renderUndo() { $("#undoBtn").disabled = !hist.undo.length; $("#redoBtn").disabled = !hist.redo.length; }
+$("#undoBtn").onclick = () => stepHistory(true);
+$("#redoBtn").onclick = () => stepHistory(false);
+
+const idb = (() => {
+  let dbp = null;
+  const open = () => dbp || (dbp = new Promise((res, rej) => {
+    const r = indexedDB.open("pinpoint", 1);
+    r.onupgradeneeded = () => r.result.createObjectStore("kv");
+    r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error);
+  }));
+  const run = async (mode, fn) => {
+    const db = await open();
+    return new Promise((res, rej) => { const t = db.transaction("kv", mode), req = fn(t.objectStore("kv")); t.oncomplete = () => res(req.result); t.onerror = t.onabort = () => rej(t.error); });
+  };
+  return {
+    get: k => run("readonly", s => s.get(k)).catch(() => null),
+    set: (k, v) => run("readwrite", s => s.put(v, k)),
+    del: k => run("readwrite", s => s.delete(k)).catch(() => {}),
+  };
+})();
+let resumeOffered = false;
+function saveEdits() { if (state.photos.length) idb.set("edits", { snap: hist.cur, current: state.current }).catch(() => {}); }
+function photosChanged() {
+  absorb();
+  // New photos dropped while the last job is on offer start a new job instead.
+  if (resumeOffered && state.photos.length) { resumeOffered = false; $("#resume").hidden = true; }
+  if (resumeOffered) return;
+  if (!state.photos.length) { idb.del("photos"); idb.del("edits"); return; }
+  idb.set("photos", state.photos.map(p => ({ id: p.id, name: p.name, blob: p.file }))).catch(e => { console.warn("Saving photos", e); flash("This browser is out of space, so these photos won't reopen next time."); });
+}
+async function offerResume() {
+  const saved = await idb.get("photos");
+  if (!saved?.length || state.photos.length) return;
+  resumeOffered = true;
+  const where = state.address?.label?.split(",")[0] || "Last job";
+  $("#resumeText").textContent = `${where} · ${saved.length} photo${saved.length === 1 ? "" : "s"}`;
+  $("#resume").hidden = false;
+}
+$("#resumeGo").onclick = async () => {
+  const [saved, edits] = await Promise.all([idb.get("photos"), idb.get("edits")]);
+  $("#resume").hidden = true; resumeOffered = false;
+  if (!saved?.length) return;
+  await addFiles(saved.map(x => new File([x.blob], x.name, { type: x.blob.type || "image/jpeg" })), { ids: saved.map(x => x.id) });
+  if (edits?.snap) applyEdits(JSON.parse(edits.snap));
+  if (edits?.current && state.photos.some(p => p.id === edits.current)) state.current = edits.current;
+  hist.undo = []; hist.redo = []; absorb(); render();
+};
+$("#resumeNo").onclick = () => { idb.del("photos"); idb.del("edits"); resumeOffered = false; $("#resume").hidden = true; };
+// New job: a second click within a few seconds confirms, since photos can't be brought back.
+let clearArm = 0;
+$("#clearAll").onclick = () => {
+  const b = $("#clearAll");
+  if (!clearArm) { b.textContent = "Click again to clear"; b.classList.add("warn"); clearArm = setTimeout(() => { clearArm = 0; b.textContent = "New job"; b.classList.remove("warn"); }, 3000); return; }
+  clearTimeout(clearArm); clearArm = 0; b.textContent = "New job"; b.classList.remove("warn");
+  for (const p of state.photos) p.img.close?.();
+  state.photos = []; state.current = null; state.selected = null; state.drawing = null; setAddMode(false);
+  if (state.address) $("#addrClear").click();
+  state.lot = null; state.names = {}; state.distFor = {};
+  hist.undo = []; hist.redo = [];
+  render(); photosChanged();
+};
+$("#keysBtn").onclick = () => $("#keysSheet").showModal();
+
 /* ------------------------------------------------------------------ render */
 function render() {
   const ph = cur(), app = $("#app");
@@ -2619,7 +2826,9 @@ function render() {
   $("#exportBtn").disabled = !ph; $("#addPinBtn").disabled = !ph || mapMode;
   renderPhotos(); renderPlaces(); renderCamera(); renderHud(); renderOutline();
   if (state.styleScope === "pin" && renderBrand.lastSel !== state.selected) { renderBrand.lastSel = state.selected; renderBrand(); }
+  $("#clearAll").hidden = !n;
   if (ph) drawView();
+  scheduleCommit();
 }
 let ambientFor = null;
 function togglePanel(cls) { $("#app").classList.toggle(cls); drawView(); setTimeout(drawView, 460); }
@@ -2638,7 +2847,7 @@ $("#tabs").addEventListener("click", e => { const b = e.target.closest("[data-ta
 showTab(store.get("tab", "places"));
 new ResizeObserver(() => drawView()).observe($("#stage"));
 if (state.address) { addr.value = state.address.label; $("#addrClear").hidden = false; }
-renderCats(); renderSettings(); renderBrand(); render(); loadFont();
+renderCats(); renderSettings(); renderBrand(); render(); loadFont(); offerResume();
 document.fonts?.ready.then(() => { renderStyleTiles(); drawView(); });
 
 // Hooks for scripted checks.
