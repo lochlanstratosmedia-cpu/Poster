@@ -14,3 +14,5 @@ inbox/*
 
 # Knights outro alpha master is large; rebuild with render.mjs
 outros/knights/renders/*.mov
+outros/knights/node_modules
+outros/recruit/node_modules
