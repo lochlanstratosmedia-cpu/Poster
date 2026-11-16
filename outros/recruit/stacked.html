@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Recruit outro</title>
+<style>
+  /* Love's fonts: Proxima Nova files in assets/fonts/ win, Montserrat stands in. */
+  @font-face { font-family: "Brand Sans"; font-weight: 300; src: url("../../assets/fonts/ProximaNova-Light.otf"); }
+  @font-face { font-family: "Brand Sans"; font-weight: 600; src: url("../../assets/fonts/ProximaNova-Semibold.otf"); }
+  @font-face { font-family: "Brand Sans Fallback"; font-weight: 300; src: url("../../assets/fonts/Montserrat-Light.ttf"); }
+  @font-face { font-family: "Brand Sans Fallback"; font-weight: 600; src: url("../../assets/fonts/Montserrat-SemiBold.ttf"); }
+  @font-face { font-family: "Gloock"; src: url("../../assets/fonts/Gloock.ttf"); }
+
+  html, body { margin: 0; height: 100%; background: #111; overflow: hidden; }
+  body.render { background: transparent; }
+  #wrap { position: absolute; inset: 0; display: grid; place-items: center; }
+  #stage {
+    position: relative; width: 1080px; height: 1920px; overflow: hidden; transform-origin: center;
+    background: #0b0b0b; color: #ddd8d0; font-family: "Brand Sans", "Brand Sans Fallback", sans-serif;
+  }
+  #stage * { box-sizing: border-box; }
+  .abs { position: absolute; left: 0; right: 0; text-align: center; }
+  .caps { font-weight: 600; text-transform: uppercase; letter-spacing: .26em; }
+  .serif { font-family: "Gloock", serif; }
+  .mask { overflow: hidden; }
+</style>
+</head>
+<body>
+<div id="wrap"><div id="stage"></div></div>
+<script>
+// Recruitment outro for Love: "Send us a message." Pure function of time,
+// like the Knights outros: draw(t) sets the frame, render.mjs steps it.
+
+const params = new URLSearchParams(location.search);
+const RENDER = params.has("render");
+const DURATION = 9;
+const stage = document.getElementById("stage");
+const pending = [];
+
+const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
+const prog = (t, s, d) => clamp((t - s) / d);
+const lerp = (a, b, p) => a + (b - a) * p;
+const easeOut = p => 1 - Math.pow(1 - p, 3);
+const easeInOut = p => p < .5 ? 4 * p * p * p : 1 - Math.pow(-2 * p + 2, 3) / 2;
+
+function el(tag, css = {}, parent = stage, html = "") {
+  const e = document.createElement(tag);
+  Object.assign(e.style, css);
+  if (html) e.innerHTML = html;
+  parent.appendChild(e);
+  return e;
+}
+const fadeUp = (n, t, s, d = .8, dist = 26) => {
+  const p = easeOut(prog(t, s, d));
+  n.style.opacity = p;
+  n.style.translate = `0 ${(1 - p) * dist}px`;
+};
+// caps line that opens its letter-spacing as it fades in
+const track = (n, t, s, from = .6, to = .26) => {
+  const p = easeOut(prog(t, s, 1.1));
+  n.style.opacity = p;
+  n.style.letterSpacing = `${lerp(from, to, p)}em`;
+};
+
+// soft vignette and a slow warm glow behind the headline
+const glow = el("div", { position: "absolute", inset: 0, background: "radial-gradient(ellipse 70% 30% at 50% 47%, rgba(221,216,208,.07) 0%, rgba(221,216,208,0) 100%)" });
+el("div", { position: "absolute", inset: 0, background: "radial-gradient(ellipse at 50% 50%, rgba(0,0,0,0) 55%, rgba(0,0,0,.55) 100%)" });
+
+// "One agent · One office · One time only", stacked for the tall frame
+const ones = ["One agent", "One office", "One time only"].map((txt, i) => {
+  const n = el("div", { top: `${470 + i * 62}px`, fontSize: "38px" }, stage, txt);
+  n.className = "abs caps";
+  return n;
+});
+
+// headline, each line rising out of a mask
+const lines = ["Send us", "a message."].map((txt, i) => {
+  const m = el("div", { top: `${730 + i * 165}px`, height: "185px" });
+  m.className = "abs mask";
+  const n = el("div", { fontSize: "172px", lineHeight: "185px" }, m, txt);
+  n.className = "serif";
+  return n;
+});
+
+const rule = el("div", { position: "absolute", left: "450px", width: "180px", top: "1145px", height: "3px", background: "#ddd8d0", transformOrigin: "center" });
+
+const chat = el("div", { top: "1195px", fontSize: "54px", fontWeight: 300, lineHeight: 1.3 }, stage, "A confidential chat<br>with Liam &amp; Connor");
+chat.className = "abs";
+
+// the offer: the 80 counts up as it lands
+const split = el("div", { top: "1400px", fontSize: "36px" }, stage, '<span id="pct">80</span>% commission split');
+split.className = "abs caps";
+const pct = split.querySelector("#pct");
+const dot = el("div", { position: "absolute", left: "534px", top: "1462px", width: "12px", height: "12px", borderRadius: "50%", background: "#ddd8d0" });
+const office = el("div", { top: "1494px", fontSize: "36px" }, stage, "Broadmeadow office");
+office.className = "abs caps";
+
+// sign-off: Love's logo
+const logo = el("img", { position: "absolute", left: "420px", top: "1640px", width: "240px" });
+pending.push(new Promise(r => { logo.onload = r; logo.onerror = r; }));
+logo.src = params.get("love") || "../../assets/logos/love-white.png";
+
+function draw(t) {
+  glow.style.opacity = easeInOut(prog(t, 1.4, 1.6));
+  ones.forEach((n, i) => track(n, t, .25 + i * .3));
+  lines.forEach((n, i) => {
+    const p = easeOut(prog(t, 1.3 + i * .22, .9));
+    n.style.transform = `translateY(${(1 - p) * 105}%)`;
+  });
+  rule.style.transform = `scaleX(${easeInOut(prog(t, 2.3, .7))})`;
+  fadeUp(chat, t, 2.6);
+  fadeUp(split, t, 3.3);
+  pct.textContent = Math.round(80 * easeOut(prog(t, 3.3, 1.1)));
+  dot.style.transform = `scale(${easeOut(prog(t, 3.8, .4))})`;
+  fadeUp(office, t, 3.9);
+  const lp = easeOut(prog(t, 4.6, .9));
+  logo.style.opacity = lp;
+  logo.style.transform = `translateY(${(1 - lp) * 20}px) scale(${lerp(.94, 1, lp)})`;
+}
+
+window.draw = draw;
+window.DURATION = DURATION;
+window.ready = Promise.all([document.fonts.ready, ...pending]).then(() => true);
+
+if (RENDER) {
+  document.body.classList.add("render");
+  document.getElementById("wrap").style.placeItems = "start";
+} else {
+  const fit = () => stage.style.transform = `scale(${Math.min(innerWidth / 1080, innerHeight / 1920)})`;
+  fit(); addEventListener("resize", fit);
+  window.ready.then(() => {
+    const t0 = performance.now();
+    const loop = now => { draw(((now - t0) / 1000) % (DURATION + 1)); requestAnimationFrame(loop); };
+    requestAnimationFrame(loop);
+  });
+}
+</script>
+</body>
+</html>
