@@ -28,7 +28,7 @@ await page.evaluate(() => window.ready);
 const seconds = Number(opt("seconds", await page.evaluate(() => window.DURATION)));
 
 const ff = spawn("ffmpeg", ["-y", "-loglevel", "error", "-f", "image2pipe", "-framerate", String(fps), "-i", "-",
-  "-c:v", "libx264", "-pix_fmt", "yuv420p", "-crf", "16", "-preset", "slow", "-movflags", "+faststart",
+  "-c:v", "libx264", "-pix_fmt", "yuv420p", "-crf", "24", "-preset", "slow", "-movflags", "+faststart",
   `${out}/${name}.mp4`], { stdio: ["pipe", "inherit", "inherit"] });
 const done = new Promise((ok, bad) => ff.on("close", c => (c === 0 ? ok() : bad(new Error(`ffmpeg exited ${c}`)))));
 for (let f = 0; f < seconds * fps; f++) {

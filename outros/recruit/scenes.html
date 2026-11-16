@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Recruit outro</title>
+<style>
+  /* Love's fonts: Proxima Nova files in assets/fonts/ win, Montserrat stands in. */
+  @font-face { font-family: "Brand Sans"; font-weight: 300; src: url("../../assets/fonts/ProximaNova-Light.otf"); }
+  @font-face { font-family: "Brand Sans"; font-weight: 600; src: url("../../assets/fonts/ProximaNova-Semibold.otf"); }
+  @font-face { font-family: "Brand Sans Fallback"; font-weight: 300; src: url("../../assets/fonts/Montserrat-Light.ttf"); }
+  @font-face { font-family: "Brand Sans Fallback"; font-weight: 600; src: url("../../assets/fonts/Montserrat-SemiBold.ttf"); }
+  @font-face { font-family: "Gloock"; src: url("../../assets/fonts/Gloock.ttf"); }
+
+  html, body { margin: 0; height: 100%; background: #111; overflow: hidden; }
+  body.render { background: transparent; }
+  #wrap { position: absolute; inset: 0; display: grid; place-items: center; }
+  #stage {
+    position: relative; width: 1080px; height: 1920px; overflow: hidden; transform-origin: center;
+    background: #0b0b0b; color: #ddd8d0; font-family: "Brand Sans", "Brand Sans Fallback", sans-serif;
+  }
+  #stage * { box-sizing: border-box; }
+  .abs { position: absolute; left: 0; right: 0; text-align: center; }
+  .caps { font-weight: 600; text-transform: uppercase; letter-spacing: .26em; }
+  .serif { font-family: "Gloock", serif; }
+  .mask { overflow: hidden; }
+  .scene { position: absolute; inset: 0; }
+</style>
+</head>
+<body>
+<div id="wrap"><div id="stage"></div></div>
+<script>
+// Recruitment outro for Love, told as a run of short scenes:
+//   One agent. / One office. / One time only. / 80% commission split /
+//   Broadmeadow office / A confidential chat with Liam & Connor /
+//   Send us a message. + Love logo
+// Pure function of time: draw(t) sets the frame, render.mjs steps it.
+// Superseded by outro.html; the single-card version is stacked.html.
+
+const params = new URLSearchParams(location.search);
+const RENDER = params.has("render");
+const stage = document.getElementById("stage");
+const pending = [];
+
+const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
+const prog = (t, s, d) => clamp((t - s) / d);
+const lerp = (a, b, p) => a + (b - a) * p;
+const easeOut = p => 1 - Math.pow(1 - p, 3);
+const easeIn = p => p * p * p;
+const easeInOut = p => p < .5 ? 4 * p * p * p : 1 - Math.pow(-2 * p + 2, 3) / 2;
+
+function el(tag, css = {}, parent = stage, html = "") {
+  const e = document.createElement(tag);
+  Object.assign(e.style, css);
+  if (html) e.innerHTML = html;
+  parent.appendChild(e);
+  return e;
+}
+
+// background: vignette and a warm glow that breathes slowly
+const glow = el("div", { position: "absolute", inset: 0, background: "radial-gradient(ellipse 75% 32% at 50% 50%, rgba(221,216,208,.08) 0%, rgba(221,216,208,0) 100%)" });
+el("div", { position: "absolute", inset: 0, background: "radial-gradient(ellipse at 50% 50%, rgba(0,0,0,0) 55%, rgba(0,0,0,.6) 100%)" });
+
+// ---- scene parts ----
+// A part is a node plus how it comes in. Every part leaves together when its
+// scene ends: up, fading and softening.
+const scenes = [];
+function scene(start, end) {
+  const root = el("div", {}); root.className = "scene";
+  const s = { start, end, root, parts: [], extra: null };
+  scenes.push(s);
+  return s;
+}
+// serif line rising out of a mask
+function line(s, txt, top, size, delay = 0, cls = "serif") {
+  const m = el("div", { top: top + "px", height: Math.round(size * 1.12) + "px" }, s.root);
+  m.className = "abs mask";
+  const n = el("div", { fontSize: size + "px", lineHeight: Math.round(size * 1.12) + "px" }, m, txt);
+  n.className = cls;
+  s.parts.push({ n, kind: "rise", delay });
+  return n;
+}
+// caps label whose letter-spacing tightens as it fades in
+function caps(s, txt, top, size, delay = 0) {
+  const n = el("div", { top: top + "px", fontSize: size + "px" }, s.root, txt);
+  n.className = "abs caps";
+  s.parts.push({ n, kind: "track", delay });
+  return n;
+}
+function soft(s, txt, top, size, delay = 0) {
+  const n = el("div", { top: top + "px", fontSize: size + "px", fontWeight: 300, lineHeight: 1.3 }, s.root, txt);
+  n.className = "abs";
+  s.parts.push({ n, kind: "fade", delay });
+  return n;
+}
+function rule(s, top, width, delay = 0) {
+  const n = el("div", { position: "absolute", left: (540 - width / 2) + "px", width: width + "px", top: top + "px", height: "3px", background: "#ddd8d0" }, s.root);
+  s.parts.push({ n, kind: "draw", delay });
+  return n;
+}
+
+// ---- the story ----
+// 1-3: the three "One" lines, with a counter and three progress dots
+const ONE = [["One agent.", 0.0, 1.7], ["One office.", 1.7, 3.4], ["One time|only.", 3.4, 5.4]];
+const dots = el("div", { position: "absolute", left: "480px", width: "120px", top: "1250px", height: "14px", display: "flex", justifyContent: "space-between" });
+const dotEls = [0, 1, 2].map(() => el("div", { width: "14px", height: "14px", borderRadius: "50%", border: "2px solid #ddd8d0" }, dots));
+ONE.forEach(([txt, a, b], i) => {
+  const s = scene(a, b);
+  caps(s, `0${i + 1}`, 720, 34);
+  const parts = txt.split("|");
+  const size = 176, top = parts.length > 1 ? 800 : 870;
+  parts.forEach((p, k) => line(s, p, top + k * 190, size, .08 + k * .12));
+});
+
+// 4: the offer, with the 80 counting up
+const s4 = scene(5.4, 7.9);
+const big = line(s4, '<span>0</span>%', 690, 380, .05);
+const pct = big.querySelector("span");
+rule(s4, 1140, 200, .45);
+caps(s4, "Commission split", 1180, 46, .55);
+s4.extra = lt => { pct.textContent = Math.round(80 * easeOut(prog(lt, .05, 1.3))); };
+
+// 5: where
+const s5 = scene(7.9, 9.9);
+line(s5, "Broadmeadow", 820, 150, .0);
+rule(s5, 1020, 120, .4);
+caps(s5, "Office", 1060, 46, .5);
+
+// 6: who
+const s6 = scene(9.9, 12.2);
+soft(s6, "A confidential chat with", 780, 58, .0);
+line(s6, "Liam", 870, 176, .15);
+line(s6, "&amp; Connor", 1060, 176, .27);
+
+// 7: the ask, then the sign-off, held to the end
+const s7 = scene(12.2, 99);
+line(s7, "Send us", 720, 176, .0);
+line(s7, "a message.", 905, 176, .14);
+rule(s7, 1150, 180, .55);
+const logo = el("img", { position: "absolute", left: "415px", top: "1240px", width: "250px" }, s7.root);
+pending.push(new Promise(r => { logo.onload = r; logo.onerror = r; }));
+logo.src = params.get("love") || "../../assets/logos/love-white.png";
+s7.parts.push({ n: logo, kind: "fade", delay: .9 });
+
+const DURATION = 16;
+
+// a hairline that sweeps across at each cut
+const sweep = el("div", { position: "absolute", left: 0, width: "1080px", top: "959px", height: "2px", background: "linear-gradient(90deg, rgba(221,216,208,0), rgba(221,216,208,.9), rgba(221,216,208,0))" });
+const CUTS = scenes.slice(1).map(s => s.start);
+
+function draw(t) {
+  glow.style.opacity = .7 + .3 * Math.sin(t * 1.3);
+
+  scenes.forEach(s => {
+    const on = t >= s.start - .01 && t < s.end;
+    s.root.style.display = on ? "block" : "none";
+    if (!on) return;
+    const lt = t - s.start;
+    const out = easeIn(prog(t, s.end - .32, .32));            // leaving
+    s.root.style.opacity = 1 - out;
+    s.root.style.transform = `translateY(${-60 * out}px)`;
+    s.root.style.filter = out > 0 ? `blur(${6 * out}px)` : "none";
+    s.parts.forEach(({ n, kind, delay }) => {
+      const p = easeOut(prog(lt, .12 + delay, kind === "track" ? 1 : .7));
+      if (kind === "rise") n.style.transform = `translateY(${(1 - p) * 105}%)`;
+      if (kind === "track") { n.style.opacity = p; n.style.letterSpacing = `${lerp(.7, .26, p)}em`; }
+      if (kind === "fade") { n.style.opacity = p; n.style.translate = `0 ${(1 - p) * 24}px`; }
+      if (kind === "draw") n.style.transform = `scaleX(${easeInOut(prog(lt, .12 + delay, .6))})`;
+    });
+    if (s.extra) s.extra(lt);
+  });
+
+  // progress dots live through the three "One" scenes
+  const dotsOut = easeIn(prog(t, 5.08, .32));
+  dots.style.opacity = t < 5.4 ? easeOut(prog(t, .3, .6)) * (1 - dotsOut) : 0;
+  dotEls.forEach((d, i) => {
+    const lit = prog(t, ONE[i][1] + .2, .3);
+    d.style.background = `rgba(221,216,208,${lit})`;
+  });
+
+  // cut sweep
+  let sw = 0, x = 0;
+  CUTS.forEach(c => { const p = prog(t, c - .18, .45); if (p > 0 && p < 1) { sw = Math.sin(Math.PI * p); x = lerp(-700, 700, easeInOut(p)); } });
+  sweep.style.opacity = sw * .6;
+  sweep.style.transform = `translateX(${x}px)`;
+}
+
+window.draw = draw;
+window.DURATION = DURATION;
+window.ready = Promise.all([document.fonts.ready, ...pending]).then(() => true);
+
+if (RENDER) {
+  document.body.classList.add("render");
+  document.getElementById("wrap").style.placeItems = "start";
+} else {
+  const fit = () => stage.style.transform = `scale(${Math.min(innerWidth / 1080, innerHeight / 1920)})`;
+  fit(); addEventListener("resize", fit);
+  window.ready.then(() => {
+    const t0 = performance.now();
+    const loop = now => { draw(((now - t0) / 1000) % (DURATION + 1)); requestAnimationFrame(loop); };
+    requestAnimationFrame(loop);
+  });
+}
+</script>
+</body>
+</html>
