@@ -59,6 +59,12 @@ For story and narrative scripts, `docs/storyscope-narrative-checks.md` covers
 the structural side that word-level editing misses. Read it when a draft reads
 clean sentence by sentence but still feels machine made.
 
+## Floor plans and site plans
+
+Plan sheets always go through the engine in `tools/plan-sheet/` (the Plan
+Sheet Builder). Read `docs/floor-plan-rules.md` first. Never redraw a sheet by
+hand from Cubicasa's own SVG.
+
 ## Cover shots
 
 For property photos that need to look like a magazine cover, follow
