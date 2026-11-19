@@ -19,7 +19,7 @@ through that engine. Never redraw a sheet by hand from Cubicasa's own SVG.
   ```
 
   Use `-` for no plan or no site. `ROT` turns the plan (0, 90, 180, 270).
-  `NORTH=<deg>` overrides the north point and `NORTH=off` hides it. It writes
+  `NORTH=<deg>` overrides the north point and `NORTH=off` hides it. `LABEL=<units>` sets the room label size (default 12). It writes
   the SVG, a PNG preview and prints the engine's report.
 - `tools/plan-sheet/data.json` holds the brand logos, the tree symbol and the
   Willandra Crescent example job.
