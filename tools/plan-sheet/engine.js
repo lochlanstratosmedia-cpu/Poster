@@ -92,7 +92,10 @@
     // Floor titles ("1st Floor", "Ground Floor", "Level 2") are captions for a whole level, not room names.
     const CAPTION_RE = /^\s*((\d+(st|nd|rd|th)|ground|first|second|third|lower|upper|basement|mezzanine|main|lower ground)\s+(floor|level)|level\s+\d+|floor\s+\d+|basement|attic|loft|mezzanine|ground)\s*$/i;
     const captions = [];
-    live.forEach((t) => { if (CAPTION_RE.test(t.textContent)) { captions.push({ text: t.textContent.trim().replace(/\b\w/g, (c) => c.toUpperCase()).replace(/\b(Floor|Level)\b/, (w) => w.toLowerCase()), c: center(t) }); dead.add(t); } });
+    // A bare "Basement", "Attic" or "Loft" with a room size right under it is a room name, not a level title.
+    const BARE_RE = /^\s*(basement|attic|loft|mezzanine|ground)\s*$/i;
+    const hasOwnMeasure = (t) => { const c = center(t), h = t.getBBox().height * Math.hypot(toRoot(t).a, toRoot(t).b) || 10; return measures.some((m) => { const d = center(m); return Math.abs(d.x - c.x) < 4 * h && d.y > c.y && d.y - c.y < 2.5 * h; }); };
+    live.forEach((t) => { if (CAPTION_RE.test(t.textContent) && !(BARE_RE.test(t.textContent) && hasOwnMeasure(t))) { captions.push({ text: t.textContent.trim().replace(/\b\w/g, (c) => c.toUpperCase()).replace(/\b(Floor|Level)\b/, (w) => w.toLowerCase()), c: center(t) }); dead.add(t); } });
     const names = live.filter((t) => !MEASURE_RE.test(t.textContent) && !dead.has(t));
     const pairOf = new Map();
     measures.forEach((mt) => {
