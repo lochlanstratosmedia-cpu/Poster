@@ -653,6 +653,22 @@
       const site = SG ? [{ w: siteH * siteAspect + gap, h: siteH + gap, ref: 'site' }] : [];
       const R = { x: region.x, y: region.y, w: region.w + gap, h: region.h + gap };
       if (titled) {
+        // Levels given a row (c.row, e.g. one row per building) stack in rows, top to bottom, each row centred.
+        const rowIds = [...new Set(floors.map((f) => plan.clusters[f.ref].row))];
+        if (rowIds.length > 1 || rowIds[0] != null) {
+          rowIds.sort((a, b) => (a || 0) - (b || 0));
+          let y = R.y; const placed = [];
+          for (const id of rowIds) {
+            const fs = floors.filter((f) => plan.clusters[f.ref].row === id);
+            const w = fs.reduce((t, f) => t + f.w, 0), h = Math.max(...fs.map((f) => f.h));
+            if (w > R.w) return null;
+            let x = R.x + (R.w - w) / 2;
+            for (const f of fs) { placed.push({ x, y: y + h - f.h, w: f.w, h: f.h, ref: f.ref }); x += f.w; }
+            y += h;
+          }
+          if (y > R.y + R.h) return null;
+          return pack(R, [[...outs, ...site], [...site, ...outs]][v % 2], placed);
+        }
         // Titled levels sit in floor order along the bottom, left to right; everything else packs around them.
         let x = R.x; const row = [];
         const top = v >= 2 && v < 4; // levels along the top, others below; or along the bottom
