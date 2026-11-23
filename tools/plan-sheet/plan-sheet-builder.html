@@ -911,7 +911,7 @@ details[open] summary { margin-bottom: 8px; }
       if (c.caption) capSvg += '<text style="font-family:' + font + ';font-size:14px;font-weight:600" fill="#1a1a1a" text-anchor="middle" x="' + cx.toFixed(2) + '" y="' + (p.y + dy + r.h * s + 24).toFixed(2) + '">' + c.caption.replace(/&/g, '&amp;').replace(/</g, '&lt;') + '</text>';
       const gT = 'translate(' + cx.toFixed(2) + ' ' + cy.toFixed(2) + ') rotate(' + rot + ') scale(' + s.toFixed(5) + ') translate(' + (-(b.x + b.w / 2)).toFixed(3) + ' ' + (-(b.y + b.h / 2)).toFixed(3) + ')';
       const label = c.caption || (c.kind === 'floor' ? (plan.clusters.filter((q) => q.kind === 'floor').length > 1 ? 'Floor ' + (++fi) : 'Floor plan') : c.name);
-      svg += '<g id="' + label.replace(/"/g, '') + '" transform="' + gT + '">';
+      svg += '<g id="' + label.replace(/"/g, '').replace(/&/g, '&amp;').replace(/</g, '&lt;') + '" transform="' + gT + '">';
       c.items.forEach((L) => {
         const n = L.clone.cloneNode(true);
         if (n.tagName === 'text') {
